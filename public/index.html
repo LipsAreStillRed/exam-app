@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="vi">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exam Frontend</title><link rel="stylesheet" href="style.css"></head>
+<body>
+  <div class="wrap">
+    <h1>HỆ THỐNG KIỂM TRA TRỰC TUYẾN</h1>
+    <div id="login"><input id="access" placeholder="Nhập mã GV2025@ (GV) hoặc HS..."><button id="btnEnter">Tiếp tục</button></div>
+    <div id="teacher" class="hidden"><h3>Giáo viên</h3><input id="teacherPass" placeholder="Mật khẩu giáo viên"><input type="file" id="examFile"><input id="timeMinutes" type="number" placeholder="Thời gian (phút)"><input id="examPassword" placeholder="Mật khẩu đề"><button id="btnUpload">Upload & Trộn</button><div id="teacherMsg"></div></div>
+    <div id="student" class="hidden"><h3>Học sinh</h3><select id="examSelect"></select><input id="className" placeholder="Lớp"><input id="classPass" placeholder="Mật khẩu lớp" type="password"><input id="stName" placeholder="Họ và tên"><input id="stDOB" type="date"><button id="btnStart">Bắt đầu</button></div>
+    <div id="examArea" class="hidden"><h3>Bài kiểm tra</h3><p>Thời gian: <span id="timer">--:--</span></p><p id="tabWarn" style="color:crimson"></p><div id="questions"></div><textarea id="studentAnswers" placeholder="Gõ câu trả lời hoặc JSON"></textarea><button id="btnSubmit">Nộp bài</button></div>
+    <div id="resultArea" class="hidden"><h3>Kết quả</h3><p id="scoreShow"></p></div>
+    <footer>© GV. Nguyễn Minh Thiện – với sự hỗ trợ của AI</footer>
+  </div>
+<script src="main.js"></script></body></html>

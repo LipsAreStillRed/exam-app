@@ -1,0 +1,7 @@
+body{font-family:Arial,Helvetica,sans-serif;background:#eef6ff;margin:0;padding:20px}
+.wrap{max-width:900px;margin:20px auto;background:#fff;padding:20px;border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+input,textarea,select,button{width:100%;padding:10px;margin-top:10px;border-radius:8px;border:1px solid #d6e3f0}
+button{background:#2a67d0;color:#fff;border:none}
+.hidden{display:none}
+#questions div{background:#fafafa;padding:10px;border-radius:6px;margin-top:8px}
+footer{margin-top:12px;text-align:center;color:#777}
