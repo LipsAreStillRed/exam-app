@@ -1,14 +1,144 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Exam Frontend</title><link rel="stylesheet" href="style.css"></head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hệ Thống Kiểm Tra Trực Tuyến</title>
+  <link rel="stylesheet" href="style.css">
+</head>
 <body>
-  <div class="wrap">
-    <h1>HỆ THỐNG KIỂM TRA TRỰC TUYẾN</h1>
-    <div id="login"><input id="access" placeholder="Nhập mã GV2025@ (GV) hoặc HS..."><button id="btnEnter">Tiếp tục</button></div>
-    <div id="teacher" class="hidden"><h3>Giáo viên</h3><input id="teacherPass" placeholder="Mật khẩu giáo viên"><input type="file" id="examFile"><input id="timeMinutes" type="number" placeholder="Thời gian (phút)"><input id="examPassword" placeholder="Mật khẩu đề"><button id="btnUpload">Upload & Trộn</button><div id="teacherMsg"></div></div>
-    <div id="student" class="hidden"><h3>Học sinh</h3><select id="examSelect"></select><input id="className" placeholder="Lớp"><input id="classPass" placeholder="Mật khẩu lớp" type="password"><input id="stName" placeholder="Họ và tên"><input id="stDOB" type="date"><button id="btnStart">Bắt đầu</button></div>
-    <div id="examArea" class="hidden"><h3>Bài kiểm tra</h3><p>Thời gian: <span id="timer">--:--</span></p><p id="tabWarn" style="color:crimson"></p><div id="questions"></div><textarea id="studentAnswers" placeholder="Gõ câu trả lời hoặc JSON"></textarea><button id="btnSubmit">Nộp bài</button></div>
-    <div id="resultArea" class="hidden"><h3>Kết quả</h3><p id="scoreShow"></p></div>
-    <footer>© GV. Nguyễn Minh Thiện – với sự hỗ trợ của AI</footer>
+  <div class="container">
+    <div id="loginPage" class="page active">
+      <div class="login-box">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+        </div>
+        <h1>Hệ Thống Kiểm Tra</h1>
+        <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
+        
+        <form id="loginForm">
+          <div class="input-group">
+            <input type="password" id="passwordInput" placeholder="Mật khẩu" autocomplete="off" required>
+            <button type="button" class="toggle-password" id="togglePassword">
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <button type="submit" class="btn btn-primary" id="loginBtn">Đăng nhập</button>
+        </form>
+        
+        <div id="loginError" class="error-message"></div>
+        
+        <div class="info-text">
+          <p>💡 <strong>Giáo viên:</strong> Sử dụng mật khẩu giáo viên</p>
+          <p>📚 <strong>Học sinh:</strong> Sử dụng mật khẩu lớp học</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="teacherPage" class="page">
+      <div class="header">
+        <h2>🎓 Bảng Điều Khiển Giáo Viên</h2>
+        <button class="btn btn-secondary" id="logoutTeacher">Đăng xuất</button>
+      </div>
+      <div class="dashboard">
+        <div class="card">
+          <h3>📝 Upload Đề Thi</h3>
+          <form id="uploadForm">
+            <div class="form-group">
+              <label>Chọn file đề thi (Word)</label>
+              <input type="file" id="examFile" accept=".doc,.docx" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Thời gian làm bài (phút)</label>
+                <input type="number" id="timeMinutes" min="1" max="180" value="45" required>
+              </div>
+              <div class="form-group">
+                <label>Mật khẩu đề (tùy chọn)</label>
+                <input type="text" id="examPassword" placeholder="Để trống nếu không cần">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="uploadBtn">📤 Upload và Trộn Đề</button>
+          </form>
+          <div id="uploadMessage" class="message"></div>
+        </div>
+        <div class="card">
+          <h3>📊 Danh Sách Bài Nộp</h3>
+          <div id="submissionsList" class="submissions-list">
+            <p class="empty-state">Chưa có bài nộp</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="studentInfoPage" class="page">
+      <div class="header">
+        <h2>👨‍🎓 Thông Tin Học Sinh</h2>
+        <button class="btn btn-secondary" id="logoutStudent">Đăng xuất</button>
+      </div>
+      <div class="student-form-container">
+        <div class="card">
+          <h3>Nhập thông tin của bạn</h3>
+          <form id="studentInfoForm">
+            <div class="form-group">
+              <label>Họ và tên *</label>
+              <input type="text" id="studentName" placeholder="Nguyễn Văn A" required>
+            </div>
+            <div class="form-group">
+              <label>Ngày sinh *</label>
+              <input type="date" id="studentDOB" required>
+            </div>
+            <div class="form-group">
+              <label>Lớp</label>
+              <input type="text" id="studentClass" readonly>
+            </div>
+            <button type="submit" class="btn btn-primary">▶️ Bắt Đầu Làm Bài</button>
+          </form>
+          <div id="studentInfoError" class="error-message"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="examPage" class="page">
+      <div class="exam-header">
+        <div class="exam-info">
+          <h2>📝 Bài Kiểm Tra</h2>
+          <p id="studentInfo"></p>
+        </div>
+        <div class="timer-container">
+          <div class="timer" id="timer">--:--</div>
+          <div id="warningMessage" class="warning-message"></div>
+        </div>
+      </div>
+      <div class="exam-content">
+        <div id="questionsContainer" class="questions-container"></div>
+        <div class="answer-section">
+          <h3>💬 Câu trả lời của bạn</h3>
+          <p class="hint">Nhập câu trả lời theo định dạng: 1A 2B 3C hoặc JSON</p>
+          <textarea id="studentAnswers" placeholder="Ví dụ: 1A 2B 3C 4D"></textarea>
+        </div>
+        <button class="btn btn-primary btn-submit" id="submitBtn">✅ Nộp Bài</button>
+      </div>
+    </div>
+
+    <div id="resultPage" class="page">
+      <div class="result-container">
+        <div class="result-icon">✅</div>
+        <h2>Hoàn Thành!</h2>
+        <p id="resultMessage">Bài làm của bạn đã được nộp thành công.</p>
+        <div id="scoreDisplay" class="score-display"></div>
+        <button class="btn btn-primary" id="backToHome">Về Trang Chủ</button>
+      </div>
+    </div>
   </div>
-<script src="main.js"></script></body></html>
+  <footer class="footer">
+    <p>© GV. Nguyễn Minh Thiện – Được hỗ trợ bởi AI</p>
+  </footer>
+  <script src="main.js"></script>
+</body>
+</html>
