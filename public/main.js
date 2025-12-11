@@ -11,7 +11,9 @@ const state = {
   examData: null,
   timerInterval: null,
   timeLeft: 0,
-  tabViolations: 0
+  tabViolations: 0,
+  currentExamId: null,
+  studentAnswers: {}
 };
 
 function showPage(pageId) {
@@ -30,10 +32,10 @@ function showMessage(elementId, message, isError = false) {
   const el = document.getElementById(elementId);
   el.textContent = message;
   el.className = 'message ' + (isError ? 'error' : 'success');
-  el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 5000);
+  setTimeout(() => el.className = 'message', 5000);
 }
 
+// LOGIN
 document.getElementById('togglePassword').addEventListener('click', function() {
   const input = document.getElementById('passwordInput');
   const icon = document.getElementById('eyeIcon');
@@ -71,6 +73,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       
       if (data.role === 'teacher') {
         showPage('teacherPage');
+        loadExamsList();
+        loadSubmissionsList();
       } else {
         document.getElementById('studentClass').value = data.className;
         showPage('studentInfoPage');
@@ -87,6 +91,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   }
 });
 
+// TEACHER - UPLOAD
 document.getElementById('uploadForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   
@@ -102,6 +107,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
   formData.append('file', file);
   formData.append('timeMinutes', document.getElementById('timeMinutes').value);
   formData.append('password', document.getElementById('examPassword').value);
+  formData.append('shuffle', document.getElementById('shuffleQuestions').checked);
   
   const uploadBtn = document.getElementById('uploadBtn');
   uploadBtn.disabled = true;
@@ -118,6 +124,8 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     if (data.ok) {
       showMessage('uploadMessage', `✅ Upload thành công! ${data.count} câu hỏi`);
       fileInput.value = '';
+      document.getElementById('examPassword').value = '';
+      loadExamsList();
     } else {
       showMessage('uploadMessage', '❌ Lỗi: ' + (data.error || 'Không xác định'), true);
     }
@@ -125,186 +133,14 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     showMessage('uploadMessage', '❌ Lỗi kết nối: ' + error.message, true);
   } finally {
     uploadBtn.disabled = false;
-    uploadBtn.textContent = '📤 Upload và Trộn Đề';
+    uploadBtn.textContent = '📤 Upload và Tạo Đề';
   }
 });
 
-document.getElementById('logoutTeacher').addEventListener('click', () => {
-  state.userRole = null;
-  showPage('loginPage');
-  document.getElementById('passwordInput').value = '';
-});
-
-async function loadLatestExam() {
+// TEACHER - LOAD EXAMS LIST
+async function loadExamsList() {
   try {
-    const response = await fetch(api('/exam/latest'));
+    const response = await fetch(api('/exam/list'));
     const data = await response.json();
     
-    if (data.ok && data.questions && data.questions.length > 0) {
-      state.examData = data;
-    } else {
-      showError('studentInfoError', 'Chưa có đề thi nào. Vui lòng liên hệ giáo viên.');
-    }
-  } catch (error) {
-    showError('studentInfoError', 'Lỗi tải đề thi: ' + error.message);
-  }
-}
-
-document.getElementById('studentInfoForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  
-  const name = document.getElementById('studentName').value.trim();
-  const dob = document.getElementById('studentDOB').value;
-  const className = document.getElementById('studentClass').value;
-  
-  if (!name || !dob) {
-    showError('studentInfoError', 'Vui lòng điền đầy đủ thông tin');
-    return;
-  }
-  
-  state.studentInfo = { name, dob, className };
-  startExam();
-});
-
-document.getElementById('logoutStudent').addEventListener('click', () => {
-  state.userRole = null;
-  state.className = null;
-  showPage('loginPage');
-  document.getElementById('passwordInput').value = '';
-});
-
-function startExam() {
-  if (!state.examData || !state.examData.questions || state.examData.questions.length === 0) {
-    alert('Không có đề thi');
-    return;
-  }
-  
-  showPage('examPage');
-  
-  document.getElementById('studentInfo').textContent = 
-    `${state.studentInfo.name} - Lớp ${state.studentInfo.className}`;
-  
-  const container = document.getElementById('questionsContainer');
-  container.innerHTML = '';
-  
-  state.examData.questions.forEach((question, index) => {
-    const div = document.createElement('div');
-    div.className = 'question-item';
-    div.innerHTML = `<strong>Câu ${index + 1}:</strong><div>${question.replace(/\n/g, '<br>')}</div>`;
-    container.appendChild(div);
-  });
-  
-  state.timeLeft = (state.examData.timeMinutes || 45) * 60;
-  updateTimer();
-  state.timerInterval = setInterval(() => {
-    state.timeLeft--;
-    updateTimer();
-    
-    if (state.timeLeft <= 0) {
-      clearInterval(state.timerInterval);
-      submitExam(true);
-    }
-  }, 1000);
-  
-  state.tabViolations = 0;
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-}
-
-function handleVisibilityChange() {
-  if (document.hidden && state.timerInterval) {
-    state.tabViolations++;
-    const warning = document.getElementById('warningMessage');
-    warning.textContent = `⚠️ Cảnh báo: Bạn đã rời khỏi trang ${state.tabViolations}/3 lần`;
-    
-    if (state.tabViolations >= 3) {
-      clearInterval(state.timerInterval);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      alert('Bạn đã vi phạm quy định. Bài thi sẽ được thu ngay.');
-      submitExam(true);
-    }
-  }
-}
-
-function updateTimer() {
-  const minutes = Math.floor(state.timeLeft / 60);
-  const seconds = state.timeLeft % 60;
-  document.getElementById('timer').textContent = 
-    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-  
-  if (state.timeLeft < 300 && state.timeLeft > 0) {
-    document.getElementById('timer').style.color = 'var(--warning)';
-  }
-  
-  if (state.timeLeft < 60 && state.timeLeft > 0) {
-    document.getElementById('timer').style.color = 'var(--danger)';
-  }
-}
-
-document.getElementById('submitBtn').addEventListener('click', () => {
-  if (confirm('Bạn có chắc chắn muốn nộp bài?')) {
-    submitExam(false);
-  }
-});
-
-async function submitExam(isAuto) {
-  clearInterval(state.timerInterval);
-  document.removeEventListener('visibilitychange', handleVisibilityChange);
-  
-  const answersText = document.getElementById('studentAnswers').value.trim();
-  let answers;
-  
-  try {
-    answers = JSON.parse(answersText);
-  } catch (e) {
-    answers = answersText;
-  }
-  
-  const payload = {
-    name: state.studentInfo.name,
-    className: state.studentInfo.className,
-    dob: state.studentInfo.dob,
-    answers: answers,
-    score: null,
-    examId: state.examData.examId,
-    isAutoSubmit: isAuto,
-    violations: state.tabViolations
-  };
-  
-  try {
-    const response = await fetch(api('/student/submit'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    
-    const data = await response.json();
-    
-    showPage('resultPage');
-    
-    if (data.ok) {
-      document.getElementById('resultMessage').textContent = 
-        isAuto ? 'Bài làm của bạn đã được tự động nộp.' : 'Bài làm của bạn đã được nộp thành công!';
-      
-      if (data.score !== undefined && data.score !== null) {
-        document.getElementById('scoreDisplay').textContent = `Điểm: ${data.score}/10`;
-      }
-    } else {
-      document.getElementById('resultMessage').textContent = 
-        'Có lỗi xảy ra: ' + (data.error || 'Không xác định');
-    }
-  } catch (error) {
-    showPage('resultPage');
-    document.getElementById('resultMessage').textContent = 
-      'Lỗi kết nối: ' + error.message;
-  }
-}
-
-document.getElementById('backToHome').addEventListener('click', () => {
-  state.userRole = null;
-  state.className = null;
-  state.studentInfo = null;
-  state.examData = null;
-  showPage('loginPage');
-  document.getElementById('passwordInput').value = '';
-  document.getElementById('studentAnswers').value = '';
-});
+    const container =
