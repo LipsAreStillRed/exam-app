@@ -143,4 +143,429 @@ async function loadExamsList() {
     const response = await fetch(api('/exam/list'));
     const data = await response.json();
     
-    const container =
+    const container = document.getElementById('examsList');
+    
+    if (!data.ok || data.exams.length === 0) {
+      container.innerHTML = '<p class="empty-state">Chưa có đề thi nào</p>';
+      return;
+    }
+    
+    container.innerHTML = data.exams.map(exam => `
+      <div class="exam-item" onclick="viewExamDetail('${exam.id}')">
+        <div class="exam-item-header">
+          <div class="exam-item-title">${exam.name}</div>
+          <div>
+            ${exam.hasAnswers ? '<span class="badge badge-success">Có đáp án</span>' : '<span class="badge badge-warning">Chưa có đáp án</span>'}
+          </div>
+        </div>
+        <div class="exam-item-meta">
+          <span>📝 ${exam.questionCount} câu</span>
+          <span>⏱️ ${exam.timeMinutes} phút</span>
+          <span>🔒 ${exam.hasPassword ? 'Có mật khẩu' : 'Không có mật khẩu'}</span>
+          <span>📅 ${new Date(exam.createdAt).toLocaleString('vi-VN')}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading exams:', error);
+    document.getElementById('examsList').innerHTML = '<p class="empty-state">Lỗi tải danh sách đề</p>';
+  }
+}
+
+// TEACHER - VIEW EXAM DETAIL
+async function viewExamDetail(examId) {
+  try {
+    const response = await fetch(api(`/exam/${examId}`));
+    const data = await response.json();
+    
+    if (!data.ok) {
+      alert('Không thể tải đề thi');
+      return;
+    }
+    
+    state.currentExamId = examId;
+    const exam = data.exam;
+    
+    let html = `
+      <h3>${exam.originalName}</h3>
+      <p><strong>Số câu:</strong> ${exam.questions.length} | <strong>Thời gian:</strong> ${exam.timeMinutes} phút</p>
+      <hr style="margin: 20px 0;">
+    `;
+    
+    exam.questions.forEach((q, idx) => {
+      const questionNumber = q.id || (idx + 1);
+      html += `
+        <div class="question-block">
+          <div class="question-header">Câu ${questionNumber}:</div>
+          <div class="question-text">${q.question}</div>
+      `;
+      
+      if (q.type === 'multiple_choice' && q.options && q.options.length > 0) {
+        html += '<div class="options-container">';
+        q.options.forEach(opt => {
+          html += `<div class="option-item">${opt.key}. ${opt.text}</div>`;
+        });
+        html += '</div>';
+      } else if (q.type === 'true_false') {
+        html += '<div class="options-container">';
+        html += '<div class="option-item">Đúng</div>';
+        html += '<div class="option-item">Sai</div>';
+        html += '</div>';
+      }
+      
+      const currentAnswer = exam.answers ? exam.answers[questionNumber] : '';
+      html += `
+        <div class="answer-input-group">
+          <label><strong>Đáp án đúng:</strong></label>
+          <input type="text" class="answer-input" data-question="${questionNumber}" value="${currentAnswer || ''}" placeholder="Nhập đáp án (VD: A, B, C, D hoặc Đúng, Sai)">
+        </div>
+      `;
+      
+      html += '</div>';
+    });
+    
+    document.getElementById('examDetailContent').innerHTML = html;
+    document.getElementById('examDetailModal').classList.add('show');
+  } catch (error) {
+    alert('Lỗi: ' + error.message);
+  }
+}
+
+// TEACHER - CLOSE MODAL
+document.getElementById('closeModal').addEventListener('click', () => {
+  document.getElementById('examDetailModal').classList.remove('show');
+});
+
+// TEACHER - SAVE ANSWERS
+document.getElementById('saveAnswers').addEventListener('click', async () => {
+  const inputs = document.querySelectorAll('.answer-input');
+  const answers = {};
+  
+  inputs.forEach(input => {
+    const questionId = input.getAttribute('data-question');
+    const value = input.value.trim();
+    if (value) {
+      answers[questionId] = value;
+    }
+  });
+  
+  try {
+    const response = await fetch(api(`/exam/${state.currentExamId}/answers`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers })
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      alert('✅ Đã lưu đáp án thành công!');
+      document.getElementById('examDetailModal').classList.remove('show');
+      loadExamsList();
+    } else {
+      alert('❌ Lỗi: ' + (data.error || 'Không xác định'));
+    }
+  } catch (error) {
+    alert('❌ Lỗi: ' + error.message);
+  }
+});
+
+// TEACHER - DELETE EXAM
+document.getElementById('deleteExam').addEventListener('click', async () => {
+  if (!confirm('⚠️ Bạn có chắc chắn muốn xóa đề thi này?')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(api(`/exam/${state.currentExamId}`), {
+      method: 'DELETE'
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      alert('✅ Đã xóa đề thi!');
+      document.getElementById('examDetailModal').classList.remove('show');
+      loadExamsList();
+    } else {
+      alert('❌ Lỗi: ' + (data.error || 'Không xác định'));
+    }
+  } catch (error) {
+    alert('❌ Lỗi: ' + error.message);
+  }
+});
+
+// TEACHER - LOAD SUBMISSIONS
+async function loadSubmissionsList() {
+  try {
+    const response = await fetch(api('/student/submissions'));
+    const data = await response.json();
+    
+    const container = document.getElementById('submissionsList');
+    
+    if (!data.ok || data.submissions.length === 0) {
+      container.innerHTML = '<p class="empty-state">Chưa có bài nộp</p>';
+      return;
+    }
+    
+    container.innerHTML = data.submissions.map(sub => `
+      <div class="submission-item">
+        <div class="exam-item-header">
+          <div class="exam-item-title">${sub.name}</div>
+          <div><span class="badge badge-success">${sub.className}</span></div>
+        </div>
+        <div class="exam-item-meta">
+          <span>📅 ${sub.date}</span>
+          <span>📄 ${sub.filename}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    console.error('Error loading submissions:', error);
+  }
+}
+
+document.getElementById('logoutTeacher').addEventListener('click', () => {
+  state.userRole = null;
+  showPage('loginPage');
+  document.getElementById('passwordInput').value = '';
+});
+
+// STUDENT - LOAD LATEST EXAM
+async function loadLatestExam() {
+  try {
+    const response = await fetch(api('/exam/latest'));
+    const data = await response.json();
+    
+    if (data.ok && data.questions && data.questions.length > 0) {
+      state.examData = data;
+      
+      if (data.hasPassword) {
+        document.getElementById('examPasswordGroup').style.display = 'block';
+      }
+    } else {
+      showError('studentInfoError', 'Chưa có đề thi nào. Vui lòng liên hệ giáo viên.');
+    }
+  } catch (error) {
+    showError('studentInfoError', 'Lỗi tải đề thi: ' + error.message);
+  }
+}
+
+// STUDENT - START EXAM
+document.getElementById('studentInfoForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const name = document.getElementById('studentName').value.trim();
+  const dob = document.getElementById('studentDOB').value;
+  const className = document.getElementById('studentClass').value;
+  const examPassword = document.getElementById('studentExamPassword').value;
+  
+  if (!name || !dob) {
+    showError('studentInfoError', 'Vui lòng điền đầy đủ thông tin');
+    return;
+  }
+  
+  if (state.examData.hasPassword) {
+    try {
+      const response = await fetch(api('/exam/verify-password'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          examId: state.examData.examId, 
+          password: examPassword 
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!data.verified) {
+        showError('studentInfoError', '❌ Mật khẩu đề thi không đúng');
+        return;
+      }
+    } catch (error) {
+      showError('studentInfoError', 'Lỗi: ' + error.message);
+      return;
+    }
+  }
+  
+  state.studentInfo = { name, dob, className };
+  startExam();
+});
+
+document.getElementById('logoutStudent').addEventListener('click', () => {
+  state.userRole = null;
+  state.className = null;
+  showPage('loginPage');
+  document.getElementById('passwordInput').value = '';
+});
+
+// EXAM - START
+function startExam() {
+  if (!state.examData || !state.examData.questions || state.examData.questions.length === 0) {
+    alert('Không có đề thi');
+    return;
+  }
+  
+  showPage('examPage');
+  
+  document.getElementById('studentInfo').textContent = 
+    `${state.studentInfo.name} - Lớp ${state.studentInfo.className}`;
+  
+  const container = document.getElementById('questionsContainer');
+  container.innerHTML = '';
+  state.studentAnswers = {};
+  
+  state.examData.questions.forEach((q, index) => {
+    const questionId = q.id || (index + 1);
+    const div = document.createElement('div');
+    div.className = 'question-block';
+    
+    let html = `
+      <div class="question-header">Câu ${questionId}${q.type === 'true_false' ? ' (Đúng/Sai)' : q.type === 'short_answer' ? ' (Trả lời ngắn)' : ''}:</div>
+      <div class="question-text">${q.question}</div>
+    `;
+    
+    if (q.type === 'multiple_choice' && q.options && q.options.length > 0) {
+      html += '<div class="options-container">';
+      q.options.forEach(opt => {
+        html += `
+          <label class="option-item">
+            <input type="radio" name="question_${questionId}" value="${opt.key}" onchange="saveAnswer('${questionId}', '${opt.key}')">
+            <span class="option-text">${opt.key}. ${opt.text}</span>
+          </label>
+        `;
+      });
+      html += '</div>';
+    } else if (q.type === 'true_false') {
+      html += '<div class="options-container">';
+      html += `
+        <label class="option-item">
+          <input type="radio" name="question_${questionId}" value="Đúng" onchange="saveAnswer('${questionId}', 'Đúng')">
+          <span class="option-text">Đúng</span>
+        </label>
+        <label class="option-item">
+          <input type="radio" name="question_${questionId}" value="Sai" onchange="saveAnswer('${questionId}', 'Sai')">
+          <span class="option-text">Sai</span>
+        </label>
+      `;
+      html += '</div>';
+    } else if (q.type === 'short_answer') {
+      html += `<input type="text" class="short-answer-input" placeholder="Nhập câu trả lời của bạn..." onchange="saveAnswer('${questionId}', this.value)">`;
+    }
+    
+    div.innerHTML = html;
+    container.appendChild(div);
+  });
+  
+  state.timeLeft = (state.examData.timeMinutes || 45) * 60;
+  updateTimer();
+  state.timerInterval = setInterval(() => {
+    state.timeLeft--;
+    updateTimer();
+    
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timerInterval);
+      submitExam(true);
+    }
+  }, 1000);
+  
+  state.tabViolations = 0;
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+}
+
+// Save answer function (global)
+window.saveAnswer = function(questionId, answer) {
+  state.studentAnswers[questionId] = answer;
+};
+
+function handleVisibilityChange() {
+  if (document.hidden && state.timerInterval) {
+    state.tabViolations++;
+    const warning = document.getElementById('warningMessage');
+    warning.textContent = `⚠️ Cảnh báo: Bạn đã rời khỏi trang ${state.tabViolations}/3 lần`;
+    
+    if (state.tabViolations >= 3) {
+      clearInterval(state.timerInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      alert('⚠️ Bạn đã vi phạm quy định. Bài thi sẽ được thu ngay.');
+      submitExam(true);
+    }
+  } else if (!document.hidden && state.tabViolations > 0 && state.tabViolations < 3) {
+    alert(`⚠️ Cảnh báo: Bạn đã rời trang ${state.tabViolations} lần. Lần thứ 3 bài thi sẽ bị thu!`);
+  }
+}
+
+function updateTimer() {
+  const minutes = Math.floor(state.timeLeft / 60);
+  const seconds = state.timeLeft % 60;
+  document.getElementById('timer').textContent = 
+    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  
+  if (state.timeLeft < 300 && state.timeLeft > 0) {
+    document.getElementById('timer').style.color = 'var(--warning)';
+  }
+  
+  if (state.timeLeft < 60 && state.timeLeft > 0) {
+    document.getElementById('timer').style.color = 'var(--danger)';
+  }
+}
+
+document.getElementById('submitBtn').addEventListener('click', () => {
+  if (confirm('Bạn có chắc chắn muốn nộp bài?')) {
+    submitExam(false);
+  }
+});
+
+async function submitExam(isAuto) {
+  clearInterval(state.timerInterval);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  
+  const payload = {
+    name: state.studentInfo.name,
+    className: state.studentInfo.className,
+    dob: state.studentInfo.dob,
+    answers: state.studentAnswers,
+    examId: state.examData.examId,
+    violations: state.tabViolations
+  };
+  
+  try {
+    const response = await fetch(api('/student/submit'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    
+    showPage('resultPage');
+    
+    if (data.ok) {
+      document.getElementById('resultMessage').textContent = 
+        isAuto ? 'Bài làm của bạn đã được tự động nộp.' : 'Bài làm của bạn đã được nộp thành công!';
+      
+      if (data.score !== undefined && data.score !== null) {
+        document.getElementById('scoreDisplay').textContent = `Điểm: ${data.score}/10`;
+      } else {
+        document.getElementById('scoreDisplay').textContent = 'Giáo viên chưa nhập đáp án';
+      }
+    } else {
+      document.getElementById('resultMessage').textContent = 
+        'Có lỗi xảy ra: ' + (data.error || 'Không xác định');
+    }
+  } catch (error) {
+    showPage('resultPage');
+    document.getElementById('resultMessage').textContent = 
+      'Lỗi kết nối: ' + error.message;
+  }
+}
+
+document.getElementById('backToHome').addEventListener('click', () => {
+  state.userRole = null;
+  state.className = null;
+  state.studentInfo = null;
+  state.examData = null;
+  state.studentAnswers = {};
+  showPage('loginPage');
+  document.getElementById('passwordInput').value = '';
+});
