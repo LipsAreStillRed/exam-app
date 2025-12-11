@@ -542,7 +542,17 @@ function startExam() {
 window.saveAnswer = function(questionId, answer) {
   state.studentAnswers[questionId] = answer;
 };
-
+// Hàm cập nhật đáp án từ 4 ô
+window.updateShortAnswer = function(questionId) {
+  const boxes = document.querySelectorAll(`select.answer-box[data-question="${questionId}"]`);
+  const values = Array.from(boxes).map(box => box.value);
+  
+  // Lưu dưới dạng object với 4 ô
+  state.studentAnswers[questionId] = {
+    boxes: values,
+    value: values.join('') // Nối lại thành chuỗi để dễ chấm
+  };
+};
 function handleVisibilityChange() {
   if (document.hidden && state.timerInterval) {
     state.tabViolations++;
