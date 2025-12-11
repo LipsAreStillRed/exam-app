@@ -9,13 +9,11 @@ import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
-// Parser với hỗ trợ images (lưu base64)
-function parseExamContent(text, images = []) {
+function parseExamContent(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const sections = []; // Chia theo phần
-  let currentSection = { type: 'multiple_choice', questions: [] };
+  const sections = [];
+  let currentSection = { type: 'multiple_choice', questions: [], title: 'Phần 1' };
   let currentQuestion = null;
-  let imageIndex = 0;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -30,7 +28,6 @@ function parseExamContent(text, images = []) {
         sections.push(currentSection);
       }
       
-      // Xác định loại phần
       if (line.match(/đúng\s*(và)?\s*sai/i)) {
         currentSection = { type: 'true_false', questions: [], title: line };
       } else if (line.match(/trả\s*lời\s*ngắn/i) || line.match(/tự\s*luận/i)) {
@@ -56,13 +53,12 @@ function parseExamContent(text, images = []) {
         question: line.replace(/^(câu|question|bài)\s*\d+[:\.\-\s]*/i, '').trim(),
         options: [],
         subQuestions: [],
-        image: null,
         correctAnswer: null
       };
       continue;
     }
     
-    // Phát hiện câu con (a), b), c), d))
+    // Phát hiện câu con
     const subQuestionMatch = line.match(/^([a-d])[.\)]\s*(.+)/i);
     if (subQuestionMatch && currentQuestion && currentSection.type === 'true_false') {
       currentQuestion.subQuestions.push({
@@ -88,7 +84,6 @@ function parseExamContent(text, images = []) {
     }
   }
   
-  // Lưu câu hỏi và phần cuối
   if (currentQuestion) {
     currentSection.questions.push(currentQuestion);
   }
@@ -96,7 +91,7 @@ function parseExamContent(text, images = []) {
     sections.push(currentSection);
   }
   
-  // Xử lý câu đúng/sai không có câu con
+  // Xử lý câu đúng/sai đơn giản
   sections.forEach(section => {
     section.questions.forEach(q => {
       if (q.type === 'true_false' && q.subQuestions.length === 0) {
@@ -111,10 +106,8 @@ function parseExamContent(text, images = []) {
   return sections;
 }
 
-// Trộn thông minh: trộn trong từng phần, sau đó đánh số lại
 function smartShuffle(sections, shouldShuffle) {
   if (!shouldShuffle) {
-    // Không trộn, chỉ đánh số lại
     let counter = 1;
     sections.forEach(section => {
       section.questions.forEach(q => {
@@ -124,20 +117,16 @@ function smartShuffle(sections, shouldShuffle) {
     return sections;
   }
   
-  // Trộn trong từng phần
   const shuffledSections = sections.map(section => {
-    // Chỉ trộn phần trắc nghiệm nhiều lựa chọn
     if (section.type === 'multiple_choice') {
       return {
         ...section,
-        questions: shuffle(section.questions)
+        questions: shuffle([...section.questions])
       };
     }
-    // Phần đúng/sai và trả lời ngắn: KHÔNG TRỘN
     return section;
   });
   
-  // Đánh số lại theo thứ tự
   let counter = 1;
   shuffledSections.forEach(section => {
     section.questions.forEach(q => {
@@ -148,7 +137,6 @@ function smartShuffle(sections, shouldShuffle) {
   return shuffledSections;
 }
 
-// Flatten sections thành mảng câu hỏi
 function flattenSections(sections) {
   const questions = [];
   sections.forEach(section => {
@@ -159,18 +147,16 @@ function flattenSections(sections) {
 
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ ok: false, error: 'No file uploaded' });
+    if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
     
-    // Extract text và images
     const result = await mammoth.extractRawText({ path: req.file.path });
     const text = result.value || '';
     
     if (text.length < 50) {
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ ok: false, error: 'File quá ngắn hoặc không có nội dung' });
+      return res.status(400).json({ ok: false, error: 'File quá ngắn' });
     }
     
-    // Parse theo sections
     const sections = parseExamContent(text);
     
     if (sections.length === 0 || sections.every(s => s.questions.length === 0)) {
@@ -181,7 +167,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       });
     }
     
-    // Trộn thông minh
     const shuffled = smartShuffle(sections, req.body.shuffle === 'true');
     const questions = flattenSections(shuffled);
     
@@ -200,6 +185,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       sections: shuffled,
       questions: questions,
       answers: {},
+      schedule: {
+        startTime: req.body.startTime || null,
+        endTime: req.body.endTime || null,
+        classes: req.body.classes ? req.body.classes.split(',') : []
+      },
       metadata: {
         totalQuestions: questions.length,
         sections: sections.length,
@@ -244,6 +234,7 @@ router.get('/list', (req, res) => {
         timeMinutes: data.timeMinutes,
         hasPassword: !!data.password,
         hasAnswers: Object.keys(data.answers || {}).length > 0,
+        schedule: data.schedule || {},
         metadata: data.metadata || {}
       };
     }).sort((a, b) => b.createdAt - a.createdAt);
@@ -273,6 +264,7 @@ router.get('/latest', (req, res) => {
       sections: data.sections || [],
       timeMinutes: data.timeMinutes,
       hasPassword: !!data.password,
+      schedule: data.schedule || {},
       metadata: data.metadata || {}
     });
   } catch(e) { 
@@ -285,7 +277,7 @@ router.get('/:examId', (req, res) => {
   try {
     const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ ok: false, error: 'Exam not found' });
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
     }
     
     const content = fs.readFileSync(filePath, 'utf8');
@@ -304,7 +296,7 @@ router.post('/verify-password', (req, res) => {
     const filePath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ ok: false, error: 'Exam not found' });
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
     }
     
     const content = fs.readFileSync(filePath, 'utf8');
@@ -327,7 +319,7 @@ router.post('/:examId/answers', (req, res) => {
     const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ ok: false, error: 'Exam not found' });
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
     }
     
     const content = fs.readFileSync(filePath, 'utf8');
@@ -336,7 +328,29 @@ router.post('/:examId/answers', (req, res) => {
     
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
     
-    res.json({ ok: true, message: 'Answers updated' });
+    res.json({ ok: true, message: 'Đã lưu đáp án' });
+  } catch(e) { 
+    console.error(e); 
+    res.status(500).json({ ok: false, error: e.message }); 
+  }
+});
+
+router.post('/:examId/schedule', (req, res) => {
+  try {
+    const { startTime, endTime, classes } = req.body;
+    const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+    
+    const content = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(content);
+    data.schedule = { startTime, endTime, classes };
+    
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    
+    res.json({ ok: true, message: 'Đã lưu lịch thi' });
   } catch(e) { 
     console.error(e); 
     res.status(500).json({ ok: false, error: e.message }); 
@@ -348,11 +362,11 @@ router.delete('/:examId', (req, res) => {
     const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
     
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ ok: false, error: 'Exam not found' });
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
     }
     
     fs.unlinkSync(filePath);
-    res.json({ ok: true, message: 'Exam deleted' });
+    res.json({ ok: true, message: 'Đã xóa đề' });
   } catch(e) { 
     console.error(e); 
     res.status(500).json({ ok: false, error: e.message }); 
