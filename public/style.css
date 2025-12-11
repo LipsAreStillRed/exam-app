@@ -38,6 +38,7 @@ body {
   padding: 20px;
 }
 
+/* PAGE SYSTEM */
 .page {
   display: none;
   animation: fadeIn 0.3s ease-in;
@@ -52,6 +53,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* LOGIN PAGE */
 .login-box {
   max-width: 400px;
   margin: 60px auto;
@@ -138,7 +140,6 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  justify-content: center;
 }
 
 .btn-primary {
@@ -153,12 +154,6 @@ body {
   box-shadow: var(--shadow-lg);
 }
 
-.btn-primary:disabled {
-  background: var(--secondary);
-  cursor: not-allowed;
-  transform: none;
-}
-
 .btn-secondary {
   background: var(--secondary);
   color: white;
@@ -166,15 +161,6 @@ body {
 
 .btn-secondary:hover {
   background: #475569;
-}
-
-.btn-danger {
-  background: var(--danger);
-  color: white;
-}
-
-.btn-danger:hover {
-  background: #dc2626;
 }
 
 .error-message {
@@ -203,6 +189,7 @@ body {
   margin-bottom: 8px;
 }
 
+/* HEADER */
 .header {
   display: flex;
   justify-content: space-between;
@@ -217,6 +204,7 @@ body {
   color: var(--text);
 }
 
+/* CARD */
 .card {
   background: var(--card-bg);
   border-radius: 12px;
@@ -231,6 +219,7 @@ body {
   color: var(--text);
 }
 
+/* FORM */
 .form-group {
   margin-bottom: 20px;
 }
@@ -242,18 +231,12 @@ body {
   color: var(--text);
 }
 
-.form-group small {
-  display: block;
-  color: var(--text-light);
-  font-size: 12px;
-  margin-top: 4px;
-}
-
 .form-group input[type="text"],
 .form-group input[type="password"],
 .form-group input[type="number"],
 .form-group input[type="date"],
-.form-group input[type="file"] {
+.form-group input[type="file"],
+.form-group select {
   width: 100%;
   padding: 10px 12px;
   border: 2px solid var(--border);
@@ -262,7 +245,8 @@ body {
   transition: border-color 0.3s;
 }
 
-.form-group input:focus {
+.form-group input:focus,
+.form-group select:focus {
   outline: none;
   border-color: var(--primary);
 }
@@ -278,62 +262,34 @@ body {
   gap: 16px;
 }
 
-.exams-list, .submissions-list {
-  max-height: 400px;
-  overflow-y: auto;
+/* TABS */
+.class-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
-.exam-item, .submission-item {
-  background: var(--bg);
-  padding: 16px;
+.tab-btn {
+  padding: 8px 16px;
+  border: 2px solid var(--border);
+  background: white;
   border-radius: 8px;
-  margin-bottom: 12px;
-  border-left: 4px solid var(--primary);
   cursor: pointer;
+  font-weight: 600;
   transition: all 0.3s;
 }
 
-.exam-item:hover {
-  background: #e0f2fe;
-  transform: translateX(4px);
+.tab-btn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
 }
 
-.exam-item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: start;
-  margin-bottom: 8px;
-}
-
-.exam-item-title {
-  font-weight: 600;
-  color: var(--text);
-  flex: 1;
-}
-
-.exam-item-meta {
-  display: flex;
-  gap: 12px;
-  font-size: 14px;
-  color: var(--text-light);
-}
-
-.badge {
-  display: inline-block;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge-success {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.badge-warning {
-  background: #fef3c7;
-  color: #92400e;
+/* SUBMISSIONS LIST */
+.submissions-list {
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .empty-state {
@@ -342,6 +298,13 @@ body {
   padding: 40px;
 }
 
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* EXAM PAGE */
 .exam-header {
   background: var(--card-bg);
   padding: 20px;
@@ -384,71 +347,46 @@ body {
   margin-bottom: 30px;
 }
 
-.question-block {
+.question-item {
   background: var(--bg);
-  padding: 20px;
+  padding: 16px;
   border-radius: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   border-left: 4px solid var(--primary);
 }
 
-.question-header {
-  font-weight: 600;
+.question-item strong {
   color: var(--primary);
+  display: block;
+  margin-bottom: 8px;
+}
+
+.answer-section {
+  margin-bottom: 30px;
+}
+
+.answer-section h3 {
+  margin-bottom: 8px;
+}
+
+.hint {
+  color: var(--text-light);
+  font-size: 14px;
   margin-bottom: 12px;
-  font-size: 16px;
 }
 
-.question-text {
-  margin-bottom: 16px;
-  line-height: 1.6;
-}
-
-.options-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.option-item {
-  display: flex;
-  align-items: start;
+#studentAnswers {
+  width: 100%;
+  min-height: 120px;
   padding: 12px;
   border: 2px solid var(--border);
   border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.option-item:hover {
-  border-color: var(--primary);
-  background: #f0f9ff;
-}
-
-.option-item.selected {
-  border-color: var(--primary);
-  background: #dbeafe;
-}
-
-.option-item input[type="radio"] {
-  margin-right: 12px;
-  margin-top: 2px;
-}
-
-.option-text {
-  flex: 1;
-}
-
-.short-answer-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 2px solid var(--border);
-  border-radius: 8px;
   font-size: 14px;
-  font-family: inherit;
+  font-family: monospace;
+  resize: vertical;
 }
 
-.short-answer-input:focus {
+#studentAnswers:focus {
   outline: none;
   border-color: var(--primary);
 }
@@ -459,6 +397,7 @@ body {
   font-size: 18px;
 }
 
+/* RESULT PAGE */
 .result-container {
   max-width: 500px;
   margin: 60px auto;
@@ -490,83 +429,19 @@ body {
   padding: 12px;
   border-radius: 8px;
   margin-top: 15px;
-  display: none;
 }
 
 .message.success {
   background: #d1fae5;
   color: #065f46;
-  display: block;
 }
 
 .message.error {
   background: #fee2e2;
   color: #991b1b;
-  display: block;
 }
 
-.modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  animation: fadeIn 0.3s;
-}
-
-.modal.show {
-  display: block;
-}
-
-.modal-content {
-  background-color: var(--card-bg);
-  margin: 5% auto;
-  padding: 30px;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 800px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.close {
-  color: var(--text-light);
-  float: right;
-  font-size: 32px;
-  font-weight: bold;
-  cursor: pointer;
-  line-height: 1;
-}
-
-.close:hover {
-  color: var(--text);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 30px;
-  justify-content: flex-end;
-}
-
-.answer-input-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.answer-input-group input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 2px solid var(--border);
-  border-radius: 6px;
-}
-
+/* FOOTER */
 .footer {
   text-align: center;
   padding: 20px;
@@ -575,6 +450,7 @@ body {
   border-top: 1px solid var(--border);
 }
 
+/* RESPONSIVE */
 @media (max-width: 768px) {
   .container {
     padding: 12px;
@@ -605,20 +481,15 @@ body {
     width: 100%;
   }
   
-  .modal-content {
-    width: 95%;
-    margin: 10% auto;
-    padding: 20px;
-  }
-  
-  .modal-actions {
+  .actions {
     flex-direction: column;
   }
   
-  .modal-actions button {
+  .actions button {
     width: 100%;
   }
 }
+/* 4 ô tô cho phần trả lời ngắn */
 .short-answer-boxes {
   margin-top: 12px;
 }
@@ -627,59 +498,109 @@ body {
   font-size: 14px;
   color: var(--text-light);
   margin-bottom: 8px;
+  font-weight: 600;
 }
 
 .boxes-container {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   justify-content: flex-start;
 }
 
 .answer-box {
-  width: 60px;
-  height: 60px;
-  font-size: 24px;
+  width: 70px;
+  height: 70px;
+  font-size: 28px;
   font-weight: bold;
   text-align: center;
-  border: 2px solid var(--border);
+  border: 3px solid var(--border);
   border-radius: 8px;
   background: white;
   cursor: pointer;
   transition: all 0.3s;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
 .answer-box:hover {
   border-color: var(--primary);
+  background: #f0f9ff;
 }
 
 .answer-box:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background: #dbeafe;
 }
-```
 
----
+.answer-box option {
+  font-size: 16px;
+  padding: 8px;
+}
 
-## 📋 **TÓM TẮT NHỮNG GÌ ĐÃ SỬA:**
+/* Submission item với điểm */
+.submission-item {
+  background: var(--bg);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border-left: 4px solid var(--success);
+}
 
-1. ✅ **Trộn đề thông minh:** Chỉ trộn phần trắc nghiệm, giữ nguyên đúng/sai và trả lời ngắn
-2. ✅ **Đánh số lại:** Câu 1, 2, 3, 4... không bị lộn xộn
-3. ✅ **4 ô tô:** Giống phiếu trắc nghiệm thật
-4. ✅ **Lưu CSV:** Mỗi lớp một file CSV riêng
-5. ✅ **Email tự động:** Khi đủ 60 học sinh (có thể thay đổi) → tự động gửi file CSV về email
-6. ✅ **Điểm hiển thị:** Giáo viên thấy điểm trong danh sách bài nộp
+.submission-score {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--success);
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
 
----
+/* Modal improvements */
+.modal-content {
+  max-height: 85vh;
+  overflow-y: auto;
+}
 
-**BẠN LÀM NHƯ SAU:**
+.modal-actions {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding-top: 20px;
+  border-top: 2px solid var(--border);
+  margin-top: 20px;
+}
 
-1. Thay file `routes/exam.js` bằng artifact **routes/exam.js (V3 - Smart Shuffle)**
-2. Thay file `routes/student.js` bằng artifact **routes/student.js (V3 - CSV + Auto Email)**
-3. Sửa file `public/main.js` theo hướng dẫn ở trên
-4. Thêm CSS vào `public/style.css`
-5. Cập nhật `.env`:
-```
-MAIL_USER=mneiht998@gmail.com
-MAIL_PASS=xxxx-xxxx-xxxx-xxxx
-EMAIL_TO=mneiht998@gmail.com
+/* Answer input trong modal */
+.answer-input-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 8px;
+  background: var(--bg);
+  border-radius: 6px;
+}
+
+.answer-input-group label {
+  min-width: 120px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.answer-input-group input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.answer-input-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
