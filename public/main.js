@@ -212,7 +212,72 @@ async function viewExamDetail(examId) {
         html += '<div class="option-item">Sai</div>';
         html += '</div>';
       }
-      
+      } else if (q.type === 'short_answer') {
+  html += `
+    <div class="short-answer-boxes">
+      <div class="box-label">Tô đáp án từ trái sang phải:</div>
+      <div class="boxes-container">
+        <select class="answer-box" data-question="${questionId}" data-box="0" onchange="updateShortAnswer('${questionId}')">
+          <option value="">-</option>
+          <option value="-">−</option>
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value=",">,</option>
+        </select>
+        <select class="answer-box" data-question="${questionId}" data-box="1" onchange="updateShortAnswer('${questionId}')">
+          <option value="">-</option>
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value=",">,</option>
+        </select>
+        <select class="answer-box" data-question="${questionId}" data-box="2" onchange="updateShortAnswer('${questionId}')">
+          <option value="">-</option>
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value=",">,</option>
+        </select>
+        <select class="answer-box" data-question="${questionId}" data-box="3" onchange="updateShortAnswer('${questionId}')">
+          <option value="">-</option>
+          <option value="0">0</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value=",">,</option>
+        </select>
+      </div>
+    </div>
+  `;
+}
       const currentAnswer = exam.answers ? exam.answers[questionNumber] : '';
       html += `
         <div class="answer-input-group">
