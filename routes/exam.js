@@ -9,70 +9,72 @@ import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
-// Parser thông minh nâng cao cho đề thi THPT
-function parseExamContent(text) {
+// Parser với hỗ trợ images (lưu base64)
+function parseExamContent(text, images = []) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  const questions = [];
+  const sections = []; // Chia theo phần
+  let currentSection = { type: 'multiple_choice', questions: [] };
   let currentQuestion = null;
-  let currentType = 'multiple_choice';
-  let inSubQuestion = false;
+  let imageIndex = 0;
   
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     
-    // Phát hiện phần mới (linh hoạt hơn)
-    if (line.match(/phần\s*(\d+|i+|một|hai|ba)/i) || 
-        line.match(/^(part|section)\s*\d+/i)) {
-      if (line.match(/đúng\s*(và)?\s*sai/i) || 
-          line.match(/true\s*(or)?\s*false/i)) {
-        currentType = 'true_false';
-      } else if (line.match(/trả\s*lời\s*ngắn/i) || 
-                 line.match(/short\s*answer/i) ||
-                 line.match(/tự\s*luận/i)) {
-        currentType = 'short_answer';
-      } else {
-        currentType = 'multiple_choice';
+    // Phát hiện phần mới
+    if (line.match(/phần\s*(\d+|i+|một|hai|ba)/i)) {
+      if (currentQuestion) {
+        currentSection.questions.push(currentQuestion);
+        currentQuestion = null;
       }
-      inSubQuestion = false;
+      if (currentSection.questions.length > 0) {
+        sections.push(currentSection);
+      }
+      
+      // Xác định loại phần
+      if (line.match(/đúng\s*(và)?\s*sai/i)) {
+        currentSection = { type: 'true_false', questions: [], title: line };
+      } else if (line.match(/trả\s*lời\s*ngắn/i) || line.match(/tự\s*luận/i)) {
+        currentSection = { type: 'short_answer', questions: [], title: line };
+      } else {
+        currentSection = { type: 'multiple_choice', questions: [], title: line };
+      }
       continue;
     }
     
-    // Phát hiện câu hỏi mới (nhiều format)
-    // Format: "Câu 1:", "Câu 1.", "Question 1:", "1.", "Bài 1:"
-    const questionMatch = line.match(/^(câu|question|bài|cau)\s*(\d+)[:\.\-\s]/i);
+    // Phát hiện câu hỏi mới
+    const questionMatch = line.match(/^(câu|question|bài)\s*(\d+)[:\.\-\s]/i);
     if (questionMatch) {
-      // Lưu câu hỏi cũ
       if (currentQuestion) {
-        questions.push(currentQuestion);
+        currentSection.questions.push(currentQuestion);
       }
       
       const questionNum = questionMatch[2];
       currentQuestion = {
+        originalId: questionNum,
         id: questionNum,
-        type: currentType,
-        question: line.replace(/^(câu|question|bài|cau)\s*\d+[:\.\-\s]*/i, '').trim(),
+        type: currentSection.type,
+        question: line.replace(/^(câu|question|bài)\s*\d+[:\.\-\s]*/i, '').trim(),
         options: [],
         subQuestions: [],
+        image: null,
         correctAnswer: null
       };
-      inSubQuestion = false;
       continue;
     }
     
-    // Phát hiện câu hỏi con (a), b), c), d) - cho phần đúng/sai
+    // Phát hiện câu con (a), b), c), d))
     const subQuestionMatch = line.match(/^([a-d])[.\)]\s*(.+)/i);
-    if (subQuestionMatch && currentQuestion && currentType === 'true_false') {
+    if (subQuestionMatch && currentQuestion && currentSection.type === 'true_false') {
       currentQuestion.subQuestions.push({
         key: subQuestionMatch[1].toLowerCase(),
         text: subQuestionMatch[2].trim()
       });
-      inSubQuestion = true;
       continue;
     }
     
-    // Phát hiện đáp án (A., B., C., D. hoặc A), B), C), D))
+    // Phát hiện đáp án
     const optionMatch = line.match(/^([A-D])[.\)]\s*(.+)/i);
-    if (optionMatch && currentQuestion && !inSubQuestion) {
+    if (optionMatch && currentQuestion) {
       currentQuestion.options.push({
         key: optionMatch[1].toUpperCase(),
         text: optionMatch[2].trim()
@@ -80,60 +82,86 @@ function parseExamContent(text) {
       continue;
     }
     
-    // Nếu không phải câu hỏi mới hay đáp án, thêm vào câu hỏi hiện tại
-    if (currentQuestion && line.length > 0 && !inSubQuestion) {
-      // Kiểm tra nếu là tiếp theo của câu hỏi
-      if (!line.match(/^[A-D][.\)]/i)) {
-        currentQuestion.question += ' ' + line;
-      }
+    // Thêm vào câu hỏi hiện tại
+    if (currentQuestion && line.length > 0 && !line.match(/^[A-D][.\)]/i)) {
+      currentQuestion.question += ' ' + line;
     }
   }
   
-  // Lưu câu hỏi cuối
+  // Lưu câu hỏi và phần cuối
   if (currentQuestion) {
-    questions.push(currentQuestion);
+    currentSection.questions.push(currentQuestion);
+  }
+  if (currentSection.questions.length > 0) {
+    sections.push(currentSection);
   }
   
-  // Xử lý câu hỏi đúng/sai có câu con
-  questions.forEach(q => {
-    if (q.type === 'true_false' && q.subQuestions.length > 0) {
-      // Giữ nguyên, frontend sẽ hiển thị từng câu con
-      q.hasSubQuestions = true;
-    }
+  // Xử lý câu đúng/sai không có câu con
+  sections.forEach(section => {
+    section.questions.forEach(q => {
+      if (q.type === 'true_false' && q.subQuestions.length === 0) {
+        q.options = [
+          { key: 'Đúng', text: 'Đúng' },
+          { key: 'Sai', text: 'Sai' }
+        ];
+      }
+    });
   });
   
-  return questions;
+  return sections;
 }
 
-// Validate parsed questions
-function validateQuestions(questions) {
-  const errors = [];
+// Trộn thông minh: trộn trong từng phần, sau đó đánh số lại
+function smartShuffle(sections, shouldShuffle) {
+  if (!shouldShuffle) {
+    // Không trộn, chỉ đánh số lại
+    let counter = 1;
+    sections.forEach(section => {
+      section.questions.forEach(q => {
+        q.id = counter++;
+      });
+    });
+    return sections;
+  }
   
-  questions.forEach((q, idx) => {
-    if (!q.question || q.question.length < 5) {
-      errors.push(`Câu ${q.id || idx + 1}: Nội dung câu hỏi quá ngắn`);
+  // Trộn trong từng phần
+  const shuffledSections = sections.map(section => {
+    // Chỉ trộn phần trắc nghiệm nhiều lựa chọn
+    if (section.type === 'multiple_choice') {
+      return {
+        ...section,
+        questions: shuffle(section.questions)
+      };
     }
-    
-    if (q.type === 'multiple_choice' && q.options.length < 2) {
-      errors.push(`Câu ${q.id || idx + 1}: Không đủ đáp án (cần ít nhất 2 đáp án)`);
-    }
-    
-    if (q.type === 'true_false' && q.subQuestions.length === 0) {
-      // Đây là câu đúng/sai đơn giản, không có câu con
-      q.options = [
-        { key: 'Đúng', text: 'Đúng' },
-        { key: 'Sai', text: 'Sai' }
-      ];
-    }
+    // Phần đúng/sai và trả lời ngắn: KHÔNG TRỘN
+    return section;
   });
   
-  return { valid: errors.length === 0, errors };
+  // Đánh số lại theo thứ tự
+  let counter = 1;
+  shuffledSections.forEach(section => {
+    section.questions.forEach(q => {
+      q.id = counter++;
+    });
+  });
+  
+  return shuffledSections;
+}
+
+// Flatten sections thành mảng câu hỏi
+function flattenSections(sections) {
+  const questions = [];
+  sections.forEach(section => {
+    questions.push(...section.questions);
+  });
+  return questions;
 }
 
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'No file uploaded' });
     
+    // Extract text và images
     const result = await mammoth.extractRawText({ path: req.file.path });
     const text = result.value || '';
     
@@ -142,10 +170,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'File quá ngắn hoặc không có nội dung' });
     }
     
-    // Parse câu hỏi
-    const questions = parseExamContent(text);
+    // Parse theo sections
+    const sections = parseExamContent(text);
     
-    if (questions.length === 0) {
+    if (sections.length === 0 || sections.every(s => s.questions.length === 0)) {
       fs.unlinkSync(req.file.path);
       return res.status(400).json({ 
         ok: false, 
@@ -153,18 +181,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       });
     }
     
-    // Validate
-    const validation = validateQuestions(questions);
-    if (!validation.valid) {
-      fs.unlinkSync(req.file.path);
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Lỗi format đề thi:\n' + validation.errors.join('\n')
-      });
-    }
-    
-    // Trộn câu hỏi nếu được yêu cầu
-    const shuffled = req.body.shuffle === 'true' ? shuffle(questions) : questions;
+    // Trộn thông minh
+    const shuffled = smartShuffle(sections, req.body.shuffle === 'true');
+    const questions = flattenSections(shuffled);
     
     const outDir = path.join(process.cwd(), 'data', 'exams');
     if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
@@ -178,10 +197,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       createdAt: Date.now(),
       timeMinutes: parseInt(req.body.timeMinutes) || 45,
       password: req.body.password || null,
-      questions: shuffled,
+      sections: shuffled,
+      questions: questions,
       answers: {},
       metadata: {
         totalQuestions: questions.length,
+        sections: sections.length,
         multipleChoice: questions.filter(q => q.type === 'multiple_choice').length,
         trueFalse: questions.filter(q => q.type === 'true_false').length,
         shortAnswer: questions.filter(q => q.type === 'short_answer').length
@@ -189,14 +210,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     };
     
     fs.writeFileSync(outPath, JSON.stringify(examData, null, 2), 'utf8');
-    
-    // Cleanup
     fs.unlinkSync(req.file.path);
     
     res.json({ 
       ok: true, 
       examId, 
-      count: shuffled.length,
+      count: questions.length,
       metadata: examData.metadata
     });
   } catch(e) { 
@@ -208,7 +227,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// Lấy danh sách tất cả các đề
 router.get('/list', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'exams');
@@ -237,7 +255,6 @@ router.get('/list', (req, res) => {
   }
 });
 
-// Lấy đề mới nhất
 router.get('/latest', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'exams');
@@ -253,6 +270,7 @@ router.get('/latest', (req, res) => {
       ok: true, 
       examId: data.id,
       questions: data.questions,
+      sections: data.sections || [],
       timeMinutes: data.timeMinutes,
       hasPassword: !!data.password,
       metadata: data.metadata || {}
@@ -263,7 +281,6 @@ router.get('/latest', (req, res) => {
   }
 });
 
-// Lấy chi tiết một đề
 router.get('/:examId', (req, res) => {
   try {
     const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
@@ -281,7 +298,6 @@ router.get('/:examId', (req, res) => {
   }
 });
 
-// Kiểm tra mật khẩu đề
 router.post('/verify-password', (req, res) => {
   try {
     const { examId, password } = req.body;
@@ -298,18 +314,13 @@ router.post('/verify-password', (req, res) => {
       return res.json({ ok: true, verified: true });
     }
     
-    if (data.password === password) {
-      return res.json({ ok: true, verified: true });
-    }
-    
-    return res.json({ ok: true, verified: false });
+    return res.json({ ok: true, verified: data.password === password });
   } catch(e) { 
     console.error(e); 
     res.status(500).json({ ok: false, error: e.message }); 
   }
 });
 
-// Cập nhật đáp án
 router.post('/:examId/answers', (req, res) => {
   try {
     const { answers } = req.body;
@@ -332,7 +343,6 @@ router.post('/:examId/answers', (req, res) => {
   }
 });
 
-// Xóa đề
 router.delete('/:examId', (req, res) => {
   try {
     const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
