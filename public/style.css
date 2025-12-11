@@ -619,3 +619,67 @@ body {
     width: 100%;
   }
 }
+.short-answer-boxes {
+  margin-top: 12px;
+}
+
+.box-label {
+  font-size: 14px;
+  color: var(--text-light);
+  margin-bottom: 8px;
+}
+
+.boxes-container {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-start;
+}
+
+.answer-box {
+  width: 60px;
+  height: 60px;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.answer-box:hover {
+  border-color: var(--primary);
+}
+
+.answer-box:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+```
+
+---
+
+## 📋 **TÓM TẮT NHỮNG GÌ ĐÃ SỬA:**
+
+1. ✅ **Trộn đề thông minh:** Chỉ trộn phần trắc nghiệm, giữ nguyên đúng/sai và trả lời ngắn
+2. ✅ **Đánh số lại:** Câu 1, 2, 3, 4... không bị lộn xộn
+3. ✅ **4 ô tô:** Giống phiếu trắc nghiệm thật
+4. ✅ **Lưu CSV:** Mỗi lớp một file CSV riêng
+5. ✅ **Email tự động:** Khi đủ 60 học sinh (có thể thay đổi) → tự động gửi file CSV về email
+6. ✅ **Điểm hiển thị:** Giáo viên thấy điểm trong danh sách bài nộp
+
+---
+
+**BẠN LÀM NHƯ SAU:**
+
+1. Thay file `routes/exam.js` bằng artifact **routes/exam.js (V3 - Smart Shuffle)**
+2. Thay file `routes/student.js` bằng artifact **routes/student.js (V3 - CSV + Auto Email)**
+3. Sửa file `public/main.js` theo hướng dẫn ở trên
+4. Thêm CSS vào `public/style.css`
+5. Cập nhật `.env`:
+```
+MAIL_USER=mneiht998@gmail.com
+MAIL_PASS=xxxx-xxxx-xxxx-xxxx
+EMAIL_TO=mneiht998@gmail.com
