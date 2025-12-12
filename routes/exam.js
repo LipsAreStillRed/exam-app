@@ -51,6 +51,7 @@ function parseExamContent(text) {
         question: line.replace(/^(câu|question|bài)\s*\d+[:\.\-\s]*/i, '').trim(),
         options: [],
         subQuestions: [],
+        image: null,
         correctAnswer: null
       };
       continue;
@@ -210,6 +211,96 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// UPLOAD HÌNH ẢNH CHO CÂU HỎI
+router.post('/:examId/upload-image/:questionId', upload.single('image'), async (req, res) => {
+  try {
+    const { examId, questionId } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'Chưa chọn hình' });
+    }
+    
+    const imageDir = path.join(process.cwd(), 'public', 'images', examId);
+    if (!fs.existsSync(imageDir)) {
+      fs.mkdirSync(imageDir, { recursive: true });
+    }
+    
+    const ext = path.extname(req.file.originalname);
+    const imageName = `q${questionId}${ext}`;
+    const imagePath = path.join(imageDir, imageName);
+    
+    fs.renameSync(req.file.path, imagePath);
+    
+    const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+    if (fs.existsSync(examPath)) {
+      const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
+      
+      examData.questions.forEach(q => {
+        if (q.id == questionId) {
+          q.image = `/images/${examId}/${imageName}`;
+        }
+      });
+      
+      examData.sections.forEach(section => {
+        section.questions.forEach(q => {
+          if (q.id == questionId) {
+            q.image = `/images/${examId}/${imageName}`;
+          }
+        });
+      });
+      
+      fs.writeFileSync(examPath, JSON.stringify(examData, null, 2), 'utf8');
+    }
+    
+    res.json({ 
+      ok: true, 
+      imageUrl: `/images/${examId}/${imageName}` 
+    });
+  } catch (e) {
+    console.error('Upload image error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// XÓA HÌNH ẢNH
+router.delete('/:examId/delete-image/:questionId', async (req, res) => {
+  try {
+    const { examId, questionId } = req.params;
+    
+    const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+    if (!fs.existsSync(examPath)) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+    
+    const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
+    
+    examData.questions.forEach(q => {
+      if (q.id == questionId && q.image) {
+        const imagePath = path.join(process.cwd(), 'public', q.image);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+        q.image = null;
+      }
+    });
+    
+    examData.sections.forEach(section => {
+      section.questions.forEach(q => {
+        if (q.id == questionId && q.image) {
+          q.image = null;
+        }
+      });
+    });
+    
+    fs.writeFileSync(examPath, JSON.stringify(examData, null, 2), 'utf8');
+    
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Delete image error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 router.get('/list', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'exams');
@@ -343,6 +434,11 @@ router.delete('/:examId', (req, res) => {
     
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+    
+    const imageDir = path.join(process.cwd(), 'public', 'images', req.params.examId);
+    if (fs.existsSync(imageDir)) {
+      fs.rmSync(imageDir, { recursive: true, force: true });
     }
     
     fs.unlinkSync(filePath);
