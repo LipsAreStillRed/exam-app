@@ -9,12 +9,6 @@ import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
-// Multer cho nhiều file (Word + images)
-const multiUpload = multer({ dest: 'uploads/' }).fields([
-  { name: 'file', maxCount: 1 },
-  { name: 'images', maxCount: 50 }
-]);
-
 function parseExamContent(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   const sections = [];
@@ -57,7 +51,6 @@ function parseExamContent(text) {
         question: line.replace(/^(câu|question|bài)\s*\d+[:\.\-\s]*/i, '').trim(),
         options: [],
         subQuestions: [],
-        image: null,
         correctAnswer: null
       };
       continue;
@@ -67,8 +60,7 @@ function parseExamContent(text) {
     if (subQuestionMatch && currentQuestion && currentSection.type === 'true_false') {
       currentQuestion.subQuestions.push({
         key: subQuestionMatch[1].toLowerCase(),
-        text: subQuestionMatch[2].trim(),
-        correctAnswer: null
+        text: subQuestionMatch[2].trim()
       });
       continue;
     }
@@ -149,7 +141,9 @@ function flattenSections(sections) {
 
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
+    }
     
     const result = await mammoth.extractRawText({ path: req.file.path });
     const text = result.value || '';
@@ -165,7 +159,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       fs.unlinkSync(req.file.path);
       return res.status(400).json({ 
         ok: false, 
-        error: 'Không tìm thấy câu hỏi. Đảm bảo câu hỏi bắt đầu bằng "Câu X:"' 
+        error: 'Không tìm thấy câu hỏi' 
       });
     }
     
@@ -173,7 +167,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const questions = flattenSections(shuffled);
     
     const outDir = path.join(process.cwd(), 'data', 'exams');
-    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+    if (!fs.existsSync(outDir)) {
+      fs.mkdirSync(outDir, { recursive: true });
+    }
     
     const examId = uuidv4();
     const outPath = path.join(outDir, `${examId}.json`);
@@ -206,7 +202,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       metadata: examData.metadata
     });
   } catch(e) { 
-    console.error(e);
+    console.error('Upload error:', e);
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
@@ -214,126 +210,37 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// UPLOAD HÌNH ẢNH CHO CÂU HỎI
-router.post('/:examId/upload-image/:questionId', upload.single('image'), async (req, res) => {
-  try {
-    const { examId, questionId } = req.params;
-    
-    if (!req.file) {
-      return res.status(400).json({ ok: false, error: 'Chưa chọn hình' });
-    }
-    
-    // Tạo thư mục lưu hình
-    const imageDir = path.join(process.cwd(), 'public', 'images', examId);
-    if (!fs.existsSync(imageDir)) {
-      fs.mkdirSync(imageDir, { recursive: true });
-    }
-    
-    // Lưu hình với tên mới
-    const ext = path.extname(req.file.originalname);
-    const imageName = `q${questionId}${ext}`;
-    const imagePath = path.join(imageDir, imageName);
-    
-    fs.renameSync(req.file.path, imagePath);
-    
-    // Cập nhật exam data
-    const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
-    if (fs.existsSync(examPath)) {
-      const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
-      
-      // Tìm câu hỏi và cập nhật image path
-      examData.questions.forEach(q => {
-        if (q.id == questionId) {
-          q.image = `/images/${examId}/${imageName}`;
-        }
-      });
-      
-      // Cập nhật sections
-      examData.sections.forEach(section => {
-        section.questions.forEach(q => {
-          if (q.id == questionId) {
-            q.image = `/images/${examId}/${imageName}`;
-          }
-        });
-      });
-      
-      fs.writeFileSync(examPath, JSON.stringify(examData, null, 2), 'utf8');
-    }
-    
-    res.json({ 
-      ok: true, 
-      imageUrl: `/images/${examId}/${imageName}` 
-    });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
-// XÓA HÌNH ẢNH
-router.delete('/:examId/delete-image/:questionId', async (req, res) => {
-  try {
-    const { examId, questionId } = req.params;
-    
-    const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
-    if (!fs.existsSync(examPath)) {
-      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-    }
-    
-    const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
-    
-    // Tìm và xóa image
-    examData.questions.forEach(q => {
-      if (q.id == questionId && q.image) {
-        const imagePath = path.join(process.cwd(), 'public', q.image);
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
-        }
-        q.image = null;
-      }
-    });
-    
-    examData.sections.forEach(section => {
-      section.questions.forEach(q => {
-        if (q.id == questionId && q.image) {
-          q.image = null;
-        }
-      });
-    });
-    
-    fs.writeFileSync(examPath, JSON.stringify(examData, null, 2), 'utf8');
-    
-    res.json({ ok: true });
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
-
 router.get('/list', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'exams');
-    if (!fs.existsSync(dir)) return res.json({ ok: true, exams: [] });
+    if (!fs.existsSync(dir)) {
+      return res.json({ ok: true, exams: [] });
+    }
     
     const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
     const exams = files.map(f => {
-      const content = fs.readFileSync(path.join(dir, f), 'utf8');
-      const data = JSON.parse(content);
-      return {
-        id: data.id,
-        name: data.originalName,
-        createdAt: data.createdAt,
-        questionCount: data.questions.length,
-        timeMinutes: data.timeMinutes,
-        hasPassword: !!data.password,
-        hasAnswers: Object.keys(data.answers || {}).length > 0,
-        metadata: data.metadata || {}
-      };
-    }).sort((a, b) => b.createdAt - a.createdAt);
+      try {
+        const content = fs.readFileSync(path.join(dir, f), 'utf8');
+        const data = JSON.parse(content);
+        return {
+          id: data.id,
+          name: data.originalName,
+          createdAt: data.createdAt,
+          questionCount: data.questions.length,
+          timeMinutes: data.timeMinutes,
+          hasPassword: !!data.password,
+          hasAnswers: Object.keys(data.answers || {}).length > 0,
+          metadata: data.metadata || {}
+        };
+      } catch (e) {
+        console.error(`Error reading exam ${f}:`, e);
+        return null;
+      }
+    }).filter(e => e !== null).sort((a, b) => b.createdAt - a.createdAt);
     
     res.json({ ok: true, exams });
   } catch(e) { 
-    console.error(e); 
+    console.error('List error:', e);
     res.status(500).json({ ok: false, error: e.message }); 
   }
 });
@@ -341,10 +248,14 @@ router.get('/list', (req, res) => {
 router.get('/latest', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'exams');
-    if (!fs.existsSync(dir)) return res.json({ ok: true, questions: [] });
+    if (!fs.existsSync(dir)) {
+      return res.json({ ok: true, questions: [] });
+    }
     
     const files = fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort();
-    if (files.length === 0) return res.json({ ok: true, questions: [] });
+    if (files.length === 0) {
+      return res.json({ ok: true, questions: [] });
+    }
     
     const content = fs.readFileSync(path.join(dir, files[files.length - 1]), 'utf8');
     const data = JSON.parse(content);
@@ -359,7 +270,7 @@ router.get('/latest', (req, res) => {
       metadata: data.metadata || {}
     });
   } catch(e) { 
-    console.error(e); 
+    console.error('Latest error:', e);
     res.status(500).json({ ok: false, error: e.message }); 
   }
 });
@@ -376,7 +287,7 @@ router.get('/:examId', (req, res) => {
     
     res.json({ ok: true, exam: data });
   } catch(e) { 
-    console.error(e); 
+    console.error('Get exam error:', e);
     res.status(500).json({ ok: false, error: e.message }); 
   }
 });
@@ -399,7 +310,7 @@ router.post('/verify-password', (req, res) => {
     
     return res.json({ ok: true, verified: data.password === password });
   } catch(e) { 
-    console.error(e); 
+    console.error('Verify password error:', e);
     res.status(500).json({ ok: false, error: e.message }); 
   }
 });
@@ -421,7 +332,7 @@ router.post('/:examId/answers', (req, res) => {
     
     res.json({ ok: true, message: 'Đã lưu đáp án' });
   } catch(e) { 
-    console.error(e); 
+    console.error('Save answers error:', e);
     res.status(500).json({ ok: false, error: e.message }); 
   }
 });
@@ -434,16 +345,10 @@ router.delete('/:examId', (req, res) => {
       return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
     }
     
-    // Xóa thư mục hình ảnh
-    const imageDir = path.join(process.cwd(), 'public', 'images', req.params.examId);
-    if (fs.existsSync(imageDir)) {
-      fs.rmSync(imageDir, { recursive: true, force: true });
-    }
-    
     fs.unlinkSync(filePath);
     res.json({ ok: true, message: 'Đã xóa đề' });
   } catch(e) { 
-    console.error(e); 
+    console.error('Delete error:', e);
     res.status(500).json({ ok: false, error: e.message }); 
   }
 });
