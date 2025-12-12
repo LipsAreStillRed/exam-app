@@ -9,6 +9,12 @@ import { v4 as uuidv4 } from 'uuid';
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
+// Multer cho nhiều file (Word + images)
+const multiUpload = multer({ dest: 'uploads/' }).fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'images', maxCount: 50 }
+]);
+
 function parseExamContent(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   const sections = [];
@@ -18,7 +24,6 @@ function parseExamContent(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     
-    // Phát hiện phần mới
     if (line.match(/phần\s*(\d+|i+|một|hai|ba)/i)) {
       if (currentQuestion) {
         currentSection.questions.push(currentQuestion);
@@ -38,7 +43,6 @@ function parseExamContent(text) {
       continue;
     }
     
-    // Phát hiện câu hỏi mới
     const questionMatch = line.match(/^(câu|question|bài)\s*(\d+)[:\.\-\s]/i);
     if (questionMatch) {
       if (currentQuestion) {
@@ -53,22 +57,22 @@ function parseExamContent(text) {
         question: line.replace(/^(câu|question|bài)\s*\d+[:\.\-\s]*/i, '').trim(),
         options: [],
         subQuestions: [],
+        image: null,
         correctAnswer: null
       };
       continue;
     }
     
-    // Phát hiện câu con
     const subQuestionMatch = line.match(/^([a-d])[.\)]\s*(.+)/i);
     if (subQuestionMatch && currentQuestion && currentSection.type === 'true_false') {
       currentQuestion.subQuestions.push({
         key: subQuestionMatch[1].toLowerCase(),
-        text: subQuestionMatch[2].trim()
+        text: subQuestionMatch[2].trim(),
+        correctAnswer: null
       });
       continue;
     }
     
-    // Phát hiện đáp án
     const optionMatch = line.match(/^([A-D])[.\)]\s*(.+)/i);
     if (optionMatch && currentQuestion) {
       currentQuestion.options.push({
@@ -78,7 +82,6 @@ function parseExamContent(text) {
       continue;
     }
     
-    // Thêm vào câu hỏi hiện tại
     if (currentQuestion && line.length > 0 && !line.match(/^[A-D][.\)]/i)) {
       currentQuestion.question += ' ' + line;
     }
@@ -91,7 +94,6 @@ function parseExamContent(text) {
     sections.push(currentSection);
   }
   
-  // Xử lý câu đúng/sai đơn giản
   sections.forEach(section => {
     section.questions.forEach(q => {
       if (q.type === 'true_false' && q.subQuestions.length === 0) {
@@ -185,11 +187,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       sections: shuffled,
       questions: questions,
       answers: {},
-      schedule: {
-        startTime: req.body.startTime || null,
-        endTime: req.body.endTime || null,
-        classes: req.body.classes ? req.body.classes.split(',') : []
-      },
       metadata: {
         totalQuestions: questions.length,
         sections: sections.length,
@@ -217,6 +214,102 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// UPLOAD HÌNH ẢNH CHO CÂU HỎI
+router.post('/:examId/upload-image/:questionId', upload.single('image'), async (req, res) => {
+  try {
+    const { examId, questionId } = req.params;
+    
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'Chưa chọn hình' });
+    }
+    
+    // Tạo thư mục lưu hình
+    const imageDir = path.join(process.cwd(), 'public', 'images', examId);
+    if (!fs.existsSync(imageDir)) {
+      fs.mkdirSync(imageDir, { recursive: true });
+    }
+    
+    // Lưu hình với tên mới
+    const ext = path.extname(req.file.originalname);
+    const imageName = `q${questionId}${ext}`;
+    const imagePath = path.join(imageDir, imageName);
+    
+    fs.renameSync(req.file.path, imagePath);
+    
+    // Cập nhật exam data
+    const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+    if (fs.existsSync(examPath)) {
+      const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
+      
+      // Tìm câu hỏi và cập nhật image path
+      examData.questions.forEach(q => {
+        if (q.id == questionId) {
+          q.image = `/images/${examId}/${imageName}`;
+        }
+      });
+      
+      // Cập nhật sections
+      examData.sections.forEach(section => {
+        section.questions.forEach(q => {
+          if (q.id == questionId) {
+            q.image = `/images/${examId}/${imageName}`;
+          }
+        });
+      });
+      
+      fs.writeFileSync(examPath, JSON.stringify(examData, null, 2), 'utf8');
+    }
+    
+    res.json({ 
+      ok: true, 
+      imageUrl: `/images/${examId}/${imageName}` 
+    });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// XÓA HÌNH ẢNH
+router.delete('/:examId/delete-image/:questionId', async (req, res) => {
+  try {
+    const { examId, questionId } = req.params;
+    
+    const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+    if (!fs.existsSync(examPath)) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+    
+    const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
+    
+    // Tìm và xóa image
+    examData.questions.forEach(q => {
+      if (q.id == questionId && q.image) {
+        const imagePath = path.join(process.cwd(), 'public', q.image);
+        if (fs.existsSync(imagePath)) {
+          fs.unlinkSync(imagePath);
+        }
+        q.image = null;
+      }
+    });
+    
+    examData.sections.forEach(section => {
+      section.questions.forEach(q => {
+        if (q.id == questionId && q.image) {
+          q.image = null;
+        }
+      });
+    });
+    
+    fs.writeFileSync(examPath, JSON.stringify(examData, null, 2), 'utf8');
+    
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 router.get('/list', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'exams');
@@ -234,7 +327,6 @@ router.get('/list', (req, res) => {
         timeMinutes: data.timeMinutes,
         hasPassword: !!data.password,
         hasAnswers: Object.keys(data.answers || {}).length > 0,
-        schedule: data.schedule || {},
         metadata: data.metadata || {}
       };
     }).sort((a, b) => b.createdAt - a.createdAt);
@@ -264,7 +356,6 @@ router.get('/latest', (req, res) => {
       sections: data.sections || [],
       timeMinutes: data.timeMinutes,
       hasPassword: !!data.password,
-      schedule: data.schedule || {},
       metadata: data.metadata || {}
     });
   } catch(e) { 
@@ -335,34 +426,18 @@ router.post('/:examId/answers', (req, res) => {
   }
 });
 
-router.post('/:examId/schedule', (req, res) => {
-  try {
-    const { startTime, endTime, classes } = req.body;
-    const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
-    
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-    }
-    
-    const content = fs.readFileSync(filePath, 'utf8');
-    const data = JSON.parse(content);
-    data.schedule = { startTime, endTime, classes };
-    
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-    
-    res.json({ ok: true, message: 'Đã lưu lịch thi' });
-  } catch(e) { 
-    console.error(e); 
-    res.status(500).json({ ok: false, error: e.message }); 
-  }
-});
-
 router.delete('/:examId', (req, res) => {
   try {
     const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
     
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+    
+    // Xóa thư mục hình ảnh
+    const imageDir = path.join(process.cwd(), 'public', 'images', req.params.examId);
+    if (fs.existsSync(imageDir)) {
+      fs.rmSync(imageDir, { recursive: true, force: true });
     }
     
     fs.unlinkSync(filePath);
