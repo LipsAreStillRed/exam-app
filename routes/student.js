@@ -6,30 +6,59 @@ import nodemailer from 'nodemailer';
 
 const router = express.Router();
 
-function calculateScore(answers, correctAnswers) {
+function calculateScore(answers, correctAnswers, questions) {
   if (!correctAnswers || Object.keys(correctAnswers).length === 0) {
     return null;
   }
   
   let correct = 0;
-  let total = Object.keys(correctAnswers).length;
+  let total = 0;
   
-  for (const [questionId, correctAnswer] of Object.entries(correctAnswers)) {
-    const studentAnswer = answers[questionId];
-    if (!studentAnswer) continue;
+  // Duyệt qua từng câu hỏi để xử lý đúng
+  questions.forEach(q => {
+    const questionId = q.id;
     
-    let studentAnswerStr = studentAnswer;
-    if (typeof studentAnswer === 'object' && studentAnswer.boxes) {
-      studentAnswerStr = studentAnswer.boxes.filter(b => b).join('');
+    // Câu đúng/sai có nhiều ý (a, b, c, d)
+    if (q.type === 'true_false' && q.subQuestions && q.subQuestions.length > 0) {
+      // Mỗi ý là 1 câu nhỏ
+      q.subQuestions.forEach(sub => {
+        total++;
+        const subKey = sub.key;
+        const correctAnswer = correctAnswers[questionId] && correctAnswers[questionId][subKey];
+        const studentAnswer = answers[questionId] && answers[questionId][subKey];
+        
+        if (correctAnswer && studentAnswer) {
+          const studentNorm = String(studentAnswer).toUpperCase().trim();
+          const correctNorm = String(correctAnswer).toUpperCase().trim();
+          
+          if (studentNorm === correctNorm) {
+            correct++;
+          }
+        }
+      });
+    } else {
+      // Câu thường (trắc nghiệm, đúng/sai đơn, trả lời ngắn)
+      total++;
+      const correctAnswer = correctAnswers[questionId];
+      const studentAnswer = answers[questionId];
+      
+      if (!correctAnswer || !studentAnswer) return;
+      
+      let studentAnswerStr = studentAnswer;
+      if (typeof studentAnswer === 'object' && studentAnswer.boxes) {
+        studentAnswerStr = studentAnswer.boxes.filter(b => b).join('');
+      }
+      
+      const studentNorm = String(studentAnswerStr).toUpperCase().replace(/\s/g, '');
+      const correctNorm = String(correctAnswer).toUpperCase().replace(/\s/g, '');
+      
+      if (studentNorm === correctNorm) {
+        correct++;
+      }
     }
-    
-    const studentNorm = String(studentAnswerStr).toUpperCase().replace(/\s/g, '');
-    const correctNorm = String(correctAnswer).toUpperCase().replace(/\s/g, '');
-    
-    if (studentNorm === correctNorm) {
-      correct++;
-    }
-  }
+  });
+  
+  if (total === 0) return null;
   
   return Math.round((correct / total) * 10 * 10) / 10;
 }
@@ -58,7 +87,7 @@ function updateCSV(className, submissionData) {
     new Date().toLocaleString('vi-VN'),
     submissionData.score !== null ? submissionData.score : 'Chưa chấm',
     submissionData.violations || 0,
-    `"${JSON.stringify(submissionData.answers)}"`
+    `"${JSON.stringify(submissionData.answers).replace(/"/g, '""')}"`
   ].join(',') + '\n';
   
   fs.appendFileSync(filename, row, 'utf8');
@@ -105,12 +134,15 @@ router.post('/submit', async (req, res) => {
     const { name, className, dob, answers, examId, violations } = req.body;
     
     let score = null;
+    let questions = [];
+    
     if (examId) {
       try {
         const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
         if (fs.existsSync(examPath)) {
           const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
-          score = calculateScore(answers, examData.answers);
+          questions = examData.questions;
+          score = calculateScore(answers, examData.answers, questions);
         }
       } catch (e) {
         console.error('Error calculating score:', e);
@@ -168,7 +200,7 @@ router.post('/submit', async (req, res) => {
         await transporter.sendMail({
           from: process.env.MAIL_USER,
           to: process.env.EMAIL_TO || process.env.MAIL_USER,
-          subject: `Bài nộp: ${name} - ${className}${score !== null ? ` - Điểm: ${score}` : ''}`,
+          subject: `Bài nộp: ${name} - ${className}${score !== null ? ` - ${score} điểm` : ''}`,
           text: `Học sinh ${name} (${className}) đã nộp bài.\nSố lần vi phạm: ${violations || 0}${score !== null ? `\nĐiểm: ${score}/10` : ''}`,
           attachments: [{ 
             filename: path.basename(xmlFilename), 
