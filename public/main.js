@@ -23,6 +23,7 @@ function showPage(pageId) {
 
 function showError(elementId, message) {
   const el = document.getElementById(elementId);
+  if (!el) return;
   el.textContent = message;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 5000);
@@ -30,6 +31,7 @@ function showError(elementId, message) {
 
 function showMessage(elementId, message, isError = false) {
   const el = document.getElementById(elementId);
+  if (!el) return;
   el.textContent = message;
   el.className = 'message ' + (isError ? 'error' : 'success');
   setTimeout(() => el.className = 'message', 5000);
@@ -133,7 +135,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
     showMessage('uploadMessage', '❌ Lỗi kết nối: ' + error.message, true);
   } finally {
     uploadBtn.disabled = false;
-    uploadBtn.textContent = '📤 Upload và Tạo Đề';
+    uploadBtn.textContent = '📤 Upload Đề';
   }
 });
 
@@ -146,7 +148,7 @@ async function loadExamsList() {
     const container = document.getElementById('examsList');
     
     if (!data.ok || data.exams.length === 0) {
-      container.innerHTML = '<p class="empty-state">Chưa có đề thi nào</p>';
+      container.innerHTML = '<p class="empty-state">Chưa có đề thi</p>';
       return;
     }
     
@@ -155,25 +157,25 @@ async function loadExamsList() {
         <div class="exam-item-header">
           <div class="exam-item-title">${exam.name}</div>
           <div>
-            ${exam.hasAnswers ? '<span class="badge badge-success">Có đáp án</span>' : '<span class="badge badge-warning">Chưa có đáp án</span>'}
+            ${exam.hasAnswers ? '<span class="badge badge-success">Có đáp án</span>' : '<span class="badge badge-warning">Chưa đáp án</span>'}
           </div>
         </div>
         <div class="exam-item-meta">
           <span>📝 ${exam.questionCount} câu</span>
           <span>⏱️ ${exam.timeMinutes} phút</span>
-          <span>🔒 ${exam.hasPassword ? 'Có mật khẩu' : 'Không có mật khẩu'}</span>
+          <span>${exam.hasPassword ? '🔒 Có mật khẩu' : '🔓 Không mật khẩu'}</span>
           <span>📅 ${new Date(exam.createdAt).toLocaleString('vi-VN')}</span>
         </div>
       </div>
     `).join('');
   } catch (error) {
     console.error('Error loading exams:', error);
-    document.getElementById('examsList').innerHTML = '<p class="empty-state">Lỗi tải danh sách đề</p>';
+    document.getElementById('examsList').innerHTML = '<p class="empty-state">Lỗi tải danh sách</p>';
   }
 }
 
 // TEACHER - VIEW EXAM DETAIL
-async function viewExamDetail(examId) {
+window.viewExamDetail = async function(examId) {
   try {
     const response = await fetch(api(`/exam/${examId}`));
     const data = await response.json();
@@ -196,7 +198,7 @@ async function viewExamDetail(examId) {
       const questionNumber = q.id || (idx + 1);
       html += `
         <div class="question-block">
-          <div class="question-header">Câu ${questionNumber}:</div>
+          <div class="question-header">Câu ${questionNumber} (${q.type === 'multiple_choice' ? 'Trắc nghiệm' : q.type === 'true_false' ? 'Đúng/Sai' : 'Trả lời ngắn'}):</div>
           <div class="question-text">${q.question}</div>
       `;
       
@@ -207,82 +209,24 @@ async function viewExamDetail(examId) {
         });
         html += '</div>';
       } else if (q.type === 'true_false') {
-        html += '<div class="options-container">';
-        html += '<div class="option-item">Đúng</div>';
-        html += '<div class="option-item">Sai</div>';
-        html += '</div>';
+        if (q.subQuestions && q.subQuestions.length > 0) {
+          html += '<div class="options-container">';
+          q.subQuestions.forEach(sub => {
+            html += `<div class="option-item">${sub.key}) ${sub.text}</div>`;
+          });
+          html += '</div>';
+        } else {
+          html += '<div class="options-container">';
+          html += '<div class="option-item">Đúng / Sai</div>';
+          html += '</div>';
+        }
       }
-      } else if (q.type === 'short_answer') {
-  html += `
-    <div class="short-answer-boxes">
-      <div class="box-label">Tô đáp án từ trái sang phải:</div>
-      <div class="boxes-container">
-        <select class="answer-box" data-question="${questionId}" data-box="0" onchange="updateShortAnswer('${questionId}')">
-          <option value="">-</option>
-          <option value="-">−</option>
-          <option value="0">0</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-          <option value="9">9</option>
-          <option value=",">,</option>
-        </select>
-        <select class="answer-box" data-question="${questionId}" data-box="1" onchange="updateShortAnswer('${questionId}')">
-          <option value="">-</option>
-          <option value="0">0</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-          <option value="9">9</option>
-          <option value=",">,</option>
-        </select>
-        <select class="answer-box" data-question="${questionId}" data-box="2" onchange="updateShortAnswer('${questionId}')">
-          <option value="">-</option>
-          <option value="0">0</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-          <option value="9">9</option>
-          <option value=",">,</option>
-        </select>
-        <select class="answer-box" data-question="${questionId}" data-box="3" onchange="updateShortAnswer('${questionId}')">
-          <option value="">-</option>
-          <option value="0">0</option>
-          <option value="1">1</option>
-          <option value="2">2</option>
-          <option value="3">3</option>
-          <option value="4">4</option>
-          <option value="5">5</option>
-          <option value="6">6</option>
-          <option value="7">7</option>
-          <option value="8">8</option>
-          <option value="9">9</option>
-          <option value=",">,</option>
-        </select>
-      </div>
-    </div>
-  `;
-}
+      
       const currentAnswer = exam.answers ? exam.answers[questionNumber] : '';
       html += `
         <div class="answer-input-group">
-          <label><strong>Đáp án đúng:</strong></label>
-          <input type="text" class="answer-input" data-question="${questionNumber}" value="${currentAnswer || ''}" placeholder="Nhập đáp án (VD: A, B, C, D hoặc Đúng, Sai)">
+          <label>Đáp án:</label>
+          <input type="text" class="answer-input" data-question="${questionNumber}" value="${currentAnswer || ''}" placeholder="VD: A hoặc Đúng hoặc 3,14">
         </div>
       `;
       
@@ -294,7 +238,7 @@ async function viewExamDetail(examId) {
   } catch (error) {
     alert('Lỗi: ' + error.message);
   }
-}
+};
 
 // TEACHER - CLOSE MODAL
 document.getElementById('closeModal').addEventListener('click', () => {
@@ -314,6 +258,11 @@ document.getElementById('saveAnswers').addEventListener('click', async () => {
     }
   });
   
+  if (Object.keys(answers).length === 0) {
+    alert('⚠️ Chưa nhập đáp án nào');
+    return;
+  }
+  
   try {
     const response = await fetch(api(`/exam/${state.currentExamId}/answers`), {
       method: 'POST',
@@ -324,7 +273,7 @@ document.getElementById('saveAnswers').addEventListener('click', async () => {
     const data = await response.json();
     
     if (data.ok) {
-      alert('✅ Đã lưu đáp án thành công!');
+      alert('✅ Đã lưu đáp án!');
       document.getElementById('examDetailModal').classList.remove('show');
       loadExamsList();
     } else {
@@ -335,9 +284,36 @@ document.getElementById('saveAnswers').addEventListener('click', async () => {
   }
 });
 
+// TEACHER - SEND REPORT
+document.getElementById('sendReport').addEventListener('click', async () => {
+  const className = prompt('Nhập lớp cần gửi báo cáo (VD: 12A1):');
+  if (!className) return;
+  
+  try {
+    const response = await fetch(api('/student/send-class-report'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        className: className.trim(), 
+        examId: state.currentExamId 
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      alert('✅ Đã gửi báo cáo về email!');
+    } else {
+      alert('❌ Lỗi: ' + (data.error || 'Chưa có bài nộp'));
+    }
+  } catch (error) {
+    alert('❌ Lỗi: ' + error.message);
+  }
+});
+
 // TEACHER - DELETE EXAM
 document.getElementById('deleteExam').addEventListener('click', async () => {
-  if (!confirm('⚠️ Bạn có chắc chắn muốn xóa đề thi này?')) {
+  if (!confirm('⚠️ Bạn có chắc muốn xóa đề này?')) {
     return;
   }
   
@@ -349,7 +325,7 @@ document.getElementById('deleteExam').addEventListener('click', async () => {
     const data = await response.json();
     
     if (data.ok) {
-      alert('✅ Đã xóa đề thi!');
+      alert('✅ Đã xóa đề!');
       document.getElementById('examDetailModal').classList.remove('show');
       loadExamsList();
     } else {
@@ -373,15 +349,17 @@ async function loadSubmissionsList() {
       return;
     }
     
-    container.innerHTML = data.submissions.map(sub => `
+    container.innerHTML = data.submissions.slice(0, 10).map(sub => `
       <div class="submission-item">
         <div class="exam-item-header">
           <div class="exam-item-title">${sub.name}</div>
-          <div><span class="badge badge-success">${sub.className}</span></div>
+          <div>
+            <span class="badge badge-success">${sub.className}</span>
+            ${sub.score !== 'Chưa chấm' ? `<span class="submission-score">${sub.score} điểm</span>` : ''}
+          </div>
         </div>
         <div class="exam-item-meta">
           <span>📅 ${sub.date}</span>
-          <span>📄 ${sub.filename}</span>
         </div>
       </div>
     `).join('');
@@ -407,12 +385,14 @@ async function loadLatestExam() {
       
       if (data.hasPassword) {
         document.getElementById('examPasswordGroup').style.display = 'block';
+      } else {
+        document.getElementById('examPasswordGroup').style.display = 'none';
       }
     } else {
-      showError('studentInfoError', 'Chưa có đề thi nào. Vui lòng liên hệ giáo viên.');
+      showError('studentInfoError', 'Chưa có đề thi. Vui lòng liên hệ giáo viên.');
     }
   } catch (error) {
-    showError('studentInfoError', 'Lỗi tải đề thi: ' + error.message);
+    showError('studentInfoError', 'Lỗi tải đề: ' + error.message);
   }
 }
 
@@ -444,7 +424,7 @@ document.getElementById('studentInfoForm').addEventListener('submit', async (e) 
       const data = await response.json();
       
       if (!data.verified) {
-        showError('studentInfoError', '❌ Mật khẩu đề thi không đúng');
+        showError('studentInfoError', '❌ Mật khẩu đề không đúng');
         return;
       }
     } catch (error) {
@@ -485,8 +465,12 @@ function startExam() {
     const div = document.createElement('div');
     div.className = 'question-block';
     
+    let typeLabel = '';
+    if (q.type === 'true_false') typeLabel = ' (Đúng/Sai)';
+    else if (q.type === 'short_answer') typeLabel = ' (Trả lời ngắn)';
+    
     let html = `
-      <div class="question-header">Câu ${questionId}${q.type === 'true_false' ? ' (Đúng/Sai)' : q.type === 'short_answer' ? ' (Trả lời ngắn)' : ''}:</div>
+      <div class="question-header">Câu ${questionId}${typeLabel}:</div>
       <div class="question-text">${q.question}</div>
     `;
     
@@ -502,20 +486,103 @@ function startExam() {
       });
       html += '</div>';
     } else if (q.type === 'true_false') {
-      html += '<div class="options-container">';
-      html += `
-        <label class="option-item">
-          <input type="radio" name="question_${questionId}" value="Đúng" onchange="saveAnswer('${questionId}', 'Đúng')">
-          <span class="option-text">Đúng</span>
-        </label>
-        <label class="option-item">
-          <input type="radio" name="question_${questionId}" value="Sai" onchange="saveAnswer('${questionId}', 'Sai')">
-          <span class="option-text">Sai</span>
-        </label>
-      `;
-      html += '</div>';
+      if (q.subQuestions && q.subQuestions.length > 0) {
+        q.subQuestions.forEach(sub => {
+          html += `
+            <div style="margin: 12px 0; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+              <div style="margin-bottom: 8px;"><strong>${sub.key})</strong> ${sub.text}</div>
+              <div class="options-container">
+                <label class="option-item">
+                  <input type="radio" name="question_${questionId}_${sub.key}" value="Đúng" onchange="saveSubAnswer('${questionId}', '${sub.key}', 'Đúng')">
+                  <span class="option-text">Đúng</span>
+                </label>
+                <label class="option-item">
+                  <input type="radio" name="question_${questionId}_${sub.key}" value="Sai" onchange="saveSubAnswer('${questionId}', '${sub.key}', 'Sai')">
+                  <span class="option-text">Sai</span>
+                </label>
+              </div>
+            </div>
+          `;
+        });
+      } else {
+        html += '<div class="options-container">';
+        html += `
+          <label class="option-item">
+            <input type="radio" name="question_${questionId}" value="Đúng" onchange="saveAnswer('${questionId}', 'Đúng')">
+            <span class="option-text">Đúng</span>
+          </label>
+          <label class="option-item">
+            <input type="radio" name="question_${questionId}" value="Sai" onchange="saveAnswer('${questionId}', 'Sai')">
+            <span class="option-text">Sai</span>
+          </label>
+        `;
+        html += '</div>';
+      }
     } else if (q.type === 'short_answer') {
-      html += `<input type="text" class="short-answer-input" placeholder="Nhập câu trả lời của bạn..." onchange="saveAnswer('${questionId}', this.value)">`;
+      html += `
+        <div class="short-answer-boxes">
+          <div class="box-label">Chọn đáp án (tô từ trái sang phải):</div>
+          <div class="boxes-container">
+            <select class="answer-box" data-question="${questionId}" data-box="0" onchange="updateShortAnswer('${questionId}')">
+              <option value="">-</option>
+              <option value="-">−</option>
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value=",">,</option>
+            </select>
+            <select class="answer-box" data-question="${questionId}" data-box="1" onchange="updateShortAnswer('${questionId}')">
+              <option value="">-</option>
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value=",">,</option>
+            </select>
+            <select class="answer-box" data-question="${questionId}" data-box="2" onchange="updateShortAnswer('${questionId}')">
+              <option value="">-</option>
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value=",">,</option>
+            </select>
+            <select class="answer-box" data-question="${questionId}" data-box="3" onchange="updateShortAnswer('${questionId}')">
+              <option value="">-</option>
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value=",">,</option>
+            </select>
+          </div>
+        </div>
+      `;
     }
     
     div.innerHTML = html;
@@ -538,26 +605,32 @@ function startExam() {
   document.addEventListener('visibilitychange', handleVisibilityChange);
 }
 
-// Save answer function (global)
 window.saveAnswer = function(questionId, answer) {
   state.studentAnswers[questionId] = answer;
 };
-// Hàm cập nhật đáp án từ 4 ô
+
+window.saveSubAnswer = function(questionId, subKey, answer) {
+  if (!state.studentAnswers[questionId]) {
+    state.studentAnswers[questionId] = {};
+  }
+  state.studentAnswers[questionId][subKey] = answer;
+};
+
 window.updateShortAnswer = function(questionId) {
   const boxes = document.querySelectorAll(`select.answer-box[data-question="${questionId}"]`);
   const values = Array.from(boxes).map(box => box.value);
   
-  // Lưu dưới dạng object với 4 ô
   state.studentAnswers[questionId] = {
     boxes: values,
-    value: values.join('') // Nối lại thành chuỗi để dễ chấm
+    value: values.filter(v => v).join('')
   };
 };
+
 function handleVisibilityChange() {
   if (document.hidden && state.timerInterval) {
     state.tabViolations++;
     const warning = document.getElementById('warningMessage');
-    warning.textContent = `⚠️ Cảnh báo: Bạn đã rời khỏi trang ${state.tabViolations}/3 lần`;
+    warning.textContent = `⚠️ Cảnh báo: Bạn đã rời trang ${state.tabViolations}/3 lần`;
     
     if (state.tabViolations >= 3) {
       clearInterval(state.timerInterval);
@@ -586,7 +659,7 @@ function updateTimer() {
 }
 
 document.getElementById('submitBtn').addEventListener('click', () => {
-  if (confirm('Bạn có chắc chắn muốn nộp bài?')) {
+  if (confirm('Bạn có chắc muốn nộp bài?')) {
     submitExam(false);
   }
 });
@@ -617,16 +690,16 @@ async function submitExam(isAuto) {
     
     if (data.ok) {
       document.getElementById('resultMessage').textContent = 
-        isAuto ? 'Bài làm của bạn đã được tự động nộp.' : 'Bài làm của bạn đã được nộp thành công!';
+        isAuto ? 'Bài làm đã được tự động nộp.' : 'Bài làm đã nộp thành công!';
       
       if (data.score !== undefined && data.score !== null) {
-        document.getElementById('scoreDisplay').textContent = `Điểm: ${data.score}/10`;
+        document.getElementById('scoreDisplay').textContent = `${data.score} điểm`;
       } else {
-        document.getElementById('scoreDisplay').textContent = 'Giáo viên chưa nhập đáp án';
+        document.getElementById('scoreDisplay').textContent = 'Chờ giáo viên chấm';
       }
     } else {
       document.getElementById('resultMessage').textContent = 
-        'Có lỗi xảy ra: ' + (data.error || 'Không xác định');
+        'Có lỗi: ' + (data.error || 'Không xác định');
     }
   } catch (error) {
     showPage('resultPage');
@@ -636,7 +709,7 @@ async function submitExam(isAuto) {
 }
 
 document.getElementById('backToHome').addEventListener('click', () => {
-  state.userRole = null;
+  state.userRole = null
   state.className = null;
   state.studentInfo = null;
   state.examData = null;
