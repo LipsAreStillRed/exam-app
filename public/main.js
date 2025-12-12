@@ -282,6 +282,57 @@ window.viewExamDetail = async function(examId) {
   }
 };
 
+// Upload hình ảnh
+window.uploadImage = async function(examId, questionId) {
+  const fileInput = document.getElementById(`imageFile_${questionId}`);
+  const file = fileInput.files[0];
+  
+  if (!file) return;
+  
+  const formData = new FormData();
+  formData.append('image', file);
+  
+  try {
+    const response = await fetch(api(`/exam/${examId}/upload-image/${questionId}`), {
+      method: 'POST',
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      alert('✅ Đã thêm hình ảnh!');
+      viewExamDetail(examId); // Reload
+    } else {
+      alert('❌ Lỗi: ' + (data.error || 'Không xác định'));
+    }
+  } catch (error) {
+    alert('❌ Lỗi: ' + error.message);
+  }
+};
+
+// Xóa hình ảnh
+window.deleteImage = async function(examId, questionId) {
+  if (!confirm('Xóa hình ảnh này?')) return;
+  
+  try {
+    const response = await fetch(api(`/exam/${examId}/delete-image/${questionId}`), {
+      method: 'DELETE'
+    });
+    
+    const data = await response.json();
+    
+    if (data.ok) {
+      alert('✅ Đã xóa hình!');
+      viewExamDetail(examId);
+    } else {
+      alert('❌ Lỗi: ' + (data.error || 'Không xác định'));
+    }
+  } catch (error) {
+    alert('❌ Lỗi: ' + error.message);
+  }
+};
+
 // TEACHER - CLOSE MODAL
 document.getElementById('closeModal').addEventListener('click', () => {
   document.getElementById('examDetailModal').classList.remove('show');
@@ -294,9 +345,22 @@ document.getElementById('saveAnswers').addEventListener('click', async () => {
   
   inputs.forEach(input => {
     const questionId = input.getAttribute('data-question');
+    const subKey = input.getAttribute('data-subkey');
     const value = input.value.trim();
-    if (value) {
-      answers[questionId] = value;
+    
+    if (subKey) {
+      // Câu đúng/sai có nhiều ý
+      if (!answers[questionId]) {
+        answers[questionId] = {};
+      }
+      if (value) {
+        answers[questionId][subKey] = value;
+      }
+    } else {
+      // Câu thường
+      if (value) {
+        answers[questionId] = value;
+      }
     }
   });
   
