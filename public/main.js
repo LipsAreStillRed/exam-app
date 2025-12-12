@@ -198,10 +198,30 @@ window.viewExamDetail = async function(examId) {
       const questionNumber = q.id || (idx + 1);
       html += `
         <div class="question-block">
-          <div class="question-header">Câu ${questionNumber} (${q.type === 'multiple_choice' ? 'Trắc nghiệm' : q.type === 'true_false' ? 'Đúng/Sai' : 'Trả lời ngắn'}):</div>
+          <div class="question-header">
+            Câu ${questionNumber} (${q.type === 'multiple_choice' ? 'Trắc nghiệm' : q.type === 'true_false' ? 'Đúng/Sai' : 'Trả lời ngắn'}):
+          </div>
           <div class="question-text">${q.question}</div>
       `;
       
+      // HIỂN THỊ HÌNH ẢNH (nếu có)
+      if (q.image) {
+        html += `
+          <div style="margin: 15px 0;">
+            <img src="${q.image}" style="max-width: 100%; border-radius: 8px; border: 2px solid var(--border);">
+            <button class="btn btn-danger" style="margin-top: 8px; padding: 6px 12px; font-size: 14px;" onclick="deleteImage('${examId}', '${questionNumber}')">🗑️ Xóa hình</button>
+          </div>
+        `;
+      } else {
+        html += `
+          <div style="margin: 15px 0;">
+            <input type="file" id="imageFile_${questionNumber}" accept="image/*" style="display: none;" onchange="uploadImage('${examId}', '${questionNumber}')">
+            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 14px;" onclick="document.getElementById('imageFile_${questionNumber}').click()">📷 Thêm hình ảnh</button>
+          </div>
+        `;
+      }
+      
+      // HIỂN THỊ ĐÁP ÁN
       if (q.type === 'multiple_choice' && q.options && q.options.length > 0) {
         html += '<div class="options-container">';
         q.options.forEach(opt => {
@@ -222,13 +242,35 @@ window.viewExamDetail = async function(examId) {
         }
       }
       
-      const currentAnswer = exam.answers ? exam.answers[questionNumber] : '';
-      html += `
-        <div class="answer-input-group">
-          <label>Đáp án:</label>
-          <input type="text" class="answer-input" data-question="${questionNumber}" value="${currentAnswer || ''}" placeholder="VD: A hoặc Đúng hoặc 3,14">
-        </div>
-      `;
+      // NHẬP ĐÁP ÁN
+      if (q.type === 'true_false' && q.subQuestions && q.subQuestions.length > 0) {
+        // Có nhiều ý a), b), c), d) - nhập riêng từng ý
+        html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;">';
+        html += '<strong>Nhập đáp án từng ý:</strong>';
+        q.subQuestions.forEach(sub => {
+          const currentAnswer = exam.answers && exam.answers[questionNumber] && exam.answers[questionNumber][sub.key] ? exam.answers[questionNumber][sub.key] : '';
+          html += `
+            <div class="answer-input-group">
+              <label>${sub.key}):</label>
+              <select class="answer-input" data-question="${questionNumber}" data-subkey="${sub.key}">
+                <option value="">- Chọn -</option>
+                <option value="Đúng" ${currentAnswer === 'Đúng' ? 'selected' : ''}>Đúng</option>
+                <option value="Sai" ${currentAnswer === 'Sai' ? 'selected' : ''}>Sai</option>
+              </select>
+            </div>
+          `;
+        });
+        html += '</div>';
+      } else {
+        // Câu thường - nhập 1 đáp án
+        const currentAnswer = exam.answers ? exam.answers[questionNumber] : '';
+        html += `
+          <div class="answer-input-group">
+            <label>Đáp án:</label>
+            <input type="text" class="answer-input" data-question="${questionNumber}" value="${currentAnswer || ''}" placeholder="VD: A hoặc Đúng hoặc 3,14">
+          </div>
+        `;
+      }
       
       html += '</div>';
     });
