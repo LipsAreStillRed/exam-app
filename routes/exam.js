@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { shuffle } from '../utils/shuffle.js';
 import { v4 as uuidv4 } from 'uuid';
+import { uploadToDrive, downloadFromDrive, deleteFromDrive } from '../utils/driveHelper.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
@@ -172,36 +173,51 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       fs.mkdirSync(outDir, { recursive: true });
     }
     
-    const examId = uuidv4();
     const outPath = path.join(outDir, `${examId}.json`);
     
     const examData = {
-      id: examId,
-      originalName: req.file.originalname,
-      createdAt: Date.now(),
-      timeMinutes: parseInt(req.body.timeMinutes) || 45,
-      password: req.body.password || null,
-      sections: shuffled,
-      questions: questions,
-      answers: {},
-      metadata: {
-        totalQuestions: questions.length,
-        sections: sections.length,
-        multipleChoice: questions.filter(q => q.type === 'multiple_choice').length,
-        trueFalse: questions.filter(q => q.type === 'true_false').length,
-        shortAnswer: questions.filter(q => q.type === 'short_answer').length
-      }
-    };
+  id: examId,
+  originalName: req.file.originalname,
+  createdAt: Date.now(),
+  timeMinutes: parseInt(req.body.timeMinutes) || 45,
+  password: req.body.password || null,
+  sections: shuffled,
+  questions: questions,
+  answers: {},
+  driveFileId: null,
+  metadata: {
+    totalQuestions: questions.length,
+    sections: sections.length,
+    multipleChoice: questions.filter(q => q.type === 'multiple_choice').length,
+    trueFalse: questions.filter(q => q.type === 'true_false').length,
+    shortAnswer: questions.filter(q => q.type === 'short_answer').length
+  }
+};
     
-    fs.writeFileSync(outPath, JSON.stringify(examData, null, 2), 'utf8');
-    fs.unlinkSync(req.file.path);
-    
-    res.json({ 
-      ok: true, 
-      examId, 
-      count: questions.length,
-      metadata: examData.metadata
-    });
+    // Upload lên Drive
+const driveResult = await uploadToDrive(
+  JSON.stringify(examData, null, 2),
+  `${examId}.json`,
+  'application/json'
+);
+
+if (driveResult) {
+  examData.driveFileId = driveResult.fileId;
+  examData.driveLink = driveResult.webViewLink;
+  console.log(`✅ Exam saved to Drive: ${examId}`);
+}
+
+// Vẫn lưu local backup
+fs.writeFileSync(outPath, JSON.stringify(examData, null, 2), 'utf8');
+fs.unlinkSync(req.file.path);
+
+res.json({ 
+  ok: true, 
+  examId, 
+  count: questions.length,
+  metadata: examData.metadata,
+  savedToDrive: !!driveResult
+});
   } catch(e) { 
     console.error('Upload error:', e);
     if (req.file && fs.existsSync(req.file.path)) {
@@ -321,7 +337,9 @@ router.get('/list', (req, res) => {
           timeMinutes: data.timeMinutes,
           hasPassword: !!data.password,
           hasAnswers: Object.keys(data.answers || {}).length > 0,
-          metadata: data.metadata || {}
+          metadata: data.metadata || {},
+          driveFileId: data.driveFileId || null,
+          savedToDrive: !!data.driveFileId
         };
       } catch (e) {
         console.error(`Error reading exam ${f}:`, e);
@@ -428,13 +446,22 @@ router.post('/:examId/answers', (req, res) => {
   }
 });
 
-router.delete('/:examId', (req, res) => {
+router.delete('/:examId', async (req, res) => {
   try {
     const filePath = path.join(process.cwd(), 'data', 'exams', `${req.params.examId}.json`);
     
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
     }
+    // Đọc data để lấy Drive ID
+    const content = fs.readFileSync(filePath, 'utf8');
+    const data = JSON.parse(content);
+
+    // Xóa từ Drive nếu có
+    if (data.driveFileId) {
+      await deleteFromDrive(data.driveFileId);
+    }
+
     
     const imageDir = path.join(process.cwd(), 'public', 'images', req.params.examId);
     if (fs.existsSync(imageDir)) {
@@ -442,7 +469,7 @@ router.delete('/:examId', (req, res) => {
     }
     
     fs.unlinkSync(filePath);
-    res.json({ ok: true, message: 'Đã xóa đề' });
+    res.json({ ok: true, message: 'Đã xóa đề khỏi hệ thống và Drive' });
   } catch(e) { 
     console.error('Delete error:', e);
     res.status(500).json({ ok: false, error: e.message }); 
