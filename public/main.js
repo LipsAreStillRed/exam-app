@@ -198,31 +198,10 @@ window.viewExamDetail = async function(examId) {
       const questionNumber = q.id || (idx + 1);
       html += `
         <div class="question-block">
-          <div class="question-header">
-            Câu ${questionNumber} (${q.type === 'multiple_choice' ? 'Trắc nghiệm' : q.type === 'true_false' ? 'Đúng/Sai' : 'Trả lời ngắn'}):
-          </div>
+          <div class="question-header">Câu ${questionNumber} (${q.type === 'multiple_choice' ? 'Trắc nghiệm' : q.type === 'true_false' ? 'Đúng/Sai' : 'Trả lời ngắn'}):</div>
           <div class="question-text">${q.question}</div>
       `;
       
-      // HÌNH ẢNH
-      if (q.image) {
-        html += `
-          <div class="image-upload-section">
-            <img src="${q.image}" class="image-preview">
-            <button type="button" class="btn btn-danger btn-upload-image" onclick="deleteImage('${examId}', '${questionNumber}')">🗑️ Xóa hình</button>
-          </div>
-        `;
-      } else {
-        html += `
-          <div class="image-upload-section">
-            <input type="file" id="imageFile_${questionNumber}" accept="image/jpeg,image/png,image/jpg" style="display: none;" onchange="uploadImage('${examId}', '${questionNumber}')">
-            <button type="button" class="btn btn-secondary btn-upload-image" onclick="document.getElementById('imageFile_${questionNumber}').click()">📷 Thêm hình ảnh</button>
-            <small style="display: block; margin-top: 5px; color: #666;">JPG, PNG (tối đa 5MB)</small>
-          </div>
-        `;
-      }
-      
-      // ĐÁP ÁN
       if (q.type === 'multiple_choice' && q.options && q.options.length > 0) {
         html += '<div class="options-container">';
         q.options.forEach(opt => {
@@ -243,33 +222,13 @@ window.viewExamDetail = async function(examId) {
         }
       }
       
-      // NHẬP ĐÁP ÁN
-      if (q.type === 'true_false' && q.subQuestions && q.subQuestions.length > 0) {
-        html += '<div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 10px;">';
-        html += '<strong>Nhập đáp án từng ý:</strong>';
-        q.subQuestions.forEach(sub => {
-          const currentAnswer = exam.answers && exam.answers[questionNumber] && exam.answers[questionNumber][sub.key] ? exam.answers[questionNumber][sub.key] : '';
-          html += `
-            <div class="answer-input-group">
-              <label>${sub.key}):</label>
-              <select class="answer-input" data-question="${questionNumber}" data-subkey="${sub.key}">
-                <option value="">- Chọn -</option>
-                <option value="Đúng" ${currentAnswer === 'Đúng' ? 'selected' : ''}>Đúng</option>
-                <option value="Sai" ${currentAnswer === 'Sai' ? 'selected' : ''}>Sai</option>
-              </select>
-            </div>
-          `;
-        });
-        html += '</div>';
-      } else {
-        const currentAnswer = exam.answers ? exam.answers[questionNumber] : '';
-        html += `
-          <div class="answer-input-group">
-            <label>Đáp án:</label>
-            <input type="text" class="answer-input" data-question="${questionNumber}" value="${currentAnswer || ''}" placeholder="VD: A hoặc Đúng hoặc 3,14">
-          </div>
-        `;
-      }
+      const currentAnswer = exam.answers ? exam.answers[questionNumber] : '';
+      html += `
+        <div class="answer-input-group">
+          <label>Đáp án:</label>
+          <input type="text" class="answer-input" data-question="${questionNumber}" value="${currentAnswer || ''}" placeholder="VD: A hoặc Đúng hoặc 3,14">
+        </div>
+      `;
       
       html += '</div>';
     });
@@ -281,88 +240,21 @@ window.viewExamDetail = async function(examId) {
   }
 };
 
-// UPLOAD IMAGE
-window.uploadImage = async function(examId, questionId) {
-  const fileInput = document.getElementById(`imageFile_${questionId}`);
-  const file = fileInput.files[0];
-  
-  if (!file) return;
-  
-  if (file.size > 5 * 1024 * 1024) {
-    alert('❌ File quá lớn! Tối đa 5MB');
-    return;
-  }
-  
-  const formData = new FormData();
-  formData.append('image', file);
-  
-  try {
-    const response = await fetch(api(`/exam/${examId}/upload-image/${questionId}`), {
-      method: 'POST',
-      body: formData
-    });
-    
-    const data = await response.json();
-    
-    if (data.ok) {
-      alert('✅ Đã thêm hình ảnh!');
-      viewExamDetail(examId);
-    } else {
-      alert('❌ Lỗi: ' + (data.error || 'Không xác định'));
-    }
-  } catch (error) {
-    alert('❌ Lỗi: ' + error.message);
-  }
-};
-
-// DELETE IMAGE
-window.deleteImage = async function(examId, questionId) {
-  if (!confirm('Xóa hình ảnh này?')) return;
-  
-  try {
-    const response = await fetch(api(`/exam/${examId}/delete-image/${questionId}`), {
-      method: 'DELETE'
-    });
-    
-    const data = await response.json();
-    
-    if (data.ok) {
-      alert('✅ Đã xóa hình!');
-      viewExamDetail(examId);
-    } else {
-      alert('❌ Lỗi: ' + (data.error || 'Không xác định'));
-    }
-  } catch (error) {
-    alert('❌ Lỗi: ' + error.message);
-  }
-};
-
-// CLOSE MODAL
+// TEACHER - CLOSE MODAL
 document.getElementById('closeModal').addEventListener('click', () => {
   document.getElementById('examDetailModal').classList.remove('show');
 });
 
-// SAVE ANSWERS
+// TEACHER - SAVE ANSWERS
 document.getElementById('saveAnswers').addEventListener('click', async () => {
   const inputs = document.querySelectorAll('.answer-input');
   const answers = {};
   
   inputs.forEach(input => {
     const questionId = input.getAttribute('data-question');
-    const subKey = input.getAttribute('data-subkey');
     const value = input.value.trim();
-    
-    if (subKey) {
-      if (!answers[questionId]) {
-        answers[questionId] = {};
-      }
-      if (value) {
-        answers[questionId][subKey] = value;
-      }
-    } else {
-      if (value) {
-        answers[questionId] = value;
-      }
+    if (value) {
+      answers[questionId] = value;
     }
   });
   
@@ -392,7 +284,7 @@ document.getElementById('saveAnswers').addEventListener('click', async () => {
   }
 });
 
-// SEND REPORT
+// TEACHER - SEND REPORT
 document.getElementById('sendReport').addEventListener('click', async () => {
   const className = prompt('Nhập lớp cần gửi báo cáo (VD: 12A1):');
   if (!className) return;
@@ -419,7 +311,7 @@ document.getElementById('sendReport').addEventListener('click', async () => {
   }
 });
 
-// DELETE EXAM
+// TEACHER - DELETE EXAM
 document.getElementById('deleteExam').addEventListener('click', async () => {
   if (!confirm('⚠️ Bạn có chắc muốn xóa đề này?')) {
     return;
@@ -444,7 +336,7 @@ document.getElementById('deleteExam').addEventListener('click', async () => {
   }
 });
 
-// LOAD SUBMISSIONS
+// TEACHER - LOAD SUBMISSIONS
 async function loadSubmissionsList() {
   try {
     const response = await fetch(api('/student/submissions'));
@@ -582,11 +474,6 @@ function startExam() {
       <div class="question-text">${q.question}</div>
     `;
     
-    // HIỂN THỊ HÌNH ẢNH (nếu có)
-    if (q.image) {
-      html += `<img src="${q.image}" class="image-preview" style="margin: 15px 0;">`;
-    }
-    
     if (q.type === 'multiple_choice' && q.options && q.options.length > 0) {
       html += '<div class="options-container">';
       q.options.forEach(opt => {
@@ -722,4 +609,111 @@ window.saveAnswer = function(questionId, answer) {
   state.studentAnswers[questionId] = answer;
 };
 
-window.saveSubAnswer = function(questionId, sub
+window.saveSubAnswer = function(questionId, subKey, answer) {
+  if (!state.studentAnswers[questionId]) {
+    state.studentAnswers[questionId] = {};
+  }
+  state.studentAnswers[questionId][subKey] = answer;
+};
+
+window.updateShortAnswer = function(questionId) {
+  const boxes = document.querySelectorAll(`select.answer-box[data-question="${questionId}"]`);
+  const values = Array.from(boxes).map(box => box.value);
+  
+  state.studentAnswers[questionId] = {
+    boxes: values,
+    value: values.filter(v => v).join('')
+  };
+};
+
+function handleVisibilityChange() {
+  if (document.hidden && state.timerInterval) {
+    state.tabViolations++;
+    const warning = document.getElementById('warningMessage');
+    warning.textContent = `⚠️ Cảnh báo: Bạn đã rời trang ${state.tabViolations}/3 lần`;
+    
+    if (state.tabViolations >= 3) {
+      clearInterval(state.timerInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      alert('⚠️ Bạn đã vi phạm quy định. Bài thi sẽ được thu ngay.');
+      submitExam(true);
+    }
+  } else if (!document.hidden && state.tabViolations > 0 && state.tabViolations < 3) {
+    alert(`⚠️ Cảnh báo: Bạn đã rời trang ${state.tabViolations} lần. Lần thứ 3 bài thi sẽ bị thu!`);
+  }
+}
+
+function updateTimer() {
+  const minutes = Math.floor(state.timeLeft / 60);
+  const seconds = state.timeLeft % 60;
+  document.getElementById('timer').textContent = 
+    `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  
+  if (state.timeLeft < 300 && state.timeLeft > 0) {
+    document.getElementById('timer').style.color = 'var(--warning)';
+  }
+  
+  if (state.timeLeft < 60 && state.timeLeft > 0) {
+    document.getElementById('timer').style.color = 'var(--danger)';
+  }
+}
+
+document.getElementById('submitBtn').addEventListener('click', () => {
+  if (confirm('Bạn có chắc muốn nộp bài?')) {
+    submitExam(false);
+  }
+});
+
+async function submitExam(isAuto) {
+  clearInterval(state.timerInterval);
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
+  
+  const payload = {
+    name: state.studentInfo.name,
+    className: state.studentInfo.className,
+    dob: state.studentInfo.dob,
+    answers: state.studentAnswers,
+    examId: state.examData.examId,
+    violations: state.tabViolations
+  };
+  
+  try {
+    const response = await fetch(api('/student/submit'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await response.json();
+    
+    showPage('resultPage');
+    
+    if (data.ok) {
+      document.getElementById('resultMessage').textContent = 
+        isAuto ? 'Bài làm đã được tự động nộp.' : 'Bài làm đã nộp thành công!';
+      
+      if (data.score !== undefined && data.score !== null) {
+        document.getElementById('scoreDisplay').textContent = `${data.score} điểm`;
+      } else {
+        document.getElementById('scoreDisplay').textContent = 'Chờ giáo viên chấm';
+      }
+    } else {
+      document.getElementById('resultMessage').textContent = 
+        'Có lỗi: ' + (data.error || 'Không xác định');
+    }
+  } catch (error) {
+    showPage('resultPage');
+    document.getElementById('resultMessage').textContent = 
+      'Lỗi kết nối: ' + error.message;
+  }
+}
+
+document.getElementById('backToHome').addEventListener('click', () => {
+  state.userRole = null
+  state.className = null;
+  state.studentInfo = null;
+  state.examData = null;
+  state.studentAnswers = {};
+  showPage('loginPage');
+  document.getElementById('passwordInput').value = '';
+});
