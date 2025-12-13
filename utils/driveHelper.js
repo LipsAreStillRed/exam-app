@@ -35,10 +35,16 @@ export async function uploadToDrive(fileBuffer, filename, mimeType = 'applicatio
       parents: folderId ? [folderId] : []
     };
     
-    const media = {
-      mimeType,
-      body: Buffer.from(fileBuffer)
-    };
+    const { Readable } = require('stream');
+
+const bufferStream = new Readable();
+bufferStream.push(fileBuffer);
+bufferStream.push(null);
+
+const media = {
+  mimeType,
+  body: bufferStream
+};
     
     const response = await drive.files.create({
       requestBody: fileMetadata,
