@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { Readable } from 'stream';
 
 let drive = null;
 
@@ -20,7 +21,7 @@ export function initDrive() {
   }
 }
 
-// Upload file lên Drive
+// Upload file lên Drive - ĐÃ SỬA LỖI
 export async function uploadToDrive(fileBuffer, filename, mimeType = 'application/json') {
   if (!drive) {
     console.log('⚠️  Drive not initialized, falling back to local storage');
@@ -30,21 +31,20 @@ export async function uploadToDrive(fileBuffer, filename, mimeType = 'applicatio
   try {
     const folderId = process.env.DRIVE_FOLDER_ID;
     
+    // Chuyển buffer thành stream
+    const bufferStream = new Readable();
+    bufferStream.push(fileBuffer);
+    bufferStream.push(null);
+    
     const fileMetadata = {
       name: filename,
       parents: folderId ? [folderId] : []
     };
     
-    const { Readable } = require('stream');
-
-const bufferStream = new Readable();
-bufferStream.push(fileBuffer);
-bufferStream.push(null);
-
-const media = {
-  mimeType,
-  body: bufferStream
-};
+    const media = {
+      mimeType,
+      body: bufferStream
+    };
     
     const response = await drive.files.create({
       requestBody: fileMetadata,
@@ -59,6 +59,7 @@ const media = {
     };
   } catch (error) {
     console.error('❌ Upload to Drive failed:', error.message);
+    console.error('Error details:', error);
     return null;
   }
 }
