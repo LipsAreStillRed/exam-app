@@ -5,6 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hệ Thống Kiểm Tra Trực Tuyến</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* SỬA MODAL - Thay dấu X bằng icon đẹp hơn */
+    .modal .close {
+      color: #ff4444;
+      font-size: 32px;
+      font-weight: normal;
+      line-height: 1;
+      opacity: 0.8;
+      transition: all 0.3s ease;
+    }
+    .modal .close:hover,
+    .modal .close:focus {
+      color: #cc0000;
+      opacity: 1;
+      transform: rotate(90deg);
+      text-decoration: none;
+      cursor: pointer;
+    }
+    /* Thay dấu × bằng icon SVG đẹp hơn */
+    .modal .close::before {
+      content: '✕';
+      font-size: 28px;
+    }
+    /* Màu nền modal đẹp hơn */
+    .modal-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 15px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .modal-content h2 {
+      color: white;
+      border-bottom: 2px solid rgba(255,255,255,0.3);
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    /* Nút modal */
+    .modal-actions button {
+      margin: 5px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -85,11 +127,11 @@
           </div>
         </div>
     </div>
-      <!-- EXAM DETAIL MODAL -->
+      <!-- EXAM DETAIL MODAL - ĐÃ SỬA -->
      <div id="examDetailModal" class="modal">
        <div class="modal-content">
-         <span class="close" id="closeModal">&times;</span>
-         <h2>Chi Tiết Đề Thi</h2>
+         <button class="close" id="closeModal" title="Đóng" aria-label="Đóng"></button>
+         <h2>📋 Chi Tiết Đề Thi</h2>
          <div id="examDetailContent"></div>
          <div class="modal-actions">
            <button class="btn btn-primary" id="saveAnswers">💾 Lưu Đáp Án</button>
