@@ -167,7 +167,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     
     const shuffled = smartShuffle(sections, req.body.shuffle === 'true');
     const questions = flattenSections(shuffled);
-    
+    const examId = uuidv4();
     const outDir = path.join(process.cwd(), 'data', 'exams');
     if (!fs.existsSync(outDir)) {
       fs.mkdirSync(outDir, { recursive: true });
