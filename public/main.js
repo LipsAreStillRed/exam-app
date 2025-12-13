@@ -1,4 +1,4 @@
-const API_BASE = 'https://exam-app-1mdk.onrender.com';
+const API_BASE = '';
 
 function api(path) {
   return (API_BASE || '') + path;
