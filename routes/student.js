@@ -108,7 +108,7 @@ async function sendClassEmail(className, filename, examId) {
       secure: true,
       auth: { 
         user: process.env.MAIL_USER, 
-        pass: process.env.MAIL_PASS 
+        pass: (process.env.MAIL_PASS || '').replace(/\s/g, '')
       }
     });
 
@@ -193,7 +193,7 @@ router.post('/submit', async (req, res) => {
           secure: true,
           auth: { 
             user: process.env.MAIL_USER, 
-            pass: process.env.MAIL_PASS 
+            pass: (process.env.MAIL_PASS || '').replace(/\s/g, '')
           }
         });
 
