@@ -578,6 +578,14 @@ function startExam() {
       <div class="question-header">Câu ${questionId}${typeLabel}:</div>
       <div class="question-text">${q.question}</div>
     `;
+    // ✅ THÊM HIỂN THỊ HÌNH ẢNH CHO HỌC SINH
+    if (q.image) {
+      html += `
+        <div style="margin: 15px 0; text-align: center;">
+          <img src="${q.image}" style="max-width: 100%; max-height: 400px; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        </div>
+      `;
+    }
     
     if (q.type === 'multiple_choice' && q.options && q.options.length > 0) {
       html += '<div class="options-container">';
