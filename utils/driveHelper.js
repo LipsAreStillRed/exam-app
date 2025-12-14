@@ -85,3 +85,20 @@ export async function deleteFromDrive(fileId) {
   console.log('🗑️ Deleted:', fileId);
   return true;
 }
+// ================= CHECK =================
+export async function checkDriveStatus() {
+  if (!drive) return false;
+
+  try {
+    await drive.files.list({
+      pageSize: 1,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
+    return true;
+  } catch (err) {
+    console.error('❌ Drive check failed:', err.message);
+    return false;
+  }
+}
+
