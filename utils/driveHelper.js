@@ -1,104 +1,44 @@
-import { google } from 'googleapis';
-import { Readable } from 'stream';
+const { google } = require('googleapis');
+const fs = require('fs');
 
-let drive = null;
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
 
-// ================= INIT =================
-export function initDrive() {
+// Dùng refresh token để tự làm mới access token
+if (process.env.OAUTH_REFRESH_TOKEN) {
+  oauth2Client.setCredentials({ refresh_token: process.env.OAUTH_REFRESH_TOKEN });
+}
+
+const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+async function uploadToDrive(filePath, fileName, mimeType) {
   try {
-    if (!process.env.GOOGLE_CREDENTIALS) throw new Error('Missing GOOGLE_CREDENTIALS');
-    if (!process.env.DRIVE_FOLDER_ID) throw new Error('Missing DRIVE_FOLDER_ID');
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    if (!folderId) throw new Error('Thiếu GOOGLE_DRIVE_FOLDER_ID');
 
-    const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+    const fileMetadata = { name: fileName, parents: [folderId] };
+    const media = { mimeType, body: fs.createReadStream(filePath) };
 
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/drive']
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      media,
+      fields: 'id, name, webViewLink, webContentLink',
     });
 
-    drive = google.drive({ version: 'v3', auth });
-    console.log('✅ Drive initialized for:', credentials.client_email);
-    return true;
-  } catch (err) {
-    console.error('❌ Drive init failed:', err.message);
-    return false;
+    // Xoá file tạm sau khi upload
+    fs.unlink(filePath, () => {});
+    return response.data;
+  } catch (error) {
+    console.error('Drive upload error:', error?.response?.data || error.message || error);
+    throw error;
   }
 }
 
-// ================= UPLOAD =================
-export async function uploadToDrive(
-  fileBuffer,
-  filename,
-  mimeType = 'application/octet-stream'
-) {
-  if (!drive) throw new Error('Drive not initialized');
-
-  const folderId = process.env.DRIVE_FOLDER_ID;
-  if (!folderId) throw new Error('DRIVE_FOLDER_ID is missing');
-
-  console.log('👉 Uploading to folder:', folderId);
-
-  const stream = Readable.from(fileBuffer);
-
-  const res = await drive.files.create({
-    supportsAllDrives: true,
-    requestBody: {
-      name: filename,
-      parents: [folderId]
-    },
-    media: {
-      mimeType,
-      body: stream
-    },
-    fields: 'id, webViewLink, webContentLink'
-  });
-
-  console.log('✅ Uploaded:', res.data.id);
-  return res.data;
+async function deleteFromDrive(fileId) {
+  await drive.files.delete({ fileId });
 }
 
-// ================= DOWNLOAD =================
-export async function downloadFromDrive(fileId) {
-  if (!drive) throw new Error('Drive not initialized');
-
-  const res = await drive.files.get(
-    {
-      fileId,
-      alt: 'media',
-      supportsAllDrives: true
-    },
-    { responseType: 'arraybuffer' }
-  );
-
-  return Buffer.from(res.data);
-}
-
-// ================= DELETE =================
-export async function deleteFromDrive(fileId) {
-  if (!drive || !fileId) return false;
-
-  await drive.files.delete({
-    fileId,
-    supportsAllDrives: true
-  });
-
-  console.log('🗑️ Deleted:', fileId);
-  return true;
-}
-// ================= CHECK =================
-export async function checkDriveStatus() {
-  if (!drive) return false;
-
-  try {
-    await drive.files.list({
-      pageSize: 1,
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true
-    });
-    return true;
-  } catch (err) {
-    console.error('❌ Drive check failed:', err.message);
-    return false;
-  }
-}
-
+module.exports = { uploadToDrive, deleteFromDrive };
