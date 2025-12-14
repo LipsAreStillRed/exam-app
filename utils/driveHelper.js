@@ -1,5 +1,5 @@
-const { google } = require('googleapis');
-const fs = require('fs');
+import { google } from 'googleapis';
+import fs from 'fs';
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -7,20 +7,27 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-// Dùng refresh token để tự làm mới access token
+// Nếu đã có refresh token thì set luôn để dùng
 if (process.env.OAUTH_REFRESH_TOKEN) {
   oauth2Client.setCredentials({ refresh_token: process.env.OAUTH_REFRESH_TOKEN });
 }
 
 const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
-async function uploadToDrive(filePath, fileName, mimeType) {
+export async function uploadToDrive(filePath, fileName, mimeType) {
   try {
     const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
     if (!folderId) throw new Error('Thiếu GOOGLE_DRIVE_FOLDER_ID');
 
-    const fileMetadata = { name: fileName, parents: [folderId] };
-    const media = { mimeType, body: fs.createReadStream(filePath) };
+    const fileMetadata = {
+      name: fileName,
+      parents: [folderId],
+    };
+
+    const media = {
+      mimeType,
+      body: fs.createReadStream(filePath),
+    };
 
     const response = await drive.files.create({
       requestBody: fileMetadata,
@@ -37,8 +44,12 @@ async function uploadToDrive(filePath, fileName, mimeType) {
   }
 }
 
-async function deleteFromDrive(fileId) {
-  await drive.files.delete({ fileId });
+export async function deleteFromDrive(fileId) {
+  try {
+    await drive.files.delete({ fileId });
+    return { success: true };
+  } catch (error) {
+    console.error('Drive delete error:', error?.response?.data || error.message || error);
+    throw error;
+  }
 }
-
-module.exports = { uploadToDrive, deleteFromDrive };
