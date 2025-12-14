@@ -1,11 +1,10 @@
-const express = require('express');
-const multer = require('multer');
-const { uploadToDrive } = require('../utils/driveHelper');
+import express from 'express';
+import multer from 'multer';
+import { uploadToDrive } from '../utils/driveHelper.js';
 
 const router = express.Router();
-const upload = multer({ dest: 'tmp/' }); // Render dùng disk tạm, đủ để stream lên Drive
+const upload = multer({ dest: 'tmp/' });
 
-// Form gửi file với field name="file"
 router.post('/drive/upload', upload.single('file'), async (req, res) => {
   try {
     if (!process.env.OAUTH_REFRESH_TOKEN) {
@@ -28,4 +27,4 @@ router.post('/drive/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
