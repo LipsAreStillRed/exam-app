@@ -5,39 +5,40 @@ import dotenv from 'dotenv';
 import authRouter from './routes/auth.js';
 import examRouter from './routes/exam.js';
 import studentRouter from './routes/student.js';
-import { initDrive, checkDriveStatus } from './utils/driveHelper.js';
+import driveAuthRoutes from './routes/driveAuth.js';
+import driveUploadRoutes from './routes/upload.js';
 
 dotenv.config();
 const app = express();
-// Khởi tạo Google Drive khi server start
-const driveEnabled = initDrive();
 
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(process.cwd(), 'public')));
 
-app.get('/health', async (req, res) => {
-  const driveStatus = driveEnabled ? await checkDriveStatus() : false;
-  res.json({ 
+// Health check đơn giản
+app.get('/health', (req, res) => {
+  res.json({
     status: 'ok',
-    drive: driveStatus ? 'connected' : 'not configured',
+    drive: process.env.OAUTH_REFRESH_TOKEN ? 'connected' : 'not configured',
     timestamp: new Date().toISOString()
   });
 });
 
+// Các routes chính
 app.use('/auth', authRouter);
 app.use('/exam', examRouter);
 app.use('/student', studentRouter);
+
+// ✅ Thêm routes mới cho Google Drive OAuth và Upload
+app.use('/', driveAuthRoutes);
+app.use('/', driveUploadRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ Server listening on port ${PORT}`);
   console.log(`📍 Local: http://localhost:${PORT}`);
-  console.log(`💾 Google Drive: ${driveEnabled ? '✅ Enabled' : '⚠️  Not configured'}`);
-  if (!driveEnabled) {
-    console.log('💡 Tip: Set GOOGLE_CREDENTIALS and DRIVE_FOLDER_ID to enable Drive storage');
-  }
+  console.log(`💾 Google Drive: ${process.env.OAUTH_REFRESH_TOKEN ? '✅ Enabled' : '⚠️ Not configured'}`);
 });
 
 // Error handling
