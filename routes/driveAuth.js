@@ -1,5 +1,5 @@
-const express = require('express');
-const { google } = require('googleapis');
+import express from 'express';
+import { google } from 'googleapis';
 
 const router = express.Router();
 
@@ -9,7 +9,6 @@ const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_REDIRECT_URI
 );
 
-// Bắt đầu luồng xác thực: giáo viên bấm nút "Kết nối Google Drive"
 router.get('/oauth2/authorize', (req, res) => {
   const scopes = ['https://www.googleapis.com/auth/drive.file'];
   const url = oauth2Client.generateAuthUrl({
@@ -20,7 +19,6 @@ router.get('/oauth2/authorize', (req, res) => {
   res.redirect(url);
 });
 
-// Callback: lấy refresh token sau khi cấp quyền
 router.get('/oauth2/callback', async (req, res) => {
   try {
     const { code } = req.query;
@@ -29,15 +27,12 @@ router.get('/oauth2/callback', async (req, res) => {
 
     const refreshToken = tokens.refresh_token;
     if (!refreshToken) {
-      return res.send(`
-        <p>Không nhận được refresh_token.</p>
-        <p>Hãy vào Google Account > Security > Third-party access, thu hồi app, rồi thử lại.</p>
-      `);
+      return res.send('Không nhận được refresh_token. Hãy thử lại.');
     }
 
     res.send(`
       <h3>Đã kết nối Google Drive</h3>
-      <p>Copy giá trị sau và thêm vào Render (OAUTH_REFRESH_TOKEN), rồi redeploy:</p>
+      <p>Copy giá trị sau và thêm vào Render (OAUTH_REFRESH_TOKEN):</p>
       <pre>${refreshToken}</pre>
     `);
   } catch (err) {
@@ -46,4 +41,4 @@ router.get('/oauth2/callback', async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;
