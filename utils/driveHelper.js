@@ -3,117 +3,91 @@ import { Readable } from 'stream';
 
 let drive = null;
 
-// Khởi tạo Google Drive API
+// ================= INIT =================
 export function initDrive() {
   try {
-    const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS || '{}');
+    if (!process.env.GOOGLE_CREDENTIALS) throw new Error('Missing GOOGLE_CREDENTIALS');
+    if (!process.env.DRIVE_FOLDER_ID) throw new Error('Missing DRIVE_FOLDER_ID');
+
+    // Parse the JSON string from the .env file
+    const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+
     const auth = new google.auth.GoogleAuth({
       credentials,
-      scopes: ['https://www.googleapis.com/auth/drive']
+      // 'drive' scope gives full access (read/write/delete)
+      scopes: ['https://www.googleapis.com/auth/drive'] 
     });
-    
+
     drive = google.drive({ version: 'v3', auth });
-    console.log('✅ Google Drive initialized');
+    console.log('✅ Drive initialized for Service Account:', credentials.client_email);
     return true;
-  } catch (error) {
-    console.error('❌ Drive init error:', error.message);
+  } catch (err) {
+    console.error('❌ Drive init failed:', err.message);
     return false;
   }
 }
 
-// Upload file lên Drive - ĐÃ SỬA LỖI STORAGE QUOTA
-export async function uploadToDrive(fileBuffer, filename, mimeType = 'application/json') {
-  if (!drive) {
-    console.log('⚠️  Drive not initialized, falling back to local storage');
-    return null;
-  }
-  
+// ================= UPLOAD =================
+export async function uploadToDrive(fileBuffer, filename, mimeType = 'application/octet-stream') {
+  if (!drive) throw new Error('Drive not initialized');
+
+  const folderId = process.env.DRIVE_FOLDER_ID;
+
+  // OPTIMIZATION: Readable.from() is cleaner than pushing null manually
+  const stream = Readable.from(fileBuffer);
+
   try {
-    // Chuyển buffer thành stream
-    const bufferStream = new Readable();
-    bufferStream.push(fileBuffer);
-    bufferStream.push(null);
-    
-    // KHÔNG chỉ định parents để tránh lỗi storage quota
-    // File sẽ được lưu vào "My Drive" root của tài khoản được share
-    const fileMetadata = {
-      name: `[ExamApp] ${filename}` // Thêm prefix để dễ tìm và quản lý
-    };
-    
-    const media = {
-      mimeType,
-      body: bufferStream
-    };
-    
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id, webViewLink',
-      supportsAllDrives: true // Hỗ trợ cả Shared Drives nếu có
+    const res = await drive.files.create({
+      supportsAllDrives: true,
+      requestBody: {
+        name: filename,
+        parents: [folderId] // puts file inside the specific folder
+      },
+      media: {
+        mimeType,
+        body: stream
+      },
+      fields: 'id, webViewLink, webContentLink' // webContentLink is useful for direct downloads
     });
-    
-    console.log(`✅ Uploaded to Drive: ${filename} (ID: ${response.data.id})`);
-    return {
-      fileId: response.data.id,
-      webViewLink: response.data.webViewLink
-    };
+
+    console.log('✅ Uploaded:', res.data.id);
+    return res.data;
   } catch (error) {
-    console.error('❌ Upload to Drive failed:', error.message);
-    console.error('Error details:', error);
-    return null;
+    console.error('❌ Upload failed:', error.message);
+    throw error;
   }
 }
 
-// Tải file từ Drive
+// ================= DOWNLOAD =================
 export async function downloadFromDrive(fileId) {
-  if (!drive) {
-    console.log('⚠️  Drive not initialized');
-    return null;
-  }
-  
+  if (!drive) throw new Error('Drive not initialized');
+
   try {
-    const response = await drive.files.get(
+    const res = await drive.files.get(
       { fileId, alt: 'media', supportsAllDrives: true },
       { responseType: 'arraybuffer' }
     );
-    
-    console.log(`✅ Downloaded from Drive: ${fileId}`);
-    return Buffer.from(response.data);
+
+    return Buffer.from(res.data);
   } catch (error) {
-    console.error('❌ Download from Drive failed:', error.message);
+    console.error('❌ Download failed:', error.message);
     return null;
   }
 }
 
-// Xóa file từ Drive
+// ================= DELETE =================
 export async function deleteFromDrive(fileId) {
   if (!drive || !fileId) return false;
-  
-  try {
-    await drive.files.delete({ 
-      fileId,
-      supportsAllDrives: true 
-    });
-    console.log(`✅ Deleted from Drive: ${fileId}`);
-    return true;
-  } catch (error) {
-    console.error('❌ Delete from Drive failed:', error.message);
-    return false;
-  }
-}
 
-// Kiểm tra Drive có hoạt động không
-export async function checkDriveStatus() {
-  if (!drive) return false;
-  
   try {
-    await drive.files.list({ 
-      pageSize: 1,
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true
+    await drive.files.delete({
+      fileId,
+      supportsAllDrives: true
     });
+    console.log('🗑️ Deleted:', fileId);
     return true;
   } catch (error) {
+    console.error('❌ Delete failed:', error.message);
     return false;
   }
 }
