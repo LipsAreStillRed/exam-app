@@ -21,7 +21,7 @@ export function initDrive() {
   }
 }
 
-// Upload file lên Drive - ĐÃ SỬA LỖI
+// Upload file lên Drive - ĐÃ SỬA LỖI STORAGE QUOTA
 export async function uploadToDrive(fileBuffer, filename, mimeType = 'application/json') {
   if (!drive) {
     console.log('⚠️  Drive not initialized, falling back to local storage');
@@ -29,16 +29,15 @@ export async function uploadToDrive(fileBuffer, filename, mimeType = 'applicatio
   }
   
   try {
-    const folderId = process.env.DRIVE_FOLDER_ID;
-    
     // Chuyển buffer thành stream
     const bufferStream = new Readable();
     bufferStream.push(fileBuffer);
     bufferStream.push(null);
     
+    // KHÔNG chỉ định parents để tránh lỗi storage quota
+    // File sẽ được lưu vào "My Drive" root của tài khoản được share
     const fileMetadata = {
-      name: filename,
-      parents: folderId ? [folderId] : []
+      name: `[ExamApp] ${filename}` // Thêm prefix để dễ tìm và quản lý
     };
     
     const media = {
@@ -49,7 +48,8 @@ export async function uploadToDrive(fileBuffer, filename, mimeType = 'applicatio
     const response = await drive.files.create({
       requestBody: fileMetadata,
       media: media,
-      fields: 'id, webViewLink'
+      fields: 'id, webViewLink',
+      supportsAllDrives: true // Hỗ trợ cả Shared Drives nếu có
     });
     
     console.log(`✅ Uploaded to Drive: ${filename} (ID: ${response.data.id})`);
@@ -73,7 +73,7 @@ export async function downloadFromDrive(fileId) {
   
   try {
     const response = await drive.files.get(
-      { fileId, alt: 'media' },
+      { fileId, alt: 'media', supportsAllDrives: true },
       { responseType: 'arraybuffer' }
     );
     
@@ -90,7 +90,10 @@ export async function deleteFromDrive(fileId) {
   if (!drive || !fileId) return false;
   
   try {
-    await drive.files.delete({ fileId });
+    await drive.files.delete({ 
+      fileId,
+      supportsAllDrives: true 
+    });
     console.log(`✅ Deleted from Drive: ${fileId}`);
     return true;
   } catch (error) {
@@ -104,7 +107,11 @@ export async function checkDriveStatus() {
   if (!drive) return false;
   
   try {
-    await drive.files.list({ pageSize: 1 });
+    await drive.files.list({ 
+      pageSize: 1,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true
+    });
     return true;
   } catch (error) {
     return false;
