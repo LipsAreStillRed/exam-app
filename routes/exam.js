@@ -200,8 +200,9 @@ fs.writeFileSync(outPath, JSON.stringify(examData, null, 2), 'utf8');
 // Upload lên Drive bằng đường dẫn file
 let driveResult = null;
 try {
-  driveResult = await uploadToDrive(
-    outPath,                // truyền đường dẫn file
+  const fileBuffer = fs.readFileSync(outPath);
+   driveResult = await uploadToDrive(
+     fileBuffer,             // truyền Buffer
     `${examId}.json`,
     'application/json'
   );
