@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Test Google Drive</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; }
+    h2 { margin-top: 32px; }
+    .box { border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-top: 12px; }
+    label { display: block; margin-bottom: 8px; }
+    input[type="text"] { width: 100%; padding: 8px; }
+    button { padding: 8px 14px; cursor: pointer; }
+    pre { background: #f7f7f7; padding: 12px; border-radius: 6px; overflow: auto; }
+    .ok { color: #0a7f3e }
+    .err { color: #b00020 }
+  </style>
+</head>
+<body>
+  <h1>Test Google Drive</h1>
+
+  <div class="box">
+    <h2>1. Kết nối Google Drive</h2>
+    <p>Nhấn nút bên dưới để cấp quyền Google OAuth (chỉ cần 1 lần).</p>
+    <p><a href="/oauth2/authorize" target="_blank"><button>Cấp quyền Google OAuth</button></a></p>
+  </div>
+
+  <div class="box">
+    <h2>2. Upload đề thi</h2>
+    <form id="uploadForm" enctype="multipart/form-data" method="POST" action="/drive/upload">
+      <label>Chọn file:
+        <input type="file" name="file" required />
+      </label>
+      <button type="submit">Upload</button>
+    </form>
+    <div id="uploadResult"></div>
+  </div>
+
+  <div class="box">
+    <h2>3. Xóa đề theo ID</h2>
+    <label>File ID:
+      <input type="text" id="fileId" placeholder="Nhập ID (lấy từ kết quả upload)" />
+    </label>
+    <button id="deleteBtn">Xóa</button>
+    <div id="deleteResult"></div>
+  </div>
+
+  <script>
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadResult = document.getElementById('uploadResult');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const deleteResult = document.getElementById('deleteResult');
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(uploadForm);
+      uploadResult.innerHTML = '<p>Đang upload...</p>';
+
+      try {
+        const res = await fetch('/drive/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Upload thất bại');
+
+        uploadResult.innerHTML = `
+          <p class="ok">Upload thành công</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+          <p><a href="${data.webViewLink}" target="_blank">Mở trên Drive</a></p>
+          <p><strong>ID:</strong> ${data.id}</p>
+        `;
+      } catch (err) {
+        uploadResult.innerHTML = `<p class="err">${err.message}</p>`;
+      }
+    });
+
+    deleteBtn.addEventListener('click', async () => {
+      const id = document.getElementById('fileId').value.trim();
+      deleteResult.innerHTML = '';
+      if (!id) return (deleteResult.innerHTML = '<p class="err">Vui lòng nhập ID</p>');
+      try {
+        const res = await fetch(`/drive/file/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.error || 'Xóa thất bại');
+        deleteResult.innerHTML = `<p class="ok">Đã xóa: ${id}</p>`;
+      } catch (err) {
+        deleteResult.innerHTML = `<p class="err">${err.message}</p>`;
+      }
+    });
+  </script>
+</body>
+</html>
