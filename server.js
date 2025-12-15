@@ -8,6 +8,11 @@ import studentRouter from './routes/student.js';
 import driveAuthRoutes from './routes/driveAuth.js';
 import driveUploadRoutes from './routes/upload.js';
 import reportRoutes from './routes/report.js';
+import cron from 'node-cron';
+import { getClassResults } from './utils/resultsService.js';
+import { buildClassReportWorkbook } from './utils/reportExport.js';
+import { uploadToDrive } from './utils/driveHelper.js';
+import { sendEmail } from './utils/emailHelper.js';
 
 dotenv.config();
 const app = express();
@@ -36,6 +41,57 @@ app.use('/', driveAuthRoutes);
 app.use('/', driveUploadRoutes);
 app.use(express.json()); // để đọc body JSON từ POST
 app.use('/', reportRoutes);
+// Cron job: kiểm tra mỗi 2 phút
+const sentRecords = new Set();
+
+cron.schedule('*/2 * * * *', async () => {
+  try {
+    // Cấu hình 4 lớp
+    const classes = [
+      { classId: '12A1', endAt: '2025-12-15T09:00:00+07:00', delayMinutes: 10, email: 'teacher12A1@example.com' },
+      { classId: '12A2', endAt: '2025-12-15T10:30:00+07:00', delayMinutes: 10, email: 'teacher12A2@example.com' },
+      { classId: '12A3', endAt: '2025-12-15T14:00:00+07:00', delayMinutes: 10, email: 'teacher12A3@example.com' },
+      { classId: '12A4', endAt: '2025-12-15T16:00:00+07:00', delayMinutes: 10, email: 'teacher12A4@example.com' }
+    ];
+
+    for (const cls of classes) {
+      const key = `${cls.classId}_${cls.endAt}`;
+      if (sentRecords.has(key)) continue;
+
+      const now = new Date();
+      const end = new Date(cls.endAt);
+      if (now.getTime() >= end.getTime() + cls.delayMinutes * 60000) {
+        const results = await getClassResults(cls.classId);
+        const { buffer, filename } = buildClassReportWorkbook({
+          classId: cls.classId,
+          schedule: `Kết thúc: ${end.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}`,
+          results,
+          includeAnswers: false
+        });
+
+        const driveFile = await uploadToDrive({
+          buffer,
+          filename,
+          mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+        const driveLink = driveFile.webViewLink || driveFile.webContentLink || '';
+        await sendEmail({
+          to: cls.email || process.env.EMAIL_TO,
+          subject: `Báo cáo lớp ${cls.classId}`,
+          html: `<p>Báo cáo lớp ${cls.classId} đã được tạo.</p><p>Link Drive: <a href="${driveLink}">${driveLink}</a></p>`,
+          attachments: [{ filename, content: buffer }]
+        });
+
+        sentRecords.add(key);
+        console.log(`[Cron] Đã gửi báo cáo lớp ${cls.classId}`);
+      }
+    }
+  } catch (err) {
+    console.error('[Cron] Error:', err.message);
+  }
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
