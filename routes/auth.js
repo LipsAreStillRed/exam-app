@@ -4,7 +4,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 const router = express.Router();
 
+// Mật khẩu giáo viên từ biến môi trường
 const TEACHER_PASSWORD = process.env.ADMIN_PASSWORD || '';
+
+// Danh sách lớp từ biến môi trường (chuỗi CSV: 12A1,12A2,...)
 const CLASS_LIST = (process.env.CLASS_LIST || '')
   .split(',')
   .map(s => s.trim())
@@ -22,7 +25,7 @@ router.post('/login', (req, res) => {
       return res.json({ ok: true, role: 'teacher' });
     }
 
-    // Học sinh
+    // Học sinh: so khớp với PW_<TênLớp> trong biến môi trường
     const className = CLASS_LIST.find(cls => password === process.env[`PW_${cls}`]);
     if (className) {
       return res.json({ ok: true, role: 'student', className });
