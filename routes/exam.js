@@ -146,94 +146,91 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
     }
-    
+
     const result = await mammoth.extractRawText({ path: req.file.path });
     const text = result.value || '';
-    
+
     if (text.length < 50) {
       fs.unlinkSync(req.file.path);
       return res.status(400).json({ ok: false, error: 'File quá ngắn' });
     }
-    
+
     const sections = parseExamContent(text);
-    
     if (sections.length === 0 || sections.every(s => s.questions.length === 0)) {
       fs.unlinkSync(req.file.path);
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Không tìm thấy câu hỏi' 
-      });
+      return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
     }
-    
+
     const shuffled = smartShuffle(sections, req.body.shuffle === 'true');
     const questions = flattenSections(shuffled);
     const examId = uuidv4();
+
     const outDir = path.join(process.cwd(), 'data', 'exams');
     if (!fs.existsSync(outDir)) {
       fs.mkdirSync(outDir, { recursive: true });
     }
-    
+
     const outPath = path.join(outDir, `${examId}.json`);
-    
+
     const examData = {
-  id: examId,
-  originalName: req.file.originalname,
-  createdAt: Date.now(),
-  timeMinutes: parseInt(req.body.timeMinutes) || 45,
-  password: req.body.password || null,
-  sections: shuffled,
-  questions: questions,
-  answers: {},
-  driveFileId: null,
-  metadata: {
-    totalQuestions: questions.length,
-    sections: sections.length,
-    multipleChoice: questions.filter(q => q.type === 'multiple_choice').length,
-    trueFalse: questions.filter(q => q.type === 'true_false').length,
-    shortAnswer: questions.filter(q => q.type === 'short_answer').length
-  }
-};
-    
-    // Ghi file JSON ra ổ đĩa trước
-fs.writeFileSync(outPath, JSON.stringify(examData, null, 2), 'utf8');
+      id: examId,
+      originalName: req.file.originalname,
+      createdAt: Date.now(),
+      timeMinutes: parseInt(req.body.timeMinutes) || 45,
+      password: req.body.password || null,
+      sections: shuffled,
+      questions: questions,
+      answers: {},
+      driveFileId: null,
+      metadata: {
+        totalQuestions: questions.length,
+        sections: sections.length,
+        multipleChoice: questions.filter(q => q.type === 'multiple_choice').length,
+        trueFalse: questions.filter(q => q.type === 'true_false').length,
+        shortAnswer: questions.filter(q => q.type === 'short_answer').length
+      }
+    };
 
-// Upload lên Drive bằng đường dẫn file
-let driveResult = null;
-try {
-  driveResult = await uploadToDrive(
-    outPath,                // truyền đường dẫn file
-    `${examId}.json`,
-    'application/json'
-  );
-} catch (err) {
-  console.error('Drive upload error:', err.message);
-}
+    // ✅ Ghi file JSON ra ổ đĩa trước
+    fs.writeFileSync(outPath, JSON.stringify(examData, null, 2), 'utf8');
 
-if (driveResult) {
-  examData.driveFileId = driveResult.fileId;
-  examData.driveLink = driveResult.webViewLink;
-  console.log(`✅ Exam saved to Drive: ${examId}`);
-}
+    // ✅ Upload lên Drive bằng đường dẫn file
+    let driveResult = null;
+    try {
+      driveResult = await uploadToDrive(
+        outPath,                // truyền đường dẫn file
+        `${examId}.json`,
+        'application/json'
+      );
+    } catch (err) {
+      console.error('Drive upload error:', err.message);
+    }
 
-// Xóa file gốc upload (Word)
-fs.unlinkSync(req.file.path);
+    if (driveResult) {
+      examData.driveFileId = driveResult.fileId;
+      examData.driveLink = driveResult.webViewLink;
+      console.log(`✅ Exam saved to Drive: ${examId}`);
+    }
 
+    // Xóa file Word gốc
+    fs.unlinkSync(req.file.path);
 
-res.json({ 
-  ok: true, 
-  examId, 
-  count: questions.length,
-  metadata: examData.metadata,
-  savedToDrive: !!driveResult
-});
-  } catch(e) { 
+    res.json({
+      ok: true,
+      examId,
+      count: questions.length,
+      metadata: examData.metadata,
+      savedToDrive: !!driveResult
+    });
+  } catch (e) {
     console.error('Upload error:', e);
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(500).json({ ok: false, error: e.message }); 
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 
 // UPLOAD HÌNH ẢNH CHO CÂU HỎI
 router.post('/:examId/upload-image/:questionId', upload.single('image'), async (req, res) => {
