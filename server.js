@@ -7,6 +7,7 @@ import examRouter from './routes/exam.js';
 import studentRouter from './routes/student.js';
 import driveAuthRoutes from './routes/driveAuth.js';
 import driveUploadRoutes from './routes/upload.js';
+import reportRoutes from './routes/report.js';
 
 dotenv.config();
 const app = express();
@@ -33,6 +34,8 @@ app.use('/student', studentRouter);
 // ✅ Thêm routes mới cho Google Drive OAuth và Upload
 app.use('/', driveAuthRoutes);
 app.use('/', driveUploadRoutes);
+app.use(express.json()); // để đọc body JSON từ POST
+app.use('/', reportRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
