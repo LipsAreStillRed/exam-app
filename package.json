@@ -18,7 +18,7 @@
     "mammoth": "^1.6.0",
     "dotenv": "^16.3.0",
     "uuid": "^9.0.0",
-    "googleapis": "^128.0.0"
+    "googleapis": "^128.0.0",
     "node-cron": "^3.0.2",
     "xlsx": "^0.18.5"
   }
