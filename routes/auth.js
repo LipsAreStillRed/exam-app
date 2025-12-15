@@ -1,53 +1,35 @@
 import express from 'express';
+import dotenv from 'dotenv';
 
+dotenv.config();
 const router = express.Router();
 
-const PASSWORDS = {
-  teacher: '@GV25',
-  '12A1': '252612A1',
-  '12A2': '252612A2',
-  '12A3': '252612A3',
-  '12A4': '252612A4'
-};
+const TEACHER_PASSWORD = process.env.ADMIN_PASSWORD || '';
+const CLASS_LIST = (process.env.CLASS_LIST || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 
 router.post('/login', (req, res) => {
   try {
     const { password } = req.body;
-    
     if (!password) {
-      return res.status(400).json({ 
-        ok: false, 
-        error: 'Vui lòng nhập mật khẩu' 
-      });
+      return res.status(400).json({ ok: false, error: 'Vui lòng nhập mật khẩu' });
     }
 
-    if (password === PASSWORDS.teacher) {
-      return res.json({ 
-        ok: true, 
-        role: 'teacher',
-        message: 'Đăng nhập thành công với quyền Giáo viên'
-      });
+    // Giáo viên
+    if (TEACHER_PASSWORD && password === TEACHER_PASSWORD) {
+      return res.json({ ok: true, role: 'teacher' });
     }
 
-    const className = Object.keys(PASSWORDS).find(
-      key => key !== 'teacher' && PASSWORDS[key] === password
-    );
-
+    // Học sinh
+    const className = CLASS_LIST.find(cls => password === process.env[`PW_${cls}`]);
     if (className) {
-      return res.json({ 
-        ok: true, 
-        role: 'student',
-        className: className,
-        message: `Đăng nhập thành công - Lớp ${className}`
-      });
+      return res.json({ ok: true, role: 'student', className });
     }
 
-    return res.status(401).json({ 
-      ok: false, 
-      error: 'Mật khẩu không đúng' 
-    });
-
-  } catch(e) {
+    return res.status(401).json({ ok: false, error: 'Mật khẩu không đúng' });
+  } catch (e) {
     console.error(e);
     res.status(500).json({ ok: false, error: e.message });
   }
