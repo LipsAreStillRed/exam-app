@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { shuffle } from '../utils/shuffle.js';
 import { v4 as uuidv4 } from 'uuid';
-import { uploadToDrive, downloadFromDrive, deleteFromDrive } from '../utils/driveHelper.js';
+import { uploadToDrive, deleteFromDrive } from '../utils/driveHelper.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
