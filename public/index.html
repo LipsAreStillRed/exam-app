@@ -1,106 +1,114 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <title>Hệ Thống Kiểm Tra Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css" />
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #f9f9f9;
-      margin: 0;
-      padding: 0;
-    }
-    .container {
-      max-width: 480px;
-      margin: 60px auto;
-      background: #fff;
-      padding: 32px;
-      border-radius: 12px;
-      box-shadow: 0 0 12px rgba(0,0,0,0.05);
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 24px;
-      color: #333;
-    }
-    label {
-      display: block;
-      margin: 12px 0 6px;
-      font-weight: 500;
-    }
-    input[type="password"] {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    button {
-      margin-top: 20px;
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    .note {
-      margin-top: 16px;
-      font-size: 14px;
-      color: #666;
-    }
-    #main {
-      margin-top: 40px;
-    }
-  </style>
-</head>
 <body>
-  <div class="container">
-    <h1>Hệ Thống Kiểm Tra</h1>
-    <label for="password">Nhập mật khẩu để tiếp tục</label>
-    <input type="password" id="password" placeholder="Mật khẩu giáo viên hoặc lớp học" />
-    <button onclick="login()">Đăng nhập</button>
-    <div class="note">
-      Giáo viên: Sử dụng mật khẩu giáo viên<br />
-      Học sinh: Sử dụng mã lớp học (VD: 12A1, 12A2)
+  <!-- Đăng nhập -->
+  <div class="page active" id="loginPage">
+    <div class="login-box">
+      <h1>Hệ Thống Kiểm Tra</h1>
+      <form id="loginForm">
+        <div class="input-group">
+          <input type="password" id="passwordInput" placeholder="Mật khẩu giáo viên hoặc lớp học" />
+          <button type="button" id="togglePassword"><svg id="eyeIcon"></svg></button>
+        </div>
+        <button id="loginBtn" class="btn btn-primary">Đăng nhập</button>
+        <div id="loginError" class="error-message"></div>
+      </form>
     </div>
   </div>
 
-  <div id="main" class="container" style="display:none"></div>
+  <!-- Trang giáo viên -->
+  <div class="page" id="teacherPage">
+    <div class="header">
+      <h2>Quản lý đề thi</h2>
+      <button id="logoutTeacher" class="btn btn-secondary">Đăng xuất</button>
+    </div>
+    <div class="card">
+      <form id="uploadForm">
+        <div class="form-group">
+          <label>Chọn file đề</label>
+          <input type="file" id="examFile" />
+        </div>
+        <div class="form-group">
+          <label>Thời gian (phút)</label>
+          <input type="number" id="timeMinutes" value="45" />
+        </div>
+        <div class="form-group">
+          <label>Mật khẩu đề (tùy chọn)</label>
+          <input type="text" id="examPassword" />
+        </div>
+        <div class="form-group">
+          <label><input type="checkbox" id="shuffleQuestions" /> Trộn câu hỏi</label>
+        </div>
+        <button id="uploadBtn" class="btn btn-primary">📤 Upload Đề</button>
+        <div id="uploadMessage" class="message"></div>
+      </form>
+    </div>
+    <div class="card">
+      <h3>Danh sách đề</h3>
+      <div id="examsList"></div>
+    </div>
+    <div class="card">
+      <h3>Bài nộp gần đây</h3>
+      <div id="submissionsList"></div>
+    </div>
+    <!-- Modal chi tiết đề -->
+    <div id="examDetailModal" class="modal">
+      <div class="modal-content">
+        <div id="examDetailContent"></div>
+        <div class="modal-actions">
+          <button id="saveAnswers" class="btn btn-primary">Lưu đáp án</button>
+          <button id="sendReport" class="btn btn-secondary">Gửi báo cáo</button>
+          <button id="deleteExam" class="btn btn-danger">Xóa đề</button>
+          <button id="closeModal" class="btn btn-secondary">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <script>
-    async function login() {
-      const pw = document.getElementById('password').value.trim();
-      if (!pw) return alert('Vui lòng nhập mật khẩu');
+  <!-- Trang học sinh -->
+  <div class="page" id="studentInfoPage">
+    <div class="card">
+      <form id="studentInfoForm">
+        <div class="form-group">
+          <label>Họ và tên</label>
+          <input type="text" id="studentName" required />
+        </div>
+        <div class="form-group">
+          <label>Ngày sinh</label>
+          <input type="date" id="studentDOB" required />
+        </div>
+        <div class="form-group">
+          <label>Lớp</label>
+          <input type="text" id="studentClass" readonly />
+        </div>
+        <div class="form-group" id="examPasswordGroup" style="display:none">
+          <label>Mật khẩu đề</label>
+          <input type="text" id="studentExamPassword" />
+        </div>
+        <button class="btn btn-primary">Bắt đầu làm bài</button>
+        <div id="studentInfoError" class="error-message"></div>
+      </form>
+    </div>
+  </div>
 
-      try {
-        const res = await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: pw })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.error || 'Sai mật khẩu');
+  <div class="page" id="examPage">
+    <div class="exam-header">
+      <div id="studentInfo"></div>
+      <div class="timer-container"><span id="timer">00:00</span></div>
+      <div id="warningMessage" class="warning-message"></div>
+    </div>
+    <div id="questionsContainer" class="questions-container"></div>
+    <button id="submitBtn" class="btn btn-submit">Nộp bài</button>
+  </div>
 
-        document.querySelector('.container').style.display = 'none';
-        const main = document.getElementById('main');
-        main.style.display = 'block';
+  <div class="page" id="resultPage">
+    <div class="result-container">
+      <div class="result-icon">✅</div>
+      <h2>Kết quả</h2>
+      <div id="scoreDisplay" class="score-display"></div>
+      <div id="resultMessage" class="message"></div>
+      <button id="backToHome" class="btn btn-secondary">Về trang chủ</button>
+      <button id="logoutStudent" class="btn btn-secondary">Đăng xuất</button>
+    </div>
+  </div>
 
-        if (data.role === 'teacher') {
-          main.innerHTML = await fetch('/admin/dashboard.html').then(r => r.text());
-        } else {
-          main.innerHTML = await fetch(`/exam/${data.classId}/start.html`).then(r => r.text());
-        }
-      } catch (err) {
-        alert(err.message);
-      }
-    }
-  </script>
+  <script src="main.js"></script>
 </body>
-</html>
