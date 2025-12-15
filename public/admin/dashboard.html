@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dashboard Giáo viên</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; }
+    nav { background: #333; color: #fff; padding: 12px; }
+    nav a { color: #fff; margin-right: 16px; text-decoration: none; }
+    section { padding: 20px; display: none; }
+    section.active { display: block; }
+    .box { border: 1px solid #ddd; padding: 16px; border-radius: 8px; margin-top: 12px; }
+    label { display: block; margin: 8px 0; }
+    input, button { padding: 8px; }
+    iframe { width: 100%; height: 300px; border: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="#" data-tab="upload">Quản lý đề thi</a>
+    <a href="#" data-tab="classes">Quản lý lớp</a>
+    <a href="#" data-tab="report">Báo cáo kết quả</a>
+  </nav>
+
+  <section id="upload" class="active">
+    <h2>Quản lý đề thi</h2>
+    <div class="box">
+      <form id="uploadForm">
+        <label>Chọn file đề: <input type="file" id="examFile" /></label>
+        <button type="submit">Upload đề</button>
+      </form>
+      <div id="uploadStatus"></div>
+    </div>
+  </section>
+
+  <section id="classes">
+    <h2>Quản lý lớp</h2>
+    <div class="box">
+      <label>Lớp: <input id="className" placeholder="VD: 12A1" /></label>
+      <label>Giờ bắt đầu: <input id="startTime" type="datetime-local" /></label>
+      <label>Giờ kết thúc: <input id="endTime" type="datetime-local" /></label>
+      <button id="saveClassBtn">Lưu cấu hình lớp</button>
+      <div id="classStatus"></div>
+    </div>
+  </section>
+
+  <section id="report">
+    <h2>Báo cáo kết quả</h2>
+    <div class="box">
+      <label>Lớp: <input id="classId" placeholder="VD: 12A1" /></label>
+      <label>Khung giờ: <input id="schedule" placeholder="VD: 8:00–9:00" /></label>
+      <label>Email nhận: <input id="to" placeholder="Mặc định dùng EMAIL_TO" /></label>
+      <label><input type="checkbox" id="attach" checked /> Đính kèm Excel</label>
+      <label><input type="checkbox" id="answers" /> Bao gồm đáp án</label>
+      <button id="previewBtn">Xem trước</button>
+      <button id="sendBtn">Gửi báo cáo</button>
+      <div id="status"></div>
+    </div>
+    <div class="box" id="previewBox" style="display:none">
+      <h3>Xem trước</h3>
+      <iframe id="previewFrame"></iframe>
+    </div>
+  </section>
+
+<script>
+const tabs = document.querySelectorAll('nav a');
+const sections = document.querySelectorAll('section');
+tabs.forEach(tab => {
+  tab.addEventListener('click', e => {
+    e.preventDefault();
+    sections.forEach(s => s.classList.remove('active'));
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+// Upload đề (gọi API upload bạn đã có)
+document.getElementById('uploadForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const file = document.getElementById('examFile').files[0];
+  if (!file) return alert('Chọn file trước');
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch('/upload', { method: 'POST', body: formData });
+  const data = await res.json();
+  document.getElementById('uploadStatus').innerText = res.ok ? 'Upload thành công' : 'Lỗi: ' + data.error;
+});
+
+// Báo cáo
+const classIdEl = document.getElementById('classId');
+const scheduleEl = document.getElementById('schedule');
+const toEl = document.getElementById('to');
+const attachEl = document.getElementById('attach');
+const answersEl = document.getElementById('answers');
+const statusEl = document.getElementById('status');
+const previewBox = document.getElementById('previewBox');
+const previewFrame = document.getElementById('previewFrame');
+
+document.getElementById('previewBtn').addEventListener('click', () => {
+  const classId = classIdEl.value.trim();
+  const schedule = encodeURIComponent(scheduleEl.value.trim());
+  const answers = answersEl.checked ? 'true' : 'false';
+  if (!classId) return statusEl.innerHTML = '<p style="color:red">Vui lòng nhập lớp</p>';
+  previewBox.style.display = 'block';
+  previewFrame.src = `/exam/report/${classId}/preview?schedule=${schedule}&answers=${answers}`;
+});
+
+document.getElementById('sendBtn').addEventListener('click', async () => {
+  statusEl.innerHTML = '';
+  const classId = classIdEl.value.trim();
+  const schedule = scheduleEl.value.trim();
+  const to = toEl.value.trim();
+  const attach = attachEl.checked;
+  const answers = answersEl.checked;
+  if (!classId) return statusEl.innerHTML = '<p style="color:red">Vui lòng nhập lớp</p>';
+  try {
+    const res = await fetch(`/exam/report/${classId}/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ schedule, to: to || undefined, attach, answers }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || 'Gửi thất bại');
+    statusEl.innerHTML = `<p style="color:green">Đã gửi báo cáo lớp ${data.classId} cho ${data.to}. Link Drive: <a href="${data.file.link}" target="_blank">${data.file.link}</a></p>`;
+  } catch (err) {
+    statusEl.innerHTML = `<p style="color:red">${err.message}</p>`;
+  }
+});
+</script>
+</body>
+</html>
