@@ -194,12 +194,20 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 };
     
-    // Upload lên Drive
-const driveResult = await uploadToDrive(
-  JSON.stringify(examData, null, 2),
-  `${examId}.json`,
-  'application/json'
-);
+    // Ghi file JSON ra ổ đĩa trước
+fs.writeFileSync(outPath, JSON.stringify(examData, null, 2), 'utf8');
+
+// Upload lên Drive bằng đường dẫn file
+let driveResult = null;
+try {
+  driveResult = await uploadToDrive(
+    outPath,                // truyền đường dẫn file
+    `${examId}.json`,
+    'application/json'
+  );
+} catch (err) {
+  console.error('Drive upload error:', err.message);
+}
 
 if (driveResult) {
   examData.driveFileId = driveResult.fileId;
@@ -207,9 +215,9 @@ if (driveResult) {
   console.log(`✅ Exam saved to Drive: ${examId}`);
 }
 
-// Vẫn lưu local backup
-fs.writeFileSync(outPath, JSON.stringify(examData, null, 2), 'utf8');
+// Xóa file gốc upload (Word)
 fs.unlinkSync(req.file.path);
+
 
 res.json({ 
   ok: true, 
