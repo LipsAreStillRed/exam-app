@@ -198,7 +198,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     let driveResult = null;
     try {
       driveResult = await uploadToDrive(
-        outPath,                // truyền đường dẫn file
+        outPath,
         `${examId}.json`,
         'application/json'
       );
@@ -230,6 +230,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 
 
 // UPLOAD HÌNH ẢNH CHO CÂU HỎI
