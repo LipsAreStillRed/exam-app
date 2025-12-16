@@ -6,7 +6,7 @@ import authRouter from './routes/auth.js';
 import examRouter from './routes/exam.js';
 import studentRouter from './routes/student.js';
 import driveAuthRoutes from './routes/driveAuth.js';
-import driveUploadRoutes from './routes/upload.mjs';
+import driveUploadRoutes from './routes/upload.js';
 import reportRoutes from './routes/report.js';
 import { getClassResults } from './utils/resultsService.js';
 import { buildClassReportWorkbook } from './utils/reportExport.js';
