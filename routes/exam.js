@@ -7,7 +7,7 @@ import { shuffle } from '../utils/shuffle.js';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadToDrive, deleteFromDrive } from '../utils/driveHelper.js';
 import JSZip from 'jszip';
-import { DOMParser } from 'xmldom';
+import { DOMParser } from '@xmldom/xmldom';
 import omml2mathml from 'omml2mathml';
 
 const router = express.Router();
