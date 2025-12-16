@@ -25,9 +25,10 @@ body {
   background: var(--bg);
   color: var(--text);
   line-height: 1.6;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .container {
@@ -36,20 +37,18 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  display: flex;
-  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
 }
 
 /* PAGE SYSTEM */
 .page {
   display: none;
   animation: fadeIn 0.3s ease-in;
-  flex: 1;
 }
 
 .page.active {
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 @keyframes fadeIn {
@@ -59,10 +58,11 @@ body {
 
 /* LOGIN PAGE - ✅ Tối ưu căn giữa */
 #loginPage {
+  min-height: calc(100vh - 100px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 20px;
 }
 
 .login-box {
@@ -727,7 +727,7 @@ body {
   font-size: 13px;
   border-top: 1px solid var(--border);
   background: var(--card-bg);
-  margin-top: auto;
+  flex-shrink: 0;
 }
 
 /* RESPONSIVE */
