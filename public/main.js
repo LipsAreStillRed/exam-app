@@ -1,5 +1,3 @@
-// public/main.js
-
 // Hàm gọi API backend
 function api(path) {
   return `/api${path}`;
@@ -131,6 +129,49 @@ async function loadExamList() {
     listDiv.appendChild(item);
   });
 }
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function handleLogin(password) {
+  const res = await fetch('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || 'Đăng nhập thất bại');
+  }
+  return data;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  showPage('loginPage'); // mặc định hiển thị trang login
+
+  const form = document.getElementById('loginForm');
+  const errBox = document.getElementById('loginError');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errBox.textContent = '';
+    const pwd = document.getElementById('password').value.trim();
+    try {
+      const result = await handleLogin(pwd);
+      if (result.role === 'teacher') {
+        showPage('teacherPage');
+        loadExamList(); // tải danh sách đề cho giáo viên
+      } else if (result.role === 'student') {
+        showPage('studentInfoPage');
+        // bạn có thể dùng result.className để hiển thị lớp học sinh
+      }
+    } catch (err) {
+      errBox.textContent = err.message;
+    }
+  });
+});
+
 
 // Khởi động
 document.addEventListener('DOMContentLoaded', () => {
