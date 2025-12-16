@@ -12,13 +12,18 @@ let violations = 0;
 // ======================
 // UTILITY FUNCTIONS
 // ======================
-function api(path) {
-  return `/api${path}`;
-}
-
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+function showPage(pageId) {
+  console.log('Switching to page:', pageId);
+  const pages = document.querySelectorAll('.page');
+  pages.forEach(page => {
+    page.classList.remove('active');
+  });
+  const targetPage = document.getElementById(pageId);
+  if (targetPage) {
+    targetPage.classList.add('active');
+  } else {
+    console.error('Page not found:', pageId);
+  }
 }
 
 function showMessage(elementId, message, isError = false) {
@@ -55,12 +60,14 @@ async function loadExamList() {
   try {
     const res = await fetch('/exam/list');
     const data = await res.json();
-    if (!data.ok) {
-      throw new Error('Không tải được danh sách đề');
-    }
     
     const listDiv = document.getElementById('examList');
     if (!listDiv) return;
+    
+    if (!data.ok) {
+      listDiv.innerHTML = '<p class="empty-state">Lỗi tải danh sách đề</p>';
+      return;
+    }
     
     listDiv.innerHTML = '';
     
@@ -91,10 +98,14 @@ async function loadSubmissions() {
   try {
     const res = await fetch('/student/submissions');
     const data = await res.json();
-    if (!data.ok) throw new Error('Không tải được bài nộp');
     
     const listDiv = document.getElementById('submissionsList');
     if (!listDiv) return;
+    
+    if (!data.ok) {
+      listDiv.innerHTML = '<p class="empty-state">Lỗi tải bài nộp</p>';
+      return;
+    }
     
     listDiv.innerHTML = '';
     
@@ -476,6 +487,8 @@ function setupEventHandlers() {
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      console.log('Login form submitted');
+      
       if (loginError) {
         loginError.textContent = '';
         loginError.classList.remove('show');
@@ -484,16 +497,22 @@ function setupEventHandlers() {
       const pwd = document.getElementById('passwordInput').value.trim();
       const loginBtn = document.getElementById('loginBtn');
       
-      if (loginBtn) loginBtn.disabled = true;
+      if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Đang xử lý...';
+      }
       
       try {
         const result = await handleLogin(pwd);
+        console.log('Login result:', result);
         
         if (result.role === 'teacher') {
+          console.log('Switching to teacher page');
           showPage('teacherPage');
-          loadExamList();
-          loadSubmissions();
+          await loadExamList();
+          await loadSubmissions();
         } else if (result.role === 'student') {
+          console.log('Switching to student info page');
           currentClassName = result.className;
           showPage('studentInfoPage');
           document.getElementById('studentClass').value = result.className || '';
@@ -503,26 +522,27 @@ function setupEventHandlers() {
             const exam = await loadLatestExam();
             currentExamId = exam.id;
             
-            if (exam.password) {
-              document.getElementById('examPasswordGroup').style.display = 'block';
-            } else {
-              document.getElementById('examPasswordGroup').style.display = 'none';
+            const pwdGroup = document.getElementById('examPasswordGroup');
+            if (exam.password && pwdGroup) {
+              pwdGroup.style.display = 'block';
+            } else if (pwdGroup) {
+              pwdGroup.style.display = 'none';
             }
           } catch (err) {
             console.error('Error loading exam:', err);
-            if (loginError) {
-              loginError.textContent = 'Không tìm thấy đề thi nào';
-              loginError.classList.add('show');
-            }
           }
         }
       } catch (err) {
+        console.error('Login error:', err);
         if (loginError) {
           loginError.textContent = err.message;
           loginError.classList.add('show');
         }
       } finally {
-        if (loginBtn) loginBtn.disabled = false;
+        if (loginBtn) {
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Đăng nhập';
+        }
       }
     });
   }
@@ -552,13 +572,18 @@ function setupEventHandlers() {
   if (studentInfoForm) {
     studentInfoForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      console.log('Student info form submitted');
+      
       if (studentInfoError) studentInfoError.textContent = '';
       
       const name = document.getElementById('studentName').value.trim();
       const dob = document.getElementById('studentDOB').value;
       
       if (!name || !dob) {
-        if (studentInfoError) studentInfoError.textContent = 'Vui lòng điền đầy đủ thông tin';
+        if (studentInfoError) {
+          studentInfoError.textContent = 'Vui lòng điền đầy đủ thông tin';
+          studentInfoError.style.display = 'block';
+        }
         return;
       }
       
@@ -570,14 +595,26 @@ function setupEventHandlers() {
         
         if (exam.password) {
           const examPassword = document.getElementById('studentExamPassword').value.trim();
+          if (!examPassword) {
+            if (studentInfoError) {
+              studentInfoError.textContent = 'Vui lòng nhập mật khẩu đề thi';
+              studentInfoError.style.display = 'block';
+            }
+            return;
+          }
+          
           const isValid = await verifyExamPassword(exam.id, examPassword);
           
           if (!isValid) {
-            if (studentInfoError) studentInfoError.textContent = 'Mật khẩu đề thi không đúng';
+            if (studentInfoError) {
+              studentInfoError.textContent = 'Mật khẩu đề thi không đúng';
+              studentInfoError.style.display = 'block';
+            }
             return;
           }
         }
         
+        console.log('Starting exam');
         showPage('examPage');
         
         const studentInfoEl = document.getElementById('studentInfo');
@@ -589,8 +626,10 @@ function setupEventHandlers() {
         startExamTimer(exam.timeMinutes);
         
       } catch (err) {
+        console.error('Error starting exam:', err);
         if (studentInfoError) {
           studentInfoError.textContent = 'Không tải được đề thi: ' + err.message;
+          studentInfoError.style.display = 'block';
         }
       }
     });
@@ -601,6 +640,7 @@ function setupEventHandlers() {
   if (uploadForm) {
     uploadForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      console.log('Upload form submitted');
       
       const fileInput = document.getElementById('examFile');
       const timeInput = document.getElementById('timeMinutes');
@@ -620,8 +660,11 @@ function setupEventHandlers() {
       formData.append('password', passwordInput ? passwordInput.value : '');
       formData.append('shuffle', shuffleInput ? shuffleInput.checked : 'true');
       
-      if (uploadBtn) uploadBtn.disabled = true;
-      if (uploadMessage) uploadMessage.textContent = 'Đang tải lên...';
+      if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Đang tải lên...';
+      }
+      if (uploadMessage) uploadMessage.textContent = 'Đang xử lý file...';
       
       try {
         const res = await fetch('/exam/upload', {
@@ -630,18 +673,24 @@ function setupEventHandlers() {
         });
         
         const data = await res.json();
+        console.log('Upload result:', data);
         
         if (data.ok) {
-          showMessage('uploadMessage', `Đã tải lên thành công! ${data.count} câu hỏi`, false);
+          showMessage('uploadMessage', `✅ Đã tải lên thành công! ${data.count} câu hỏi`, false);
           uploadForm.reset();
-          loadExamList();
+          await loadExamList();
+          await loadSubmissions();
         } else {
           showMessage('uploadMessage', data.error || 'Lỗi tải lên', true);
         }
       } catch (err) {
+        console.error('Upload error:', err);
         showMessage('uploadMessage', 'Lỗi kết nối: ' + err.message, true);
       } finally {
-        if (uploadBtn) uploadBtn.disabled = false;
+        if (uploadBtn) {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = '📤 Upload Đề';
+        }
       }
     });
   }
@@ -663,12 +712,20 @@ function setupEventHandlers() {
   // Logout buttons
   const logoutTeacher = document.getElementById('logoutTeacher');
   if (logoutTeacher) {
-    logoutTeacher.addEventListener('click', () => location.reload());
+    logoutTeacher.addEventListener('click', () => {
+      if (confirm('Bạn có chắc muốn đăng xuất?')) {
+        location.reload();
+      }
+    });
   }
   
   const logoutStudent = document.getElementById('logoutStudent');
   if (logoutStudent) {
-    logoutStudent.addEventListener('click', () => location.reload());
+    logoutStudent.addEventListener('click', () => {
+      if (confirm('Bạn có chắc muốn đăng xuất?')) {
+        location.reload();
+      }
+    });
   }
   
   // Close modal button
@@ -692,12 +749,9 @@ function setupEventHandlers() {
 // INITIALIZATION
 // ======================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('App initialized');
+  console.log('=== App Initialized ===');
   showPage('loginPage');
   setupEventHandlers();
-  
-  // Load exam list for teacher page (will be hidden until login)
-  loadExamList();
 });
 
 // Make functions available globally for onclick handlers
