@@ -6,9 +6,22 @@ import path from 'path';
 import { shuffle } from '../utils/shuffle.js';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadToDrive, deleteFromDrive } from '../utils/driveHelper.js';
+import JSZip from 'jszip';
+import { DOMParser } from 'xmldom';
+import omml2mathml from 'omml2mathml';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
+
+function convertOmmlToMathml(ommlXml) {
+  try {
+    const doc = new DOMParser().parseFromString(ommlXml, 'text/xml');
+    return omml2mathml(doc);
+  } catch (e) {
+    console.error('OMML convert error:', e);
+    return null;
+  }
+}
 
 function parseExamContent(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
