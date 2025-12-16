@@ -1,6 +1,5 @@
 import fs from 'fs';
 import { google } from 'googleapis';
-import path from 'path';
 
 const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 
