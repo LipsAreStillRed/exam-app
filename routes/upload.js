@@ -1,9 +1,15 @@
 import express from 'express';
 import multer from 'multer';
 import { uploadToDrive, deleteFromDrive } from '../utils/driveHelper.js';
+import JSZip from 'jszip'; import { DOMParser } from 'xmldom'; import omml2mathml from 'omml2mathml'; // cần cài lib hỗ trợ
 
 const router = express.Router();
 const upload = multer({ dest: 'tmp/' });
+
+// Hàm chuyển OMML sang MathML 
+function convertOmmlToMathml(ommlXml) { 
+  const doc = new DOMParser().parseFromString(ommlXml, 'text/xml'); 
+  return omml2mathml(doc); // trả về MathML string }
 
 // ✅ Upload file lên Google Drive
 router.post('/drive/upload', upload.single('file'), async (req, res) => {
