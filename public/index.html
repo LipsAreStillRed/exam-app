@@ -16,10 +16,20 @@
 </head>
 <body>
   <div class="container">
-    <!-- LOGIN PAGE -->
-    <div id="loginPage" class="page active">
-      <!-- ... giữ nguyên phần login ... -->
-    </div>
+    
+   <!-- LOGIN PAGE -->
+<div id="loginPage" class="page active">
+  <div class="login-container">
+    <h2>🔑 Đăng Nhập Hệ Thống</h2>
+    <form id="loginForm">
+      <label for="password">Nhập mật khẩu:</label>
+      <input type="password" id="password" name="password" required />
+      <button type="submit" class="btn btn-primary">Đăng nhập</button>
+    </form>
+    <p class="hint">👉 Giáo viên và học sinh dùng mật khẩu khác nhau.</p>
+    <div id="loginError" class="error" aria-live="polite"></div>
+  </div>
+</div>
 
     <!-- TEACHER PAGE -->
 <div id="teacherPage" class="page">
