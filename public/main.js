@@ -177,14 +177,57 @@ document.addEventListener('DOMContentLoaded', () => {
     const exam = data.exam;
 
     content.innerHTML = `
-      <p><strong>Tên đề:</strong> ${exam.originalName}</p>
-      <p><strong>Số câu hỏi:</strong> ${exam.questions.length}</p>
-      <p><strong>Thời gian:</strong> ${exam.timeMinutes} phút</p>
-      <p><strong>Mật khẩu đề:</strong> ${exam.password || 'Không có'}</p>
-      <hr />
-      <p><strong>Trộn đề ở lần tạo:</strong> ${exam.metadata?.multipleChoice ? 'Đã trộn phần trắc nghiệm' : 'Không trộn'}</p>
-      <p class="hint">Tính năng điền đáp án sẽ lưu vào trường "answers" của đề.</p>
-    `;
+  <p><strong>Tên đề:</strong> ${exam.originalName}</p>
+  <p><strong>Số câu hỏi:</strong> ${exam.questions.length}</p>
+  <p><strong>Thời gian:</strong> ${exam.timeMinutes} phút</p>
+  <p><strong>Mật khẩu đề:</strong> ${exam.password || 'Không có'}</p>
+  <hr />
+  <p><strong>Trộn đề ở lần tạo:</strong> ${exam.metadata?.multipleChoice ? 'Đã trộn phần trắc nghiệm' : 'Không trộn'}</p>
+  <p class="hint">Chọn đáp án đúng cho từng câu hỏi bên dưới:</p>
+`;
+
+exam.questions.forEach(q => {
+  const div = document.createElement('div');
+  div.className = 'question-block';
+  div.innerHTML = `
+    <h4>Câu ${q.id}</h4>
+    <p>${q.question}</p>
+    ${q.image ? `<img src="${q.image}" style="max-width:200px"/>` : ''}
+    ${q.latex ? `<div class="latex">\\(${q.latex}\\)</div>` : ''}
+    <div id="options_${q.id}"></div>
+  `;
+  content.appendChild(div);
+
+  const optsDiv = div.querySelector(`#options_${q.id}`);
+  if (q.type === 'multiple_choice' && Array.isArray(q.options)) {
+    q.options.forEach(opt => {
+      const optEl = document.createElement('label');
+      optEl.innerHTML = `
+        <input type="radio" name="ans_${q.id}" value="${opt.key}" ${q.correctAnswer === opt.key ? 'checked' : ''}>
+        ${opt.key}. ${opt.text}
+      `;
+      optsDiv.appendChild(optEl);
+    });
+  } else if (q.type === 'true_false') {
+    ['Đúng','Sai'].forEach(val => {
+      const optEl = document.createElement('label');
+      optEl.innerHTML = `
+        <input type="radio" name="ans_${q.id}" value="${val}" ${q.correctAnswer === val ? 'checked' : ''}>
+        ${val}
+      `;
+      optsDiv.appendChild(optEl);
+    });
+  } else if (q.type === 'short_answer') {
+    const ta = document.createElement('textarea');
+    ta.rows = 2;
+    ta.name = `ans_${q.id}`;
+    ta.value = q.correctAnswer || '';
+    optsDiv.appendChild(ta);
+  }
+});
+
+MathJax.typesetPromise();
+
     modal.classList.add('active');
 
     // Lưu đáp án (mở rộng sau: tạo form nhập đáp án theo từng câu)
