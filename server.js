@@ -38,7 +38,6 @@ app.use('/student', studentRouter);
 // ✅ Thêm routes mới cho Google Drive OAuth và Upload
 app.use('/', driveAuthRoutes);
 app.use('/', driveUploadRoutes);
-app.use(express.json()); // để đọc body JSON từ POST
 app.use('/', reportRoutes);      
 
 const PORT = process.env.PORT || 3000;
