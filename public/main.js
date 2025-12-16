@@ -3,6 +3,26 @@ function api(path) {
   return `/api${path}`;
 }
 
+// Hiển thị/ẩn trang
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// Gọi API login
+async function handleLogin(password) {
+  const res = await fetch('/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || 'Đăng nhập thất bại');
+  }
+  return data;
+}
+
 // Mở modal chi tiết đề thi
 async function openExamDetailModal(examId) {
   const res = await fetch(api(`/exam/${examId}`));
@@ -73,14 +93,12 @@ async function openExamDetailModal(examId) {
     }
   });
 
-  // ✅ Render MathML và LaTeX bằng MathJax
   if (window.MathJax?.typesetPromise) {
     window.MathJax.typesetPromise();
   }
 
   modal.classList.add('active');
 
-  // Nút lưu đáp án
   document.getElementById('saveAnswers').onclick = async () => {
     try {
       const answers = {};
@@ -129,51 +147,45 @@ async function loadExamList() {
     listDiv.appendChild(item);
   });
 }
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
 
-async function handleLogin(password) {
-  const res = await fetch('/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password })
-  });
-  const data = await res.json();
-  if (!res.ok || !data.ok) {
-    throw new Error(data.error || 'Đăng nhập thất bại');
-  }
-  return data;
-}
-
+// Khởi động
 document.addEventListener('DOMContentLoaded', () => {
   showPage('loginPage'); // mặc định hiển thị trang login
+  loadExamList();        // tải danh sách đề cho giáo viên
 
+  // Toggle mật khẩu
+  document.getElementById('togglePassword').addEventListener('click', function() {
+    const input = document.getElementById('passwordInput');
+    const icon = document.getElementById('eyeIcon');
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.innerHTML = '<path d="M17.94 17.94..."/>'; // icon mở
+    } else {
+      input.type = 'password';
+      icon.innerHTML = '<path d="M1 12s4-8..."/><circle cx="12" cy="12" r="3"/>'; // icon đóng
+    }
+  });
+
+  // Xử lý form login
   const form = document.getElementById('loginForm');
   const errBox = document.getElementById('loginError');
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errBox.textContent = '';
-    const pwd = document.getElementById('password').value.trim();
+    const pwd = document.getElementById('passwordInput').value.trim();
     try {
       const result = await handleLogin(pwd);
       if (result.role === 'teacher') {
         showPage('teacherPage');
-        loadExamList(); // tải danh sách đề cho giáo viên
+        loadExamList();
       } else if (result.role === 'student') {
         showPage('studentInfoPage');
-        // bạn có thể dùng result.className để hiển thị lớp học sinh
+        document.getElementById('studentClass').value = result.className || '';
       }
     } catch (err) {
       errBox.textContent = err.message;
+      errBox.classList.add('show');
     }
   });
-});
-
-
-// Khởi động
-document.addEventListener('DOMContentLoaded', () => {
-  loadExamList();
 });
