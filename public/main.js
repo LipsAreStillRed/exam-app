@@ -232,19 +232,27 @@ MathJax.typesetPromise();
 
     // Lưu đáp án (mở rộng sau: tạo form nhập đáp án theo từng câu)
     document.getElementById('saveAnswers').onclick = async () => {
-      try {
-        const answers = {}; // TODO: thêm UI nhập đáp án
-        const resSave = await fetch(api(`/exam/${examId}/answers`), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers })
-        });
-        const result = await resSave.json();
-        alert(result.message || 'Đã lưu đáp án');
-      } catch (err) {
-        alert('Lỗi lưu đáp án');
+  try {
+    const answers = {};
+    document.querySelectorAll('[name^="ans_"]').forEach(input => {
+      if ((input.type === 'radio' && input.checked) || input.tagName === 'TEXTAREA') {
+        const qid = input.name.replace('ans_', '');
+        answers[qid] = input.value;
       }
-    };
+    });
+
+    const resSave = await fetch(api(`/exam/${examId}/correct-answers`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers })
+    });
+    const result = await resSave.json();
+    alert(result.message || 'Đã lưu đáp án');
+  } catch (err) {
+    alert('Lỗi lưu đáp án');
+  }
+};
+
 
     // Gửi báo cáo (nếu có route /report/send/:examId)
     document.getElementById('sendReport').onclick = async () => {
