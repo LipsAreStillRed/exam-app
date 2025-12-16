@@ -1,55 +1,46 @@
-import { google } from 'googleapis';
 import fs from 'fs';
+import { google } from 'googleapis';
+import path from 'path';
 
-const oauth2Client = new google.auth.OAuth2(
-  process.env.GOOGLE_CLIENT_ID,
-  process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
-);
+const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 
-// Nếu đã có refresh token thì set luôn để dùng
-if (process.env.OAUTH_REFRESH_TOKEN) {
-  oauth2Client.setCredentials({ refresh_token: process.env.OAUTH_REFRESH_TOKEN });
+// Khởi tạo OAuth2 client
+function getAuthClient() {
+  const { OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET, OAUTH_REFRESH_TOKEN } = process.env;
+  const oauth2Client = new google.auth.OAuth2(
+    OAUTH_CLIENT_ID,
+    OAUTH_CLIENT_SECRET,
+    'urn:ietf:wg:oauth:2.0:oob'
+  );
+  oauth2Client.setCredentials({ refresh_token: OAUTH_REFRESH_TOKEN });
+  return oauth2Client;
 }
 
-const drive = google.drive({ version: 'v3', auth: oauth2Client });
+// ✅ Upload file bằng đường dẫn
+export async function uploadToDrive(filePath, filename, mimeType) {
+  const auth = getAuthClient();
+  const drive = google.drive({ version: 'v3', auth });
 
-export async function uploadToDrive(filePath, fileName, mimeType) {
-  try {
-    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
-    if (!folderId) throw new Error('Thiếu GOOGLE_DRIVE_FOLDER_ID');
+  const fileMetadata = { name: filename };
+  const media = {
+    mimeType,
+    body: fs.createReadStream(filePath)
+  };
 
-    const fileMetadata = {
-      name: fileName,
-      parents: [folderId],
-    };
+  const res = await drive.files.create({
+    resource: fileMetadata,
+    media,
+    fields: 'id, webViewLink, webContentLink'
+  });
 
-    const media = {
-      mimeType,
-      body: fs.createReadStream(filePath),
-    };
-
-    const response = await drive.files.create({
-      requestBody: fileMetadata,
-      media,
-      fields: 'id, name, webViewLink, webContentLink',
-    });
-
-    // Xoá file tạm sau khi upload
-    fs.unlink(filePath, () => {});
-    return response.data;
-  } catch (error) {
-    console.error('Drive upload error:', error?.response?.data || error.message || error);
-    throw error;
-  }
+  return res.data;
 }
 
+// ✅ Xóa file trên Drive
 export async function deleteFromDrive(fileId) {
-  try {
-    await drive.files.delete({ fileId });
-    return { success: true };
-  } catch (error) {
-    console.error('Drive delete error:', error?.response?.data || error.message || error);
-    throw error;
-  }
+  const auth = getAuthClient();
+  const drive = google.drive({ version: 'v3', auth });
+
+  await drive.files.delete({ fileId });
+  return true;
 }
