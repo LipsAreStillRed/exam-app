@@ -22,30 +22,55 @@
     </div>
 
     <!-- TEACHER PAGE -->
-    <div id="teacherPage" class="page">
-      <div class="header">
-        <h2>🎓 Bảng Điều Khiển Giáo Viên</h2>
-        <button class="btn btn-secondary" id="logoutTeacher">Đăng xuất</button>
-      </div>
-      <div class="dashboard">
-        <!-- Upload đề, danh sách đề, bài nộp gần đây giữ nguyên -->
-      </div>
+<div id="teacherPage" class="page">
+  <div class="header">
+    <h2>🎓 Bảng Điều Khiển Giáo Viên</h2>
+    <button class="btn btn-secondary" id="logoutTeacher">Đăng xuất</button>
+  </div>
 
-      <!-- Modal chi tiết đề -->
-      <div id="examDetailModal" class="modal">
-        <div class="modal-content">
-          <button class="close" id="closeModal" title="Đóng" aria-label="Đóng"></button>
-          <h2>📋 Chi Tiết Đề Thi</h2>
-          <!-- Đây là nơi hiển thị câu hỏi + đáp án -->
-          <div id="examDetailContent"></div>
-          <div class="modal-actions">
-            <button class="btn btn-primary" id="saveAnswers">💾 Lưu Đáp Án</button>
-            <button class="btn btn-secondary" id="sendReport">📧 Gửi Báo Cáo</button>
-            <button class="btn btn-danger" id="deleteExam">🗑️ Xóa Đề</button>
-          </div>
-        </div>
+  <div class="dashboard">
+    <!-- Upload đề -->
+    <section class="upload-section">
+      <h3>📤 Upload Đề Thi</h3>
+      <form id="uploadExamForm" enctype="multipart/form-data">
+        <input type="file" name="examFile" accept=".docx" required />
+        <button type="submit" class="btn btn-primary">Upload</button>
+      </form>
+    </section>
+
+    <!-- Danh sách đề -->
+    <section class="exam-list-section">
+      <h3>📚 Danh Sách Đề Thi</h3>
+      <div id="examList" class="exam-list">
+        <!-- Danh sách đề sẽ được load từ main.js -->
+      </div>
+    </section>
+
+    <!-- Bài nộp gần đây -->
+    <section class="recent-submissions">
+      <h3>📝 Bài Nộp Gần Đây</h3>
+      <div id="recentSubmissions">
+        <!-- Nội dung sẽ được load từ main.js -->
+      </div>
+    </section>
+  </div>
+
+  <!-- Modal chi tiết đề -->
+  <div id="examDetailModal" class="modal">
+    <div class="modal-content">
+      <button class="close" id="closeModal" title="Đóng" aria-label="Đóng">×</button>
+      <h2>📋 Chi Tiết Đề Thi</h2>
+      <!-- Đây là nơi hiển thị câu hỏi + đáp án -->
+      <div id="examDetailContent"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="saveAnswers">💾 Lưu Đáp Án</button>
+        <button class="btn btn-secondary" id="sendReport">📧 Gửi Báo Cáo</button>
+        <button class="btn btn-danger" id="deleteExam">🗑️ Xóa Đề</button>
       </div>
     </div>
+  </div>
+</div>
+
 
     <!-- STUDENT INFO PAGE -->
     <div id="studentInfoPage" class="page">
