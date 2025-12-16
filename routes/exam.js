@@ -480,6 +480,62 @@ router.delete('/:examId', async (req, res) => {
     console.error('Delete error:', e);
     res.status(500).json({ ok: false, error: e.message }); 
   }
+  // Lưu đáp án đúng cho toàn bộ đề
+router.post('/:examId/correct-answers', (req, res) => {
+  try {
+    const { examId } = req.params;
+    const { answers } = req.body; // { "1": "A", "2": "Đúng", ... }
+
+    const filePath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    data.answers = answers;
+
+    (data.questions || []).forEach(q => {
+      if (answers[q.id]) q.correctAnswer = answers[q.id];
+    });
+
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    res.json({ ok: true, message: 'Đã lưu đáp án đúng' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+// Lưu công thức LaTeX cho câu hỏi
+router.post('/:examId/latex/:questionId', (req, res) => {
+  try {
+    const { examId, questionId } = req.params;
+    const { latex } = req.body;
+
+    const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+    if (!fs.existsSync(examPath)) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+
+    const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
+    let updated = false;
+
+    (examData.questions || []).forEach(q => {
+      if (String(q.id) === String(questionId)) {
+        q.latex = latex || null;
+        updated = true;
+      }
+    });
+
+    if (!updated) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
+    }
+
+    fs.writeFileSync(examPath, JSON.stringify(examData, null, 2), 'utf8');
+    res.json({ ok: true, message: 'Đã lưu công thức', latex });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 });
 
 export default router;
