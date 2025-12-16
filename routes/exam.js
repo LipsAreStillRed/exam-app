@@ -537,5 +537,29 @@ router.post('/:examId/latex/:questionId', (req, res) => {
 });
 
 });
+// Lưu đáp án đúng cho toàn bộ đề
+router.post('/:examId/correct-answers', (req, res) => {
+  try {
+    const { examId } = req.params;
+    const { answers } = req.body;
+
+    const filePath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+
+    const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    data.answers = answers;
+
+    (data.questions || []).forEach(q => {
+      if (answers[q.id]) q.correctAnswer = answers[q.id];
+    });
+
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    res.json({ ok: true, message: 'Đã lưu đáp án đúng' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
 export default router;
