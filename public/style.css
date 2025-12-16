@@ -604,3 +604,18 @@ body {
   outline: none;
   border-color: var(--primary);
 }
+
+/* Overlay cho trang login */
+.login-box {
+  position: relative;
+  z-index: 10;
+}
+
+#loginPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: rgba(0,0,0,0.05);
+}
+
