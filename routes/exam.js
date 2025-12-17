@@ -14,6 +14,7 @@ import { parseExamContent, smartShuffle, flattenSections } from '../utils/parseE
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
+// Convert OMML (Office Math) sang MathML
 function convertOmmlToMathml(xml) {
   try {
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
@@ -23,6 +24,7 @@ function convertOmmlToMathml(xml) {
   }
 }
 
+// Helper lưu/đọc exam JSON
 function ensureDir() {
   const dir = path.join(process.cwd(), 'data', 'exams');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -38,6 +40,7 @@ function writeExam(exam) {
   fs.writeFileSync(examPath(exam.id), JSON.stringify(exam, null, 2), 'utf8');
 }
 
+// Upload đề từ file Word
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
@@ -91,6 +94,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// Danh sách đề
 router.get('/list', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
@@ -98,6 +102,7 @@ router.get('/list', (req, res) => {
   res.json({ ok: true, exams });
 });
 
+// Đề mới nhất cho học sinh
 router.get('/latest', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
@@ -107,12 +112,23 @@ router.get('/latest', (req, res) => {
   res.json({ ok: true, exam: latest });
 });
 
+// Lấy chi tiết đề
 router.get('/:id', (req, res) => {
   const exam = readExam(req.params.id);
   if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
   res.json({ ok: true, exam });
 });
 
+// Xác thực mật khẩu đề
+router.post('/verify-password', (req, res) => {
+  const { examId, password } = req.body;
+  const exam = readExam(examId);
+  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  const verified = !exam.password || exam.password === password;
+  res.json({ ok: verified });
+});
+
+// Lưu đáp án đúng
 router.post('/:id/correct-answers', (req, res) => {
   const exam = readExam(req.params.id);
   if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
@@ -121,16 +137,15 @@ router.post('/:id/correct-answers', (req, res) => {
   res.json({ ok: true, message: 'Đã lưu đáp án' });
 });
 
+// Xóa đề
 router.delete('/:id', async (req, res) => {
   try {
     const exam = readExam(req.params.id);
     if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
 
-    // Xóa file JSON
     const p = examPath(req.params.id);
     if (fs.existsSync(p)) fs.unlinkSync(p);
 
-    // Xóa trên Drive nếu có
     if (exam.driveFileId) {
       try {
         await deleteFromDrive(exam.driveFileId);
@@ -145,8 +160,4 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-    res.json({ ok: true, message: 'Đã xóa đề' });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
-  }
-});
+export default router;
