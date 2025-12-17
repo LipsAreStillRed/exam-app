@@ -125,4 +125,5 @@ router.delete('/:id', (req, res) => {
   const exam = readExam(req.params.id);
   if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
   fs.unlinkSync(examPath(req.params.id));
-  if (exam.driveFileId) deleteFromDrive(exam.driveFileId
+  if (exam.driveFileId) deleteFromDrive(exam.driveFileId)
+});
