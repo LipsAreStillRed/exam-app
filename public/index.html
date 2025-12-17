@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hệ Thống Kiểm Tra Trực Tuyến</title>
-  <link rel="stylesheet" href="style.css">
-  <!-- MathJax để hiển thị công thức LaTeX -->
+  <link rel="stylesheet" href="style.css" />
   <script>
     window.MathJax = {
       loader: { load: ['input/mml', 'output/chtml'] },
@@ -20,7 +19,7 @@
     <div id="loginPage" class="page active">
       <div class="login-box">
         <div class="logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
           </svg>
         </div>
@@ -28,9 +27,9 @@
         <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
         <form id="loginForm">
           <div class="input-group">
-            <input type="password" id="passwordInput" placeholder="Mật khẩu" autocomplete="off" required>
-            <button type="button" class="toggle-password" id="togglePassword">
-              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <input type="password" id="passwordInput" placeholder="Mật khẩu" autocomplete="off" required />
+            <button type="button" class="toggle-password" id="togglePassword" aria-label="Hiện/ẩn mật khẩu">
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
@@ -52,31 +51,32 @@
         <h2>🎓 Bảng Điều Khiển Giáo Viên</h2>
         <button class="btn btn-secondary" id="logoutTeacher">Đăng xuất</button>
       </div>
+
       <div class="dashboard">
         <div class="card">
           <h3>📝 Upload Đề Thi</h3>
           <form id="uploadForm">
             <div class="form-group">
               <label>Chọn file đề thi (Word)</label>
-              <input type="file" id="examFile" accept=".doc,.docx" required>
-              <small>Mỗi câu bắt đầu bằng "Câu X:", đáp án A. B. C. D.</small>
+              <input type="file" id="examFile" accept=".doc,.docx" required />
+              <small>Đề gồm 3 phần theo form Bộ GD. Đảm bảo câu bắt đầu bằng "Câu X:"</small>
             </div>
             <div class="form-row">
               <div class="form-group">
                 <label>Thời gian làm bài (phút)</label>
-                <input type="number" id="timeMinutes" min="1" max="180" value="45" required>
+                <input type="number" id="timeMinutes" min="1" max="180" value="45" required />
               </div>
               <div class="form-group">
                 <label>Mật khẩu đề (tùy chọn)</label>
-                <input type="text" id="examPassword" placeholder="Để trống nếu không cần">
+                <input type="text" id="examPassword" placeholder="Để trống nếu không cần" />
               </div>
             </div>
             <div class="form-group">
-              <label><input type="checkbox" id="shuffleQuestions" checked> Trộn câu hỏi (chỉ phần trắc nghiệm)</label>
+              <label><input type="checkbox" id="shuffleQuestions" checked /> Trộn câu hỏi (Phần 1 & 2) và trộn đáp án (Phần 1)</label>
             </div>
             <button type="submit" class="btn btn-primary" id="uploadBtn">📤 Upload Đề</button>
           </form>
-          <div id="uploadMessage" class="message"></div>
+          <div id="uploadMessage" class="message" style="display:none;"></div>
         </div>
 
         <div class="card">
@@ -95,10 +95,10 @@
       </div>
 
       <!-- EXAM DETAIL MODAL -->
-      <div id="examDetailModal" class="modal">
-        <div class="modal-content">
-          <button class="close" id="closeModal" title="Đóng" aria-label="Đóng"></button>
-          <h2>📋 Chi Tiết Đề Thi</h2>
+      <div id="examDetailModal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true">
+          <button class="close" id="closeModal" title="Đóng" aria-label="Đóng">✖</button>
+          <h2>📋 Chi Tiết & Đáp Án</h2>
           <div id="examDetailContent"></div>
           <div class="modal-actions">
             <button class="btn btn-primary" id="saveAnswers">💾 Lưu Đáp Án</button>
@@ -121,19 +121,19 @@
           <form id="studentInfoForm">
             <div class="form-group">
               <label>Họ và tên *</label>
-              <input type="text" id="studentName" placeholder="Nguyễn Văn A" required>
+              <input type="text" id="studentName" placeholder="Nguyễn Văn A" required />
             </div>
             <div class="form-group">
               <label>Ngày sinh *</label>
-              <input type="date" id="studentDOB" required>
+              <input type="date" id="studentDOB" required />
             </div>
             <div class="form-group">
               <label>Lớp</label>
-              <input type="text" id="studentClass" readonly>
+              <input type="text" id="studentClass" readonly />
             </div>
             <div class="form-group" id="examPasswordGroup" style="display:none;">
               <label>Mật khẩu đề thi *</label>
-              <input type="password" id="studentExamPassword" placeholder="Nhập mật khẩu đề">
+              <input type="password" id="studentExamPassword" placeholder="Nhập mật khẩu đề" />
             </div>
             <button type="submit" class="btn btn-primary">▶️ Bắt Đầu Làm Bài</button>
           </form>
@@ -172,10 +172,6 @@
     </div>
   </div>
 
-  <!-- FOOTER + SCRIPT -->
+  <!-- FOOTER -->
   <footer class="footer">
-    <p>© GV. Nguyễn Minh Thiện – Build with AI</p>
-  </footer>
-  <script src="main.js"></script>
-</body>
-</html>
+    <p>© GV. Nguyễn Minh Thiện – Build
