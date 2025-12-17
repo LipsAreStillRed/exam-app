@@ -144,3 +144,9 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+    res.json({ ok: true, message: 'Đã xóa đề' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
