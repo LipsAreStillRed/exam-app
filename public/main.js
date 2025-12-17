@@ -55,7 +55,7 @@ function setupEventHandlers() {
   const loginError = document.getElementById('loginError');
   if (loginForm) {
     loginForm.addEventListener('submit', async e => {
-      e.preventDefault(); // chặn reload mặc định
+      e.preventDefault(); // chặn reload
       loginError.textContent = '';
       loginError.classList.remove('show');
       const pwd = document.getElementById('passwordInput').value.trim();
@@ -197,4 +197,5 @@ function setupEventHandlers() {
 // ====================== INIT ======================
 document.addEventListener('DOMContentLoaded', () => {
   showPage('loginPage');
-  setup
+  setupEventHandlers();
+});
