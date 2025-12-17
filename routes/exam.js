@@ -121,9 +121,26 @@ router.post('/:id/correct-answers', (req, res) => {
   res.json({ ok: true, message: 'Đã lưu đáp án' });
 });
 
-router.delete('/:id', (req, res) => {
-  const exam = readExam(req.params.id);
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  fs.unlinkSync(examPath(req.params.id));
-  if (exam.driveFileId) deleteFromDrive(exam.driveFileId)
+router.delete('/:id', async (req, res) => {
+  try {
+    const exam = readExam(req.params.id);
+    if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+
+    // Xóa file JSON
+    const p = examPath(req.params.id);
+    if (fs.existsSync(p)) fs.unlinkSync(p);
+
+    // Xóa trên Drive nếu có
+    if (exam.driveFileId) {
+      try {
+        await deleteFromDrive(exam.driveFileId);
+      } catch (e) {
+        console.error('Delete from Drive error:', e.message);
+      }
+    }
+
+    res.json({ ok: true, message: 'Đã xóa đề' });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
