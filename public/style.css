@@ -814,3 +814,47 @@ body {
     padding: 16px;
   }
 }
+/* Login center + overlay nhẹ */
+#loginPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: rgba(0,0,0,0.03);
+}
+.login-box { max-width: 420px; width: 92%; margin: 24px auto; padding: 24px; }
+
+/* Modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; }
+.modal.active { display: flex; align-items: center; justify-content: center; }
+.modal-content { background: #fff; width: 96%; max-width: 880px; border-radius: 12px; padding: 20px; box-shadow: 0 8px 28px rgba(0,0,0,0.2); }
+.modal .close { position: absolute; right: 16px; top: 12px; background: transparent; border: none; font-size: 20px; cursor: pointer; }
+
+/* Options UI */
+.options { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.option { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.option input { margin-right: 6px; }
+
+/* Short answer boxes */
+.short-answer-boxes .boxes-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.answer-box { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
+
+/* Teacher dashboard cards */
+.dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* Responsive */
+@media (max-width: 880px) {
+  .dashboard { grid-template-columns: 1fr; }
+  .modal-content { width: 96%; }
+}
+@media (max-width: 480px) {
+  .login-box { width: 92%; padding: 20px; }
+  .login-box h1 { font-size: 22px; }
+  .subtitle { font-size: 14px; }
+  .input-group input { font-size: 14px; padding: 10px 36px 10px 10px; }
+  .btn { font-size: 15px; padding: 10px 12px; }
+  .option { padding: 10px; }
+}
+
