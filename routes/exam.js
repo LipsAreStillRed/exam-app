@@ -1,3 +1,4 @@
+// routes/exam.js
 import express from 'express';
 import multer from 'multer';
 import mammoth from 'mammoth';
@@ -7,24 +8,12 @@ import JSZip from 'jszip';
 import { DOMParser } from '@xmldom/xmldom';
 import omml2mathml from 'omml2mathml';
 import { v4 as uuidv4 } from 'uuid';
-
 import { uploadToDrive, deleteFromDrive } from '../utils/driveHelper.js';
-import { parseExamContent, smartShuffle, flattenSections } from '../utils/parseExamContent.js';
+import { parseExamContent, flattenSections } from '../utils/parseExamContent.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
-// Convert OMML (Office Math) sang MathML
-function convertOmmlToMathml(xml) {
-  try {
-    const doc = new DOMParser().parseFromString(xml, 'text/xml');
-    return omml2mathml(doc);
-  } catch {
-    return null;
-  }
-}
-
-// Helper lưu/đọc exam JSON
 function ensureDir() {
   const dir = path.join(process.cwd(), 'data', 'exams');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -40,56 +29,116 @@ function writeExam(exam) {
   fs.writeFileSync(examPath(exam.id), JSON.stringify(exam, null, 2), 'utf8');
 }
 
-// Upload đề từ file Word
+function convertOmmlToMathml(xml) {
+  try {
+    const doc = new DOMParser().parseFromString(xml, 'text/xml');
+    const mmlNode = omml2mathml(doc);
+    return mmlNode?.toString ? mmlNode.toString() : String(mmlNode);
+  } catch {
+    return null;
+  }
+}
+
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
-    const result = await mammoth.extractRawText({ path: req.file.path });
-    const text = result.value || '';
+
+    // 1) Lấy text thô để parser theo form Bộ GD
+    const raw = await mammoth.extractRawText({ path: req.file.path });
+    const text = raw.value || '';
     const sections = parseExamContent(text);
-    if (!sections.length) return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
+    if (!sections.length) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
+    }
 
-    const shuffled = smartShuffle(sections, req.body.shuffle === 'true');
-    const questions = flattenSections(shuffled);
-
-    // OMML -> MathML
-    let mathmlList = [];
+    // 2) Extract OMML -> MathML từ document.xml
+    let mathmlMapByIndex = {};
     try {
       const zip = await JSZip.loadAsync(fs.readFileSync(req.file.path));
       const docXml = await zip.file('word/document.xml').async('string');
       const ommlBlocks = docXml.match(/<m:oMath[^>]*>[\s\S]*?<\/m:oMath>/g) || [];
-      mathmlList = ommlBlocks.map(convertOmmlToMathml).filter(Boolean);
+      const mathmlList = ommlBlocks.map(convertOmmlToMathml).filter(Boolean);
+      mathmlList.forEach((mml, idx) => { mathmlMapByIndex[idx] = mml; });
     } catch {}
 
-    questions.forEach((q, i) => { if (mathmlList[i]) q.mathml = mathmlList[i]; });
+    // 3) Trích xuất media từ docx (word/media/*) -> public/uploads/exam-images/<examId>/
+    const mediaMap = {};
+    try {
+      const zip = await JSZip.loadAsync(fs.readFileSync(req.file.path));
+      const entries = zip.filter((relPath) => relPath.startsWith('word/media/'));
+      const examTempId = 'temp'; // sẽ update sau khi có examId thực
+      const mediaDir = path.join('public', 'uploads', 'exam-images', examTempId);
+      fs.mkdirSync(mediaDir, { recursive: true });
+      for (const entry of entries) {
+        const filename = path.basename(entry.name);
+        const outPath = path.join(mediaDir, filename);
+        const buf = await entry.async('nodebuffer');
+        fs.writeFileSync(outPath, buf);
+        mediaMap[filename] = `/uploads/exam-images/${examTempId}/${filename}`;
+      }
+    } catch {}
 
+    // 4) Tạo examId và cập nhật ảnh vào thư mục đúng examId
     const examId = uuidv4();
+    const mediaDirOld = path.join('public', 'uploads', 'exam-images', 'temp');
+    const mediaDirNew = path.join('public', 'uploads', 'exam-images', examId);
+    if (fs.existsSync(mediaDirOld)) {
+      fs.mkdirSync(mediaDirNew, { recursive: true });
+      fs.readdirSync(mediaDirOld).forEach(fn => {
+        fs.renameSync(path.join(mediaDirOld, fn), path.join(mediaDirNew, fn));
+      });
+      fs.rmSync(mediaDirOld, { recursive: true, force: true });
+      // cập nhật URL
+      Object.keys(mediaMap).forEach(k => {
+        mediaMap[k] = `/uploads/exam-images/${examId}/${k}`;
+      });
+    }
+
+    // 5) Gắn MathML theo index câu (đơn giản: theo thứ tự xuất hiện)
+    const questions = flattenSections(sections);
+    questions.forEach((q, idx) => {
+      if (!q.mathml && mathmlMapByIndex[idx]) {
+        q.mathml = String(mathmlMapByIndex[idx]); // chuỗi MathML
+      }
+      // đảm bảo không có object lạ:
+      if (typeof q.mathml !== 'string') delete q.mathml;
+    });
+
+    // 6) Không ghép ảnh tự động theo câu (vì khó mapping), thay vào đó hỗ trợ giáo viên đính kèm ảnh từng câu sau khi upload
+    // q.image sẽ là chuỗi URL khi giáo viên upload ảnh qua API riêng.
+
+    const timeMinutes = parseInt(req.body.timeMinutes || '45', 10);
     const examData = {
       id: examId,
       originalName: req.file.originalname,
       createdAt: Date.now(),
-      timeMinutes: parseInt(req.body.timeMinutes) || 45,
+      timeMinutes,
       password: req.body.password || null,
-      sections: shuffled,
+      sections,
       questions,
-      answers: {},
+      answers: {}
     };
     writeExam(examData);
 
-    // Upload Drive
+    // 7) Upload file JSON đề lên Drive (nếu cấu hình)
     let driveResult = null;
     try {
       driveResult = await uploadToDrive(examPath(examId), `${examId}.json`, 'application/json');
     } catch {}
     if (driveResult) {
-      examData.driveFileId = driveResult.fileId;
-      examData.driveLink = driveResult.webViewLink;
+      examData.driveFileId = driveResult.id;
+      examData.driveLink = driveResult.webViewLink || driveResult.webContentLink;
       writeExam(examData);
     }
 
+    // dọn file tạm
     fs.unlinkSync(req.file.path);
+
     res.json({ ok: true, examId, count: questions.length, savedToDrive: !!driveResult });
   } catch (e) {
+    console.error('Upload error:', e);
+    try { fs.unlinkSync(req.file.path); } catch {}
     res.status(500).json({ ok: false, error: e.message });
   }
 });
@@ -145,6 +194,10 @@ router.delete('/:id', async (req, res) => {
 
     const p = examPath(req.params.id);
     if (fs.existsSync(p)) fs.unlinkSync(p);
+
+    // xóa thư mục ảnh câu hỏi của đề này (nếu có)
+    const imgDir = path.join('public', 'uploads', 'question-images', req.params.id);
+    if (fs.existsSync(imgDir)) fs.rmSync(imgDir, { recursive: true, force: true });
 
     if (exam.driveFileId) {
       try {
