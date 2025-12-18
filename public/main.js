@@ -210,6 +210,11 @@ async function submitExam(autoSubmit = false) {
     showPage('resultPage');
     document.getElementById('resultMessage').textContent = autoSubmit ? 'Hết giờ!' : 'Nộp bài thành công!';
     document.getElementById('scoreDisplay').textContent = data.score !== null ? `${data.score}/10` : 'Chờ chấm điểm';
+    // 👉 Thêm đoạn này để hiển thị link Drive nếu có 
+    if (data.driveLink) { 
+      const driveLinkEl = document.createElement('p'); 
+      driveLinkEl.innerHTML = `Xem bài nộp trên Drive: <a href="${data.driveLink}" target="_blank">Mở file XML</a>`; 
+      document.getElementById('resultPage').appendChild(driveLinkEl);
   }
 }
 
