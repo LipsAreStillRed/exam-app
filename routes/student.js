@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { create } from 'xmlbuilder2';
 import nodemailer from 'nodemailer';
+import { uploadToDrive } from '../utils/driveHelper.js';
 
 const router = express.Router();
 
@@ -167,7 +168,17 @@ router.post('/submit', async (req, res) => {
     const timestamp = Date.now();
     const xmlFilename = path.join(xmlDir, `${timestamp}_${className || 'unknown'}.xml`);
     fs.writeFileSync(xmlFilename, xml, 'utf8');
-    
+    // Upload file XML bài nộp lên Google Drive
+    let driveResult = null;
+    try {
+      driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
+      if (driveResult) {
+        console.log(`Uploaded submission to Drive: ${driveResult.webViewLink}`);
+      }
+    } catch (err) {
+      console.error('Drive upload error:', err.message);
+    }
+
     const csvResult = updateCSV(className, {
       name,
       dob,
