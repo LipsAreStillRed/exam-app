@@ -220,3 +220,159 @@ function setupEventHandlers() {
     loginForm.addEventListener('submit', async e => {
       e.preventDefault();
       const pwd = document.getElementById('passwordInput').value
+      if (!pwd) {
+        document.getElementById('loginError').textContent = 'Nhập mật khẩu';
+        return;
+      }
+
+      try {
+        const result = await handleLogin(pwd);
+        if (result.role === 'teacher') {
+          showPage('teacherPage');
+          await loadExamList();
+          await loadSubmissions();
+        } else if (result.role === 'student') {
+          currentClassName = result.className;
+          showPage('studentInfoPage');
+          document.getElementById('studentClass').value = result.className || '';
+          const exam = await loadLatestExamVariant();
+          currentExamId = exam.id;
+          const pwdGroup = document.getElementById('examPasswordGroup');
+          if (pwdGroup) pwdGroup.style.display = exam.password ? 'block' : 'none';
+        }
+      } catch (err) {
+        document.getElementById('loginError').textContent = err.message;
+      }
+    });
+  }
+
+  // Form thông tin học sinh
+  const studentInfoForm = document.getElementById('studentInfoForm');
+  if (studentInfoForm) {
+    studentInfoForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const name = document.getElementById('studentName').value.trim();
+      const dob = document.getElementById('studentDOB').value;
+      if (!name || !dob) {
+        document.getElementById('studentInfoError').textContent = 'Điền đầy đủ thông tin';
+        return;
+      }
+      currentStudentInfo = { name, dob };
+      try {
+        const exam = await loadLatestExamVariant();
+        currentExamId = exam.id;
+        if (exam.password) {
+          const examPassword = document.getElementById('studentExamPassword').value.trim();
+          if (!examPassword) {
+            document.getElementById('studentInfoError').textContent = 'Nhập mật khẩu đề thi';
+            return;
+          }
+          const ok = await verifyExamPassword(exam.id, examPassword);
+          if (!ok) {
+            document.getElementById('studentInfoError').textContent = 'Mật khẩu đề sai';
+            return;
+          }
+        }
+        showPage('examPage');
+        document.getElementById('studentInfo').textContent = `${name} - ${currentClassName}`;
+        renderExam(exam);
+        startExamTimer(exam.timeMinutes);
+      } catch (err) {
+        document.getElementById('studentInfoError').textContent = 'Lỗi: ' + err.message;
+      }
+    });
+  }
+
+  // Form upload đề (giáo viên)
+  const uploadForm = document.getElementById('uploadForm');
+  if (uploadForm) {
+    uploadForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const fileInput = document.getElementById('examFile');
+      const timeInput = document.getElementById('timeMinutes');
+      const passwordInput = document.getElementById('examPassword');
+      const p1Q = document.getElementById('p1ShuffleQuestions')?.checked;
+      const p1O = document.getElementById('p1ShuffleOptions')?.checked;
+      const p2Q = document.getElementById('p2ShuffleQuestions')?.checked;
+      const p2I = document.getElementById('p2ShuffleItems')?.checked;
+      const p3Q = document.getElementById('p3ShuffleQuestions')?.checked;
+      const variantCount = document.getElementById('variantCount')?.value || '1';
+      if (!fileInput || !fileInput.files[0]) {
+        showMessage('uploadMessage', 'Vui lòng chọn file đề thi', true);
+        return;
+      }
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+      formData.append('timeMinutes', timeInput.value || '45');
+      formData.append('password', passwordInput.value || '');
+      formData.append('p1ShuffleQuestions', String(!!p1Q));
+      formData.append('p1ShuffleOptions', String(!!p1O));
+      formData.append('p2ShuffleQuestions', String(!!p2Q));
+      formData.append('p2ShuffleItems', String(!!p2I));
+      formData.append('p3ShuffleQuestions', String(!!p3Q));
+      formData.append('variantCount', variantCount);
+      try {
+        const res = await fetch('/exam/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.ok) {
+          showMessage('uploadMessage', `✅ Upload thành công! ${data.count} câu hỏi • ${data.variantCount} phiên bản`);
+          uploadForm.reset();
+          await loadExamList();
+          await loadSubmissions();
+        } else {
+          showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
+        }
+      } catch (err) {
+        showMessage('uploadMessage', '❌ Lỗi kết nối: ' + err.message, true);
+      }
+    });
+  }
+
+  // Nút nộp bài
+  document.getElementById('submitBtn')?.addEventListener('click', e => {
+    e.preventDefault();
+    submitExam(false);
+  });
+
+  // Logout / back
+  document.getElementById('logoutTeacher')?.addEventListener('click', () => location.reload());
+  document.getElementById('logoutStudent')?.addEventListener('click', () => location.reload());
+  document.getElementById('backToHome')?.addEventListener('click', () => location.reload());
+
+  // Modal close
+  document.getElementById('closeModal')?.addEventListener('click', closeExamDetail);
+}
+
+// ====================== INIT ======================
+document.addEventListener('DOMContentLoaded', () => {
+  showPage('loginPage');
+  setupEventHandlers();
+});
+
+// Expose for HTML onclick / global
+window.openExamDetail = openExamDetail;
+window.closeExamDetail = closeExamDetail;
+window.loadExamList = loadExamList;
+window.loadSubmissions = loadSubmissions;
+
+// Đính kèm ảnh từng câu (giáo viên)
+window.attachImage = async (examId, qid) => {
+  const input = document.getElementById(`img_${qid}`);
+  if (!input || !input.files[0]) return alert('Chọn ảnh');
+  const fd = new FormData();
+  fd.append('image', input.files[0]);
+  const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, { method: 'POST', body: fd });
+  const result = await res.json();
+  if (result.ok) {
+    alert('Đã cập nhật ảnh');
+    const block = document.querySelector(`#options_${qid}`)?.parentNode;
+    if (block) {
+      const imgTag = document.createElement('img');
+      imgTag.src = result.url;
+      imgTag.style.maxWidth = '240px';
+      block.insertAdjacentElement('afterbegin', imgTag);
+    }
+  } else {
+    alert('Lỗi: ' + (result.error || 'Không cập nhật được ảnh'));
+  }
+};
