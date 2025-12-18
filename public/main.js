@@ -541,54 +541,72 @@ function setupEventHandlers() {
     });
   }
 
-  const uploadForm = document.getElementById('uploadForm');
-  if (uploadForm) {
-    uploadForm.addEventListener('submit', async e => {
-      e.preventDefault();
+// ... giữ nguyên các hàm và sự kiện khác
 
-      const fileInput = document.getElementById('examFile');
-      const timeInput = document.getElementById('timeMinutes');
-      const passwordInput = document.getElementById('examPassword');
-      const shuffleInput = document.getElementById('shuffleQuestions');
-      const uploadBtn = document.getElementById('uploadBtn');
+// Upload form (teacher) — cập nhật gửi tuỳ chọn trộn
+const uploadForm = document.getElementById('uploadForm');
+if (uploadForm) {
+  uploadForm.addEventListener('submit', async e => {
+    e.preventDefault();
 
-      if (!fileInput || !fileInput.files[0]) {
-        showMessage('uploadMessage', 'Vui lòng chọn file đề thi', true);
-        return;
+    const fileInput = document.getElementById('examFile');
+    const timeInput = document.getElementById('timeMinutes');
+    const passwordInput = document.getElementById('examPassword');
+
+    const p1Q = document.getElementById('p1ShuffleQuestions')?.checked;
+    const p1O = document.getElementById('p1ShuffleOptions')?.checked;
+    const p2Q = document.getElementById('p2ShuffleQuestions')?.checked;
+    const p2I = document.getElementById('p2ShuffleItems')?.checked;
+    const p3Q = document.getElementById('p3ShuffleQuestions')?.checked;
+    const variantCount = document.getElementById('variantCount')?.value || '1';
+
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    if (!fileInput || !fileInput.files[0]) {
+      showMessage('uploadMessage', 'Vui lòng chọn file đề thi', true);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('timeMinutes', (timeInput?.value) || '45');
+    formData.append('password', (passwordInput?.value) || '');
+
+    // Tuỳ chọn trộn
+    formData.append('p1ShuffleQuestions', String(!!p1Q));
+    formData.append('p1ShuffleOptions', String(!!p1O));
+    formData.append('p2ShuffleQuestions', String(!!p2Q));
+    formData.append('p2ShuffleItems', String(!!p2I));
+    formData.append('p3ShuffleQuestions', String(!!p3Q));
+    formData.append('variantCount', variantCount);
+
+    if (uploadBtn) {
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = '⏳ Đang xử lý...';
+    }
+
+    try {
+      const res = await fetch('/exam/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.ok) {
+        showMessage('uploadMessage', `✅ Upload thành công! ${data.count} câu hỏi • ${data.variantCount} phiên bản`);
+        uploadForm.reset();
+        await loadExamList();
+        await loadSubmissions();
+      } else {
+        showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
       }
-
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      formData.append('timeMinutes', (timeInput?.value) || '45');
-      formData.append('password', (passwordInput?.value) || '');
-      formData.append('shuffle', (shuffleInput?.checked) ? 'true' : 'false');
-
+    } catch (err) {
+      showMessage('uploadMessage', '❌ Lỗi kết nối: ' + err.message, true);
+    } finally {
       if (uploadBtn) {
-        uploadBtn.disabled = true;
-        uploadBtn.textContent = '⏳ Đang xử lý...';
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = '📤 Upload Đề';
       }
+    }
+  });
+}
 
-      try {
-        const res = await fetch('/exam/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.ok) {
-          showMessage('uploadMessage', `✅ Upload thành công! ${data.count} câu hỏi`);
-          uploadForm.reset();
-          await loadExamList();
-          await loadSubmissions();
-        } else {
-          showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
-        }
-      } catch (err) {
-        showMessage('uploadMessage', '❌ Lỗi kết nối: ' + err.message, true);
-      } finally {
-        if (uploadBtn) {
-          uploadBtn.disabled = false;
-          uploadBtn.textContent = '📤 Upload Đề';
-        }
-      }
-    });
-  }
 
   document.getElementById('submitBtn')?.addEventListener('click', e => {
     e.preventDefault();
