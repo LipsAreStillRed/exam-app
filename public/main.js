@@ -219,7 +219,7 @@ function setupEventHandlers() {
   if (loginForm) {
     loginForm.addEventListener('submit', async e => {
       e.preventDefault();
-      const pwd = document.getElementById('passwordInput').value
+      const pwd = document.getElementById('passwordInput').value;
       if (!pwd) {
         document.getElementById('loginError').textContent = 'Nhập mật khẩu';
         return;
