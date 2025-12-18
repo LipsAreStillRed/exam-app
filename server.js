@@ -12,6 +12,7 @@ import { getClassResults } from './utils/resultsService.js';
 import { buildClassReportWorkbook } from './utils/reportExport.js';
 import { uploadToDrive } from './utils/driveHelper.js';
 import { sendEmail } from './utils/emailHelper.js';
+import examMediaRouter from './routes/examMedia.js';
 
 dotenv.config();
 const app = express();
@@ -20,7 +21,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(process.cwd(), 'public')));
-
+app.use('/exam-media', examMediaRouter);
 // Health check đơn giản
 app.get('/health', (req, res) => {
   res.json({
