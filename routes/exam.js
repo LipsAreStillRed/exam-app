@@ -14,36 +14,106 @@ import { parseExamContent, flattenSections } from '../utils/parseExamContent.js'
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
+// storage helpers
 function ensureDir() {
   const dir = path.join(process.cwd(), 'data', 'exams');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
 function examPath(id) { return path.join(ensureDir(), `${id}.json`); }
-function readExam(id) {
-  const p = examPath(id);
-  if (!fs.existsSync(p)) return null;
-  return JSON.parse(fs.readFileSync(p, 'utf8'));
-}
-function writeExam(exam) {
-  fs.writeFileSync(examPath(exam.id), JSON.stringify(exam, null, 2), 'utf8');
-}
+function readExam(id) { try { return JSON.parse(fs.readFileSync(examPath(id), 'utf8')); } catch { return null; } }
+function writeExam(exam) { fs.writeFileSync(examPath(exam.id), JSON.stringify(exam, null, 2), 'utf8'); }
 
 function convertOmmlToMathml(xml) {
   try {
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
     const mmlNode = omml2mathml(doc);
     return mmlNode?.toString ? mmlNode.toString() : String(mmlNode);
-  } catch {
-    return null;
+  } catch { return null; }
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
   }
+  return a;
+}
+
+// Trộn đáp án phần 1, giữ đáp án đúng bằng mapping theo nội dung text
+function shuffleOptionsKeepingCorrect(q) {
+  if (!Array.isArray(q.options) || q.options.length === 0) return q;
+  // tìm nội dung đáp án đúng theo correctAnswer key hiện tại, hoặc theo text đã lưu trong answers
+  // Với đề gốc chưa có correctAnswer, ta không thể suy ra; giáo viên sẽ nhập sau. Ta chỉ trộn nếu đã có q.correctAnswerText
+  const correctKey = q.correctAnswer; // có thể chưa tồn tại lúc upload
+  let correctText = null;
+  if (correctKey) {
+    const found = q.options.find(o => o.key === correctKey);
+    if (found) correctText = found.text;
+  } else if (q.correctAnswerText) {
+    correctText = q.correctAnswerText;
+  }
+  const newOptions = shuffle(q.options);
+  if (correctText) {
+    const match = newOptions.find(o => o.text === correctText);
+    if (match) {
+      q.correctAnswer = match.key; // cập nhật key đúng sau trộn
+    }
+  }
+  q.options = newOptions;
+  return q;
+}
+
+// Tạo variants theo tuỳ chọn
+function makeVariants(exam, cfg) {
+  const part1 = exam.questions.filter(q => q.part === 1);
+  const part2 = exam.questions.filter(q => q.part === 2);
+  const part3 = exam.questions.filter(q => q.part === 3);
+
+  const n = Math.min(Math.max(parseInt(cfg.variantCount || '1', 10), 1), 4);
+  const variants = [];
+
+  for (let v = 1; v <= n; v++) {
+    const p1 = cfg.p1ShuffleQuestions ? shuffle(part1) : [...part1];
+    const p2 = cfg.p2ShuffleQuestions ? shuffle(part2) : [...part2];
+    const p3 = cfg.p3ShuffleQuestions ? shuffle(part3) : [...part3];
+
+    if (cfg.p1ShuffleOptions) {
+      p1.forEach(q => {
+        if (q.type === 'multiple_choice') shuffleOptionsKeepingCorrect(q);
+      });
+    }
+    if (cfg.p2ShuffleItems) {
+      p2.forEach(q => {
+        if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
+          q.subQuestions = shuffle(q.subQuestions);
+        }
+      });
+    }
+
+    const questions = [...p1, ...p2, ...p3].map((q, idx) => ({
+      ...q,
+      displayIndex: idx + 1 // hiển thị Câu 1, Câu 2...
+    }));
+
+    variants.push({
+      id: `${exam.id}_v${v}`,
+      name: `${exam.originalName} - Phiên bản ${v}`,
+      baseExamId: exam.id,
+      timeMinutes: exam.timeMinutes,
+      password: exam.password,
+      questions
+    });
+  }
+  return variants;
 }
 
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
 
-    // 1) Lấy text thô để parser theo form Bộ GD
+    // Parse đề theo form Bộ GD
     const raw = await mammoth.extractRawText({ path: req.file.path });
     const text = raw.value || '';
     const sections = parseExamContent(text);
@@ -52,7 +122,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
     }
 
-    // 2) Extract OMML -> MathML từ document.xml
+    // OMML -> MathML
     let mathmlMapByIndex = {};
     try {
       const zip = await JSZip.loadAsync(fs.readFileSync(req.file.path));
@@ -62,53 +132,17 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       mathmlList.forEach((mml, idx) => { mathmlMapByIndex[idx] = mml; });
     } catch {}
 
-    // 3) Trích xuất media từ docx (word/media/*) -> public/uploads/exam-images/<examId>/
-    const mediaMap = {};
-    try {
-      const zip = await JSZip.loadAsync(fs.readFileSync(req.file.path));
-      const entries = zip.filter((relPath) => relPath.startsWith('word/media/'));
-      const examTempId = 'temp'; // sẽ update sau khi có examId thực
-      const mediaDir = path.join('public', 'uploads', 'exam-images', examTempId);
-      fs.mkdirSync(mediaDir, { recursive: true });
-      for (const entry of entries) {
-        const filename = path.basename(entry.name);
-        const outPath = path.join(mediaDir, filename);
-        const buf = await entry.async('nodebuffer');
-        fs.writeFileSync(outPath, buf);
-        mediaMap[filename] = `/uploads/exam-images/${examTempId}/${filename}`;
-      }
-    } catch {}
-
-    // 4) Tạo examId và cập nhật ảnh vào thư mục đúng examId
     const examId = uuidv4();
-    const mediaDirOld = path.join('public', 'uploads', 'exam-images', 'temp');
-    const mediaDirNew = path.join('public', 'uploads', 'exam-images', examId);
-    if (fs.existsSync(mediaDirOld)) {
-      fs.mkdirSync(mediaDirNew, { recursive: true });
-      fs.readdirSync(mediaDirOld).forEach(fn => {
-        fs.renameSync(path.join(mediaDirOld, fn), path.join(mediaDirNew, fn));
-      });
-      fs.rmSync(mediaDirOld, { recursive: true, force: true });
-      // cập nhật URL
-      Object.keys(mediaMap).forEach(k => {
-        mediaMap[k] = `/uploads/exam-images/${examId}/${k}`;
-      });
-    }
+    const timeMinutes = parseInt(req.body.timeMinutes || '45', 10);
+    const baseQuestions = flattenSections(sections);
 
-    // 5) Gắn MathML theo index câu (đơn giản: theo thứ tự xuất hiện)
-    const questions = flattenSections(sections);
-    questions.forEach((q, idx) => {
-      if (!q.mathml && mathmlMapByIndex[idx]) {
-        q.mathml = String(mathmlMapByIndex[idx]); // chuỗi MathML
+    baseQuestions.forEach((q, idx) => {
+      if (mathmlMapByIndex[idx]) {
+        q.mathml = String(mathmlMapByIndex[idx]);
       }
-      // đảm bảo không có object lạ:
       if (typeof q.mathml !== 'string') delete q.mathml;
     });
 
-    // 6) Không ghép ảnh tự động theo câu (vì khó mapping), thay vào đó hỗ trợ giáo viên đính kèm ảnh từng câu sau khi upload
-    // q.image sẽ là chuỗi URL khi giáo viên upload ảnh qua API riêng.
-
-    const timeMinutes = parseInt(req.body.timeMinutes || '45', 10);
     const examData = {
       id: examId,
       originalName: req.file.originalname,
@@ -116,12 +150,26 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       timeMinutes,
       password: req.body.password || null,
       sections,
-      questions,
-      answers: {}
+      questions: baseQuestions,
+      answers: {}, // giáo viên nhập trên đề gốc
+      variants: [] // sẽ thêm bên dưới
     };
     writeExam(examData);
 
-    // 7) Upload file JSON đề lên Drive (nếu cấu hình)
+    // Tạo variants theo tuỳ chọn
+    const cfg = {
+      p1ShuffleQuestions: req.body.p1ShuffleQuestions === 'true',
+      p1ShuffleOptions: req.body.p1ShuffleOptions === 'true',
+      p2ShuffleQuestions: req.body.p2ShuffleQuestions === 'true',
+      p2ShuffleItems: req.body.p2ShuffleItems === 'true',
+      p3ShuffleQuestions: req.body.p3ShuffleQuestions === 'true',
+      variantCount: req.body.variantCount || '1'
+    };
+    const variants = makeVariants(examData, cfg);
+    examData.variants = variants;
+    writeExam(examData);
+
+    // Upload exam JSON lên Drive (nếu có)
     let driveResult = null;
     try {
       driveResult = await uploadToDrive(examPath(examId), `${examId}.json`, 'application/json');
@@ -135,9 +183,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     // dọn file tạm
     fs.unlinkSync(req.file.path);
 
-    res.json({ ok: true, examId, count: questions.length, savedToDrive: !!driveResult });
+    res.json({ ok: true, examId, count: baseQuestions.length, variantCount: variants.length, savedToDrive: !!driveResult });
   } catch (e) {
-    console.error('Upload error:', e);
     try { fs.unlinkSync(req.file.path); } catch {}
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -151,7 +198,7 @@ router.get('/list', (req, res) => {
   res.json({ ok: true, exams });
 });
 
-// Đề mới nhất cho học sinh
+// Đề gốc mới nhất (giáo viên xem/nhập đáp án)
 router.get('/latest', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
@@ -161,7 +208,31 @@ router.get('/latest', (req, res) => {
   res.json({ ok: true, exam: latest });
 });
 
-// Lấy chi tiết đề
+// Học sinh: nhận một phiên bản đề ngẫu nhiên từ đề mới nhất
+router.get('/latest-variant', (req, res) => {
+  const dir = ensureDir();
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+  if (!files.length) return res.json({ ok: true, exam: null });
+  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
+                      .sort((a, b) => b.createdAt - a.createdAt)[0];
+  const variants = latest.variants || [];
+  if (!variants.length) {
+    // nếu không có variant, trả bản gốc
+    return res.json({ ok: true, exam: latest });
+  }
+  const chosen = variants[Math.floor(Math.random() * variants.length)];
+  // gói exam-like cho học sinh: time/password giống gốc, questions theo variant
+  const examForStudent = {
+    id: chosen.id,
+    originalName: latest.originalName,
+    timeMinutes: latest.timeMinutes,
+    password: latest.password,
+    questions: chosen.questions
+  };
+  res.json({ ok: true, exam: examForStudent });
+});
+
+// Lấy chi tiết đề (giáo viên)
 router.get('/:id', (req, res) => {
   const exam = readExam(req.params.id);
   if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
@@ -171,13 +242,15 @@ router.get('/:id', (req, res) => {
 // Xác thực mật khẩu đề
 router.post('/verify-password', (req, res) => {
   const { examId, password } = req.body;
-  const exam = readExam(examId);
+  // examId có thể là id variant; kiểm tra base id
+  const baseId = (String(examId).includes('_v')) ? String(examId).split('_v')[0] : examId;
+  const exam = readExam(baseId);
   if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
   const verified = !exam.password || exam.password === password;
   res.json({ ok: verified });
 });
 
-// Lưu đáp án đúng
+// Lưu đáp án đúng trên đề gốc
 router.post('/:id/correct-answers', (req, res) => {
   const exam = readExam(req.params.id);
   if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
@@ -195,16 +268,11 @@ router.delete('/:id', async (req, res) => {
     const p = examPath(req.params.id);
     if (fs.existsSync(p)) fs.unlinkSync(p);
 
-    // xóa thư mục ảnh câu hỏi của đề này (nếu có)
     const imgDir = path.join('public', 'uploads', 'question-images', req.params.id);
     if (fs.existsSync(imgDir)) fs.rmSync(imgDir, { recursive: true, force: true });
 
     if (exam.driveFileId) {
-      try {
-        await deleteFromDrive(exam.driveFileId);
-      } catch (e) {
-        console.error('Delete from Drive error:', e.message);
-      }
+      try { await deleteFromDrive(exam.driveFileId); } catch (e) { console.error('Delete from Drive error:', e.message); }
     }
 
     res.json({ ok: true, message: 'Đã xóa đề' });
