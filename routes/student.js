@@ -178,14 +178,7 @@ router.post('/submit', async (req, res) => {
     } catch (err) {
       console.error('Drive upload error:', err.message);
     }
-    res.json({ 
-      ok: true, 
-      file: path.basename(xmlFilename), 
-      score,
-      totalSubmissions: csvResult.totalSubmissions - 1,
-      driveLink: driveResult ? driveResult.webViewLink : null
-    });
-
+    
     const csvResult = updateCSV(className, {
       name,
       dob,
@@ -199,6 +192,7 @@ router.post('/submit', async (req, res) => {
       file: path.basename(xmlFilename), 
       score,
       totalSubmissions: csvResult.totalSubmissions - 1
+      driveLink: driveResult ? driveResult.webViewLink : null
     });
     
     setImmediate(async () => {
