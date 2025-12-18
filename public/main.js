@@ -190,7 +190,6 @@ async function openExamDetail(examId) {
 
     modal.classList.add('active');
 
-    // Save answers
     document.getElementById('saveAnswers').onclick = async () => {
       try {
         const answers = {};
@@ -212,7 +211,6 @@ async function openExamDetail(examId) {
       }
     };
 
-    // Send report
     document.getElementById('sendReport').onclick = async () => {
       const className = prompt('Nhập tên lớp:');
       if (!className) return;
@@ -229,7 +227,6 @@ async function openExamDetail(examId) {
       }
     };
 
-    // Delete exam
     document.getElementById('deleteExam').onclick = async () => {
       if (!confirm('Xóa đề này?')) return;
       try {
@@ -385,7 +382,6 @@ async function submitExam(autoSubmit = false) {
   
   const answers = {};
   
-  // Collect answers
   document.querySelectorAll('[name^="q_"]').forEach(input => {
     if (input.type === 'radio' && input.checked) {
       const qid = input.name.replace('q_', '');
@@ -393,7 +389,6 @@ async function submitExam(autoSubmit = false) {
     }
   });
   
-  // Collect short answer boxes
   const boxes = document.querySelectorAll('.answer-box');
   const boxAnswers = {};
   boxes.forEach(box => {
@@ -455,7 +450,6 @@ async function submitExam(autoSubmit = false) {
 function setupEventHandlers() {
   console.log('⚙️ Đang thiết lập sự kiện...');
   
-  // Login form
   const loginForm = document.getElementById('loginForm');
   const loginError = document.getElementById('loginError');
   if (loginForm) {
@@ -536,7 +530,6 @@ function setupEventHandlers() {
     });
   }
 
-  // Toggle password
   const togglePassword = document.getElementById('togglePassword');
   if (togglePassword) {
     togglePassword.addEventListener('click', (e) => {
@@ -556,7 +549,6 @@ function setupEventHandlers() {
     });
   }
 
-  // Student info form
   const studentInfoForm = document.getElementById('studentInfoForm');
   const studentInfoError = document.getElementById('studentInfoError');
   if (studentInfoForm) {
@@ -630,7 +622,6 @@ function setupEventHandlers() {
     });
   }
 
-  // Upload form
   const uploadForm = document.getElementById('uploadForm');
   if (uploadForm) {
     uploadForm.addEventListener('submit', async (e) => {
@@ -691,7 +682,6 @@ function setupEventHandlers() {
     });
   }
 
-  // Submit exam button
   const submitBtn = document.getElementById('submitBtn');
   if (submitBtn) {
     submitBtn.addEventListener('click', (e) => {
@@ -700,13 +690,11 @@ function setupEventHandlers() {
     });
   }
 
-  // Back to home button
   const backToHome = document.getElementById('backToHome');
   if (backToHome) {
     backToHome.addEventListener('click', () => location.reload());
   }
 
-  // Logout buttons
   const logoutTeacher = document.getElementById('logoutTeacher');
   if (logoutTeacher) {
     logoutTeacher.addEventListener('click', () => location.reload());
@@ -717,7 +705,6 @@ function setupEventHandlers() {
     logoutStudent.addEventListener('click', () => location.reload());
   }
 
-  // Modal close
   const closeModal = document.getElementById('closeModal');
   if (closeModal) {
     closeModal.addEventListener('click', closeExamDetail);
@@ -748,6 +735,5 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('');
 });
 
-// Make functions globally available
 window.openExamDetail = openExamDetail;
 window.closeExamDetail = closeExamDetail;
