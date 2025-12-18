@@ -191,7 +191,7 @@ router.post('/submit', async (req, res) => {
       ok: true, 
       file: path.basename(xmlFilename), 
       score,
-      totalSubmissions: csvResult.totalSubmissions - 1
+      totalSubmissions: csvResult.totalSubmissions - 1,
       driveLink: driveResult ? driveResult.webViewLink : null
     });
     
