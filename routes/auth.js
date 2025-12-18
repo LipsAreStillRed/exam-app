@@ -26,14 +26,17 @@ router.post('/login', (req, res) => {
     }
 
     // Học sinh: so khớp với PW_<TênLớp> trong biến môi trường
-    const className = CLASS_LIST.find(cls => password === process.env[`PW_${cls}`]);
-    if (className) {
-      return res.json({ ok: true, role: 'student', className });
+    for (const cls of CLASS_LIST) {
+      const classPassword = process.env[`PW_${cls}`];
+      if (classPassword && password === classPassword) {
+        return res.json({ ok: true, role: 'student', className: cls });
+      }
     }
 
+    // Sai mật khẩu
     return res.status(401).json({ ok: false, error: 'Mật khẩu không đúng' });
   } catch (e) {
-    console.error(e);
+    console.error('Auth error:', e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
