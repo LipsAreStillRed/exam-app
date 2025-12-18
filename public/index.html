@@ -25,7 +25,7 @@
         </div>
         <h1>Hệ Thống Kiểm Tra</h1>
         <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
-        <form id="loginForm" onsubmit="return false;">
+        <form id="loginForm">
           <div class="input-group">
             <input type="password" id="passwordInput" placeholder="Mật khẩu" autocomplete="off" required />
             <button type="button" class="toggle-password" id="togglePassword" aria-label="Hiện/ẩn mật khẩu">
@@ -55,7 +55,7 @@
       <div class="dashboard">
         <div class="card">
           <h3>📝 Upload Đề Thi</h3>
-          <form id="uploadForm" onsubmit="return false;">
+          <form id="uploadForm">
             <div class="form-group">
               <label>Chọn file đề thi (Word)</label>
               <input type="file" id="examFile" accept=".doc,.docx" required />
@@ -118,7 +118,7 @@
       <div class="student-form-container">
         <div class="card">
           <h3>Nhập thông tin của bạn</h3>
-          <form id="studentInfoForm" onsubmit="return false;">
+          <form id="studentInfoForm">
             <div class="form-group">
               <label>Họ và tên *</label>
               <input type="text" id="studentName" placeholder="Nguyễn Văn A" required />
