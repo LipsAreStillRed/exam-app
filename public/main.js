@@ -105,7 +105,7 @@ async function openExamDetail(examId) {
       <input type="file" id="img_${q.id}" accept="image/*">
       <button onclick="window.attachImage('${exam.id}','${q.id}')">Đính kèm ảnh</button>
     `;
-    content.appendChild(div);
+    
     const optsDiv = div.querySelector(`#options_${q.id}`);
     if (q.type === 'multiple_choice' && Array.isArray(q.options)) {
       q.options.forEach(opt => {
@@ -117,23 +117,71 @@ async function openExamDetail(examId) {
         `;
         optsDiv.appendChild(optEl);
       });
-    } else if (q.type === 'true_false') {
-      ['Đúng','Sai'].forEach(val => {
-        const optEl = document.createElement('label');
-        optEl.className = 'option';
-        optEl.innerHTML = `
-          <input type="radio" name="ans_${q.id}" value="${val}" ${q.correctAnswer === val ? 'checked' : ''}>
-          ${val}
+    } else if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
+      q.subQuestions.forEach(sub => {
+        const row = document.createElement('div');
+        row.className = 'option';
+        const current = q.correctAnswer && q.correctAnswer[sub.key];
+        row.innerHTML = `
+          ${sub.key}) ${sub.text}
+          <label><input type="radio" name="ans_${q.id}_${sub.key}" value="Đúng" ${current === 'Đúng' ? 'checked' : ''}> Đúng</label>
+          <label><input type="radio" name="ans_${q.id}_${sub.key}" value="Sai" ${current === 'Sai' ? 'checked' : ''}> Sai</label>
         `;
-        optsDiv.appendChild(optEl);
+        optsDiv.appendChild(row);
       });
     } else if (q.type === 'short_answer') {
       const ta = document.createElement('textarea');
       ta.name = `ans_${q.id}`;
       ta.value = q.correctAnswer || '';
-      ta.rows = 2;
-      ta.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;';
       optsDiv.appendChild(ta);
+    }
+    content.appendChild(div);
+    const optsDiv = div.querySelector(`#options_${q.id}`);
+    if (q.type === 'multiple_choice' && Array.isArray(q.options)) { 
+      q.options.forEach(opt => { 
+        const optEl = document.createElement('label'); 
+        optEl.className = 'option'; 
+        optEl.innerHTML = ` 
+        <input type="radio" name="ans_${q.id}" value="${opt.key}" ${q.correctAnswer === opt.key ? 'checked' : ''}> 
+        ${opt.key}. ${opt.text} 
+        `; 
+        optsDiv.appendChild(optEl); 
+      }); 
+    }
+    else if (q.type === 'true_false' && Array.isArray(q.subQuestions)) { 
+      q.subQuestions.forEach(sub => { 
+        const row = document.createElement('div'); 
+        row.className = 'option'; 
+        const current = q.correctAnswer && q.correctAnswer[sub.key]; // ví dụ { a: 'Đúng', b: 'Sai', ... } 
+        row.innerHTML = ` 
+          <div style="min-width: 36px; font-weight:600;">${sub.key})</div> 
+          <div style="flex:1;">${sub.text}</div> 
+          <label style="margin-left:auto;"> 
+            <input type="radio" name="ans_${q.id}_${sub.key}" value="Đúng" ${current === 'Đúng' ? 'checked' : ''}> Đúng </label> 
+          <label style="margin-left:8px;"> 
+            <input type="radio" name="ans_${q.id}_${sub.key}" value="Sai" ${current === 'Sai' ? 'checked' : ''}> Sai </label> 
+        `; 
+        optsDiv.appendChild(row); 
+      }); 
+    }
+    else if (q.type === 'true_false') { 
+      ['Đúng', 'Sai'].forEach(val => { 
+        const optEl = document.createElement('label'); 
+        optEl.className = 'option'; 
+        optEl.innerHTML = ` 
+          <input type="radio" name="ans_${q.id}" value="${val}" ${q.correctAnswer === val ? 'checked' : ''}> 
+          ${val} 
+        `; 
+        optsDiv.appendChild(optEl); 
+      }); 
+    }
+    else if (q.type === 'short_answer') { 
+      const ta = document.createElement('textarea'); 
+      ta.name = `ans_${q.id}`; 
+      ta.value = (typeof q.correctAnswer === 'string') ? q.correctAnswer : ''; 
+      ta.rows = 2; 
+      ta.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;'; 
+      optsDiv.appendChild(ta); 
     }
 
   });
@@ -142,23 +190,36 @@ async function openExamDetail(examId) {
 // Gắn sự kiện cho các nút chức năng trong modal
 document.getElementById('saveAnswers').onclick = async () => {
   const answers = {};
-  document.querySelectorAll('[name^="ans_"]').forEach(input => {
+  document.querySelectorAll("[name^='ans_']").forEach(input => {
     if ((input.type === 'radio' && input.checked) || input.tagName === 'TEXTAREA') {
-      const qid = input.name.replace('ans_', '');
-      answers[qid] = input.value;
+      const name = input.name;
+      const value = input.value;
+      const matchSub = name.match(/^ans_(\d+)_(\w+)$/); // ví dụ: ans_12_a
+      const matchMain = name.match(/^ans_(\d+)$/);      // ví dụ: ans_12
+
+      if (matchSub) {
+        const qid = matchSub[1];
+        const subKey = matchSub[2];
+        answers[qid] = answers[qid] || {};
+        answers[qid][subKey] = value;
+      } else if (matchMain) {
+        const qid = matchMain[1];
+        answers[qid] = value;
+      }
     }
   });
+
   const res = await fetch(`/exam/${examId}/correct-answers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ answers })
   });
   const result = await res.json();
-  alert(result.message || (result.ok ? 'Đã lưu đáp án' : 'Lỗi lưu đáp án'));
+  alert(result.message || (result.ok ? '✅ Đã lưu đáp án' : '❌ Lỗi lưu đáp án'));
 };
 
 document.getElementById('sendReport').onclick = async () => {
-  const className = prompt('Nhập tên lớp:');
+  const className = prompt('Nhập tên lớp cần gửi báo cáo:');
   if (!className) return;
   const res = await fetch('/student/send-class-report', {
     method: 'POST',
@@ -166,19 +227,20 @@ document.getElementById('sendReport').onclick = async () => {
     body: JSON.stringify({ className, examId })
   });
   const result = await res.json();
-  alert(result.message || (result.ok ? 'Đã gửi báo cáo' : 'Lỗi gửi báo cáo'));
+  alert(result.message || (result.ok ? '✅ Đã gửi báo cáo' : '❌ Lỗi gửi báo cáo'));
 };
 
 document.getElementById('deleteExam').onclick = async () => {
   if (!confirm('Bạn có chắc muốn xóa đề này?')) return;
   const res = await fetch(`/exam/${examId}`, { method: 'DELETE' });
   const result = await res.json();
-  alert(result.message || (result.ok ? 'Đã xóa đề' : 'Lỗi xóa đề'));
+  alert(result.message || (result.ok ? '✅ Đã xóa đề' : '❌ Lỗi xóa đề'));
   if (result.ok) {
     closeExamDetail();
     await loadExamList();
   }
 };
+
 
 function closeExamDetail() {
   document.getElementById('examDetailModal')?.classList.remove('active');
