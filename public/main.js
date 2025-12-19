@@ -38,7 +38,6 @@ async function handleLogin(password) {
   if (!res.ok || !data.ok) throw new Error(data.error || 'Đăng nhập thất bại');
   return data;
 }
-
 // ====================== TEACHER ======================
 async function loadExamList() {
   const res = await fetch('/exam/list');
@@ -56,7 +55,7 @@ async function loadExamList() {
     item.className = 'exam-item';
     item.innerHTML = `
       <span>${exam.originalName || exam.name || 'Đề không tên'} (${count} câu)</span>
-      <button onclick="window.openExamDetail('${exam.id}')">Chi tiết</button>
+      <button type="button" class="btn" onclick="window.openExamDetail('${exam.id}')">Chi tiết</button>
     `;
     listDiv.appendChild(item);
   });
@@ -114,7 +113,6 @@ async function openExamDetail(examId) {
 function closeExamDetail() {
   document.getElementById('examDetailModal')?.classList.remove('active');
 }
-
 // ====================== STUDENT ======================
 async function loadLatestExamVariant() {
   const res = await fetch('/exam/latest-variant');
@@ -179,6 +177,7 @@ function renderExam(exam) {
 async function submitExam(autoSubmit = false) {
   if (!autoSubmit && !confirm('Nộp bài?')) return;
   if (examTimer) clearInterval(examTimer);
+
   const answers = {};
   document.querySelectorAll('[name^="q_"]').forEach(input => {
     if ((input.type === 'radio' && input.checked) || input.tagName === 'TEXTAREA') {
@@ -193,32 +192,51 @@ async function submitExam(autoSubmit = false) {
       }
     }
   });
-  const res = await fetch('/student/submit', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: currentStudentInfo.name,
-      className: currentClassName,
-      dob: currentStudentInfo.dob,
-      answers,
-      examId: currentExamId,
-      violations
-    })
-  });
-  const data = await res.json();
-  if (data.ok) {
-    showPage('resultPage');
-    document.getElementById('resultMessage').textContent = autoSubmit ? 'Hết giờ!' : 'Nộp bài thành công!';
-    document.getElementById('scoreDisplay').textContent = data.score !== null ? `${data.score}/10` : 'Chờ chấm điểm';
-    // 👉 Thêm đoạn này để hiển thị link Drive nếu có 
-    if (data.driveLink) { 
-      const driveLinkEl = document.createElement('p'); 
-      driveLinkEl.innerHTML = `Xem bài nộp trên Drive: <a href="${data.driveLink}" target="_blank">Mở file XML</a>`; 
-      document.getElementById('resultPage').appendChild(driveLinkEl);
+
+  try {
+    const res = await fetch('/student/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: currentStudentInfo.name,
+        className: currentClassName,
+        dob: currentStudentInfo.dob,
+        answers,
+        examId: currentExamId,
+        violations
+      })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      showPage('resultPage');
+      const msgEl = document.getElementById('resultMessage');
+      const scoreEl = document.getElementById('scoreDisplay');
+      if (msgEl) {
+        msgEl.textContent = autoSubmit ? 'Hết giờ! Đã tự động nộp.' : 'Nộp bài thành công!';
+      }
+      if (scoreEl) {
+        if (data.score !== null && data.score !== undefined) {
+          scoreEl.textContent = `${data.score}/10`;
+          scoreEl.style.color = 'var(--success)';
+        } else {
+          scoreEl.textContent = 'Chờ chấm điểm';
+          scoreEl.style.color = 'var(--warning)';
+        }
+      }
+      // Nếu backend trả về link Drive thì hiển thị thêm
+      if (data.driveLink) {
+        const driveLinkEl = document.createElement('p');
+        driveLinkEl.innerHTML = `Xem bài nộp trên Drive: <a href="${data.driveLink}" target="_blank">Mở file XML</a>`;
+        document.getElementById('resultPage').appendChild(driveLinkEl);
+      }
+    } else {
+      alert('Lỗi: ' + (data.error || 'Unknown'));
+    }
+  } catch (err) {
+    console.error('❌ Lỗi nộp bài:', err);
+    alert('Lỗi: ' + err.message);
   }
 }
-
-// ====================== EVENTS ======================
 function setupEventHandlers() {
   // ====================== LOGIN FORM ======================
   const loginForm = document.getElementById('loginForm');
@@ -380,22 +398,18 @@ function setupEventHandlers() {
     });
   }
 
-  
-// Submit exam
-document.getElementById('submitBtn')?.addEventListener('click', e => {
-  e.preventDefault();
-  submitExam(false);
-});
+  // ====================== OTHER BUTTONS ======================
+  document.getElementById('submitBtn')?.addEventListener('click', e => {
+    e.preventDefault();
+    submitExam(false);
+  });
 
-// Logout / back
-document.getElementById('logoutTeacher')?.addEventListener('click', () => location.reload());
-document.getElementById('logoutStudent')?.addEventListener('click', () => location.reload());
-document.getElementById('backToHome')?.addEventListener('click', () => location.reload());
+  document.getElementById('logoutTeacher')?.addEventListener('click', () => location.reload());
+  document.getElementById('logoutStudent')?.addEventListener('click', () => location.reload());
+  document.getElementById('backToHome')?.addEventListener('click', () => location.reload());
 
-// Modal close
-document.getElementById('closeModal')?.addEventListener('click', closeExamDetail);
+  document.getElementById('closeModal')?.addEventListener('click', closeExamDetail);
 }
-
 // ====================== INIT ======================
 document.addEventListener('DOMContentLoaded', () => {
   showPage('loginPage');
