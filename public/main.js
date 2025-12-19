@@ -139,6 +139,46 @@ async function openExamDetail(examId) {
   });
   modal.classList.add('active');
 }
+// Gắn sự kiện cho các nút chức năng trong modal
+document.getElementById('saveAnswers').onclick = async () => {
+  const answers = {};
+  document.querySelectorAll('[name^="ans_"]').forEach(input => {
+    if ((input.type === 'radio' && input.checked) || input.tagName === 'TEXTAREA') {
+      const qid = input.name.replace('ans_', '');
+      answers[qid] = input.value;
+    }
+  });
+  const res = await fetch(`/exam/${examId}/correct-answers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ answers })
+  });
+  const result = await res.json();
+  alert(result.message || (result.ok ? 'Đã lưu đáp án' : 'Lỗi lưu đáp án'));
+};
+
+document.getElementById('sendReport').onclick = async () => {
+  const className = prompt('Nhập tên lớp:');
+  if (!className) return;
+  const res = await fetch('/student/send-class-report', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ className, examId })
+  });
+  const result = await res.json();
+  alert(result.message || (result.ok ? 'Đã gửi báo cáo' : 'Lỗi gửi báo cáo'));
+};
+
+document.getElementById('deleteExam').onclick = async () => {
+  if (!confirm('Bạn có chắc muốn xóa đề này?')) return;
+  const res = await fetch(`/exam/${examId}`, { method: 'DELETE' });
+  const result = await res.json();
+  alert(result.message || (result.ok ? 'Đã xóa đề' : 'Lỗi xóa đề'));
+  if (result.ok) {
+    closeExamDetail();
+    await loadExamList();
+  }
+};
 
 function closeExamDetail() {
   document.getElementById('examDetailModal')?.classList.remove('active');
