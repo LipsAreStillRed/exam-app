@@ -18,72 +18,164 @@
     <!-- LOGIN PAGE -->
     <div id="loginPage" class="page active">
       <div class="login-box">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+        </div>
         <h1>Hệ Thống Kiểm Tra</h1>
+        <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
         <form id="loginForm">
-          <input type="password" id="passwordInput" placeholder="Mật khẩu" required />
-          <button type="submit" id="loginBtn">Đăng nhập</button>
+          <div class="input-group">
+            <input type="password" id="passwordInput" placeholder="Mật khẩu" autocomplete="off" required />
+            <button type="button" class="toggle-password" id="togglePassword" aria-label="Hiện/ẩn mật khẩu">
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <button type="submit" class="btn btn-primary" id="loginBtn">Đăng nhập</button>
         </form>
         <div id="loginError" class="error-message"></div>
+        <div class="info-text">
+          <p>💡 <strong>Giáo viên:</strong> Sử dụng mật khẩu giáo viên</p>
+          <p>📚 <strong>Học sinh:</strong> Sử dụng mật khẩu lớp học</p>
+        </div>
       </div>
     </div>
 
     <!-- TEACHER PAGE -->
     <div id="teacherPage" class="page">
-      <h2>🎓 Bảng Điều Khiển Giáo Viên</h2>
-      <form id="uploadForm">
-        <input type="file" id="examFile" accept=".doc,.docx" required />
-        <input type="number" id="timeMinutes" value="45" />
-        <input type="text" id="examPassword" />
-        <label><input type="checkbox" id="p1ShuffleQuestions" /> Trộn câu hỏi Phần 1</label>
-        <label><input type="checkbox" id="p1ShuffleOptions" /> Trộn đáp án Phần 1</label>
-        <label><input type="checkbox" id="p2ShuffleQuestions" /> Trộn câu hỏi Phần 2</label>
-        <label><input type="checkbox" id="p2ShuffleItems" /> Trộn thứ tự a,b,c,d Phần 2</label>
-        <label><input type="checkbox" id="p3ShuffleQuestions" /> Trộn câu hỏi Phần 3</label>
-        <select id="variantCount"><option>1</option><option>2</option><option>3</option><option>4</option></select>
-        <button type="submit" id="uploadBtn">📤 Upload Đề</button>
-      </form>
-      <div id="uploadMessage"></div>
-      <div id="examList"></div>
-      <div id="submissionsList"></div>
-      <div id="examDetailModal" class="modal">
-        <div class="modal-content">
-          <button id="closeModal">✖</button>
+      <div class="header">
+        <h2>🎓 Bảng Điều Khiển Giáo Viên</h2>
+        <button class="btn btn-secondary" id="logoutTeacher">Đăng xuất</button>
+      </div>
+
+      <div class="dashboard">
+        <div class="card">
+          <h3>📝 Upload Đề Thi</h3>
+          <form id="uploadForm">
+            <div class="form-group">
+              <label>Chọn file đề thi (Word)</label>
+              <input type="file" id="examFile" accept=".doc,.docx" required />
+              <small>Đề gồm 3 phần theo form Bộ GD. Đảm bảo câu bắt đầu bằng "Câu X:"</small>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Thời gian làm bài (phút)</label>
+                <input type="number" id="timeMinutes" min="1" max="180" value="45" required />
+              </div>
+              <div class="form-group">
+                <label>Mật khẩu đề (tùy chọn)</label>
+                <input type="text" id="examPassword" placeholder="Để trống nếu không cần" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="shuffleQuestions" checked /> Trộn câu hỏi (Phần 1 & 2) và trộn đáp án (Phần 1)</label>
+            </div>
+            <button type="submit" class="btn btn-primary" id="uploadBtn">📤 Upload Đề</button>
+          </form>
+          <div id="uploadMessage" class="message" style="display:none;"></div>
+        </div>
+
+        <div class="card">
+          <h3>📚 Danh Sách Đề</h3>
+          <div id="examList" class="exams-list">
+            <p class="empty-state">Đang tải...</p>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>📊 Bài Nộp Gần Đây</h3>
+          <div id="submissionsList" class="submissions-list">
+            <p class="empty-state">Đang tải...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- EXAM DETAIL MODAL -->
+      <div id="examDetailModal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true">
+          <button class="close" id="closeModal" title="Đóng" aria-label="Đóng">✖</button>
+          <h2>📋 Chi Tiết & Đáp Án</h2>
           <div id="examDetailContent"></div>
-          <button id="saveAnswers">💾 Lưu Đáp Án</button>
-          <button id="sendReport">📧 Gửi Báo Cáo</button>
-          <button id="deleteExam">🗑️ Xóa Đề</button>
+          <div class="modal-actions">
+            <button class="btn btn-primary" id="saveAnswers">💾 Lưu Đáp Án</button>
+            <button class="btn btn-secondary" id="sendReport">📧 Gửi Báo Cáo</button>
+            <button class="btn btn-danger" id="deleteExam">🗑️ Xóa Đề</button>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- STUDENT INFO PAGE -->
     <div id="studentInfoPage" class="page">
-      <form id="studentInfoForm">
-        <input type="text" id="studentName" required />
-        <input type="date" id="studentDOB" required />
-        <input type="text" id="studentClass" readonly />
-        <div id="examPasswordGroup"><input type="password" id="studentExamPassword" /></div>
-        <button type="submit">▶️ Bắt Đầu Làm Bài</button>
-      </form>
-      <div id="studentInfoError"></div>
+      <div class="header">
+        <h2>👨‍🎓 Thông Tin Học Sinh</h2>
+        <button class="btn btn-secondary" id="logoutStudent">Đăng xuất</button>
+      </div>
+      <div class="student-form-container">
+        <div class="card">
+          <h3>Nhập thông tin của bạn</h3>
+          <form id="studentInfoForm">
+            <div class="form-group">
+              <label>Họ và tên *</label>
+              <input type="text" id="studentName" placeholder="Nguyễn Văn A" required />
+            </div>
+            <div class="form-group">
+              <label>Ngày sinh *</label>
+              <input type="date" id="studentDOB" required />
+            </div>
+            <div class="form-group">
+              <label>Lớp</label>
+              <input type="text" id="studentClass" readonly />
+            </div>
+            <div class="form-group" id="examPasswordGroup" style="display:none;">
+              <label>Mật khẩu đề thi *</label>
+              <input type="password" id="studentExamPassword" placeholder="Nhập mật khẩu đề" />
+            </div>
+            <button type="submit" class="btn btn-primary">▶️ Bắt Đầu Làm Bài</button>
+          </form>
+          <div id="studentInfoError" class="error-message"></div>
+        </div>
+      </div>
     </div>
 
     <!-- EXAM PAGE -->
     <div id="examPage" class="page">
-      <div id="studentInfo"></div>
-      <div id="timer"></div>
-      <div id="warningMessage"></div>
-      <div id="questionsContainer"></div>
-      <button id="submitBtn">✅ Nộp Bài</button>
+      <div class="exam-header">
+        <div class="exam-info">
+          <h2>📝 Bài Kiểm Tra</h2>
+          <p id="studentInfo"></p>
+        </div>
+        <div class="timer-container">
+          <div class="timer" id="timer">--:--</div>
+          <div id="warningMessage" class="warning-message"></div>
+        </div>
+      </div>
+      <div class="exam-content">
+        <div id="questionsContainer" class="questions-container"></div>
+        <button class="btn btn-primary btn-submit" id="submitBtn">✅ Nộp Bài</button>
+      </div>
     </div>
 
     <!-- RESULT PAGE -->
     <div id="resultPage" class="page">
-      <div id="resultMessage"></div>
-      <div id="scoreDisplay"></div>
-      <button id="backToHome">Về Trang Chủ</button>
+      <div class="result-container">
+        <div class="result-icon">✅</div>
+        <h2>Hoàn Thành!</h2>
+        <p id="resultMessage">Bài làm của bạn đã được nộp thành công.</p>
+        <div id="scoreDisplay" class="score-display"></div>
+        <button class="btn btn-primary" id="backToHome">Về Trang Chủ</button>
+      </div>
     </div>
   </div>
-  <script src="main.js"></script>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>© GV. Nguyễn Minh Thiện – Build with AI</p>
+  </footer>
+  <script src="main.js?v=20251218"></script>
 </body>
 </html>
