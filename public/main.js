@@ -220,73 +220,124 @@ async function submitExam(autoSubmit = false) {
 
 // ====================== EVENTS ======================
 function setupEventHandlers() {
-  const loginForm = document.getElementById('loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', async e => {
-      e.preventDefault();
-      const pwd = document.getElementById('passwordInput').value;
-      if (!pwd) {
-        document.getElementById('loginError').textContent = 'Nhập mật khẩu';
-        return;
-      }
+  // Login form
+const loginForm = document.getElementById('loginForm');
+const loginError = document.getElementById('loginError');
+if (loginForm) {
+  loginForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    loginError.textContent = '';
+    loginError.classList.remove('show');
 
-      try {
-        const result = await handleLogin(pwd);
-        if (result.role === 'teacher') {
-          showPage('teacherPage');
-          await loadExamList();
-          await loadSubmissions();
-        } else if (result.role === 'student') {
-          currentClassName = result.className;
-          showPage('studentInfoPage');
-          document.getElementById('studentClass').value = result.className || '';
-          const exam = await loadLatestExamVariant();
-          currentExamId = exam.id;
-          const pwdGroup = document.getElementById('examPasswordGroup');
-          if (pwdGroup) pwdGroup.style.display = exam.password ? 'block' : 'none';
-        }
-      } catch (err) {
-        document.getElementById('loginError').textContent = err.message;
+    const pwd = document.getElementById('passwordInput').value.trim();
+    if (!pwd) {
+      loginError.textContent = 'Nhập mật khẩu';
+      loginError.classList.add('show');
+      return;
+    }
+
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Đang xử lý...';
+    }
+
+    try {
+      const result = await handleLogin(pwd);
+      if (result.role === 'teacher') {
+        showPage('teacherPage');
+        await loadExamList();
+        await loadSubmissions();
+      } else if (result.role === 'student') {
+        currentClassName = result.className;
+        showPage('studentInfoPage');
+        document.getElementById('studentClass').value = result.className || '';
+        const exam = await loadLatestExam();
+        currentExamId = exam.id;
+        const pwdGroup = document.getElementById('examPasswordGroup');
+        if (pwdGroup) pwdGroup.style.display = exam.password ? 'block' : 'none';
       }
-    });
-  }
+    } catch (err) {
+      loginError.textContent = err.message;
+      loginError.classList.add('show');
+    } finally {
+      if (loginBtn) {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Đăng nhập';
+      }
+    }
+  });
+}
+// Toggle hiện/ẩn mật khẩu
+const togglePassword = document.getElementById('togglePassword');
+if (togglePassword) {
+  togglePassword.addEventListener('click', () => {
+    const input = document.getElementById('passwordInput');
+    const icon = document.getElementById('eyeIcon');
+    if (!input || !icon) return;
+    if (input.type === 'password') {
+      input.type = 'text';
+      // đổi icon sang trạng thái "đang hiện"
+      icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+    } else {
+      input.type = 'password';
+      // đổi icon sang trạng thái "ẩn"
+      icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+    }
+  });
+}
+
 
   // Form thông tin học sinh
-  const studentInfoForm = document.getElementById('studentInfoForm');
-  if (studentInfoForm) {
-    studentInfoForm.addEventListener('submit', async e => {
-      e.preventDefault();
-      const name = document.getElementById('studentName').value.trim();
-      const dob = document.getElementById('studentDOB').value;
-      if (!name || !dob) {
-        document.getElementById('studentInfoError').textContent = 'Điền đầy đủ thông tin';
-        return;
-      }
-      currentStudentInfo = { name, dob };
-      try {
-        const exam = await loadLatestExamVariant();
-        currentExamId = exam.id;
-        if (exam.password) {
-          const examPassword = document.getElementById('studentExamPassword').value.trim();
-          if (!examPassword) {
-            document.getElementById('studentInfoError').textContent = 'Nhập mật khẩu đề thi';
-            return;
-          }
-          const ok = await verifyExamPassword(exam.id, examPassword);
-          if (!ok) {
-            document.getElementById('studentInfoError').textContent = 'Mật khẩu đề sai';
-            return;
-          }
+ // Student info form
+const studentInfoForm = document.getElementById('studentInfoForm');
+const studentInfoError = document.getElementById('studentInfoError');
+if (studentInfoForm) {
+  studentInfoForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    studentInfoError.textContent = '';
+    studentInfoError.classList.remove('show');
+
+    const name = document.getElementById('studentName').value.trim();
+    const dob = document.getElementById('studentDOB').value;
+    if (!name || !dob) {
+      studentInfoError.textContent = 'Điền đầy đủ thông tin';
+      studentInfoError.classList.add('show');
+      return;
+    }
+
+    currentStudentInfo = { name, dob };
+
+    try {
+      const exam = await loadLatestExam();
+      currentExamId = exam.id;
+
+      if (exam.password) {
+        const examPassword = document.getElementById('studentExamPassword').value.trim();
+        if (!examPassword) {
+          studentInfoError.textContent = 'Nhập mật khẩu đề thi';
+          studentInfoError.classList.add('show');
+          return;
         }
-        showPage('examPage');
-        document.getElementById('studentInfo').textContent = `${name} - ${currentClassName}`;
-        renderExam(exam);
-        startExamTimer(exam.timeMinutes);
-      } catch (err) {
-        document.getElementById('studentInfoError').textContent = 'Lỗi: ' + err.message;
+        const ok = await verifyExamPassword(exam.id, examPassword);
+        if (!ok) {
+          studentInfoError.textContent = 'Mật khẩu đề sai';
+          studentInfoError.classList.add('show');
+          return;
+        }
       }
-    });
-  }
+
+      showPage('examPage');
+      document.getElementById('studentInfo').textContent = `${name} - ${currentClassName}`;
+      renderExam(exam);
+      startExamTimer(exam.timeMinutes);
+    } catch (err) {
+      studentInfoError.textContent = 'Lỗi: ' + err.message;
+      studentInfoError.classList.add('show');
+    }
+  });
+}
+
 
   // Form upload đề (giáo viên)
   const uploadForm = document.getElementById('uploadForm');
@@ -333,19 +384,19 @@ function setupEventHandlers() {
     });
   }
 
-  // Nút nộp bài
-  document.getElementById('submitBtn')?.addEventListener('click', e => {
-    e.preventDefault();
-    submitExam(false);
-  });
+// Submit exam
+document.getElementById('submitBtn')?.addEventListener('click', e => {
+  e.preventDefault();
+  submitExam(false);
+});
 
-  // Logout / back
-  document.getElementById('logoutTeacher')?.addEventListener('click', () => location.reload());
-  document.getElementById('logoutStudent')?.addEventListener('click', () => location.reload());
-  document.getElementById('backToHome')?.addEventListener('click', () => location.reload());
+// Logout / back
+document.getElementById('logoutTeacher')?.addEventListener('click', () => location.reload());
+document.getElementById('logoutStudent')?.addEventListener('click', () => location.reload());
+document.getElementById('backToHome')?.addEventListener('click', () => location.reload());
 
-  // Modal close
-  document.getElementById('closeModal')?.addEventListener('click', closeExamDetail);
+// Modal close
+document.getElementById('closeModal')?.addEventListener('click', closeExamDetail);
 }
 
 // ====================== INIT ======================
