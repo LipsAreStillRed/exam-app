@@ -373,9 +373,6 @@ body {
   color: var(--danger);
 }
 
-.close::before {
-  content: "×";
-}
 
 .modal-actions {
   position: sticky;
