@@ -106,6 +106,36 @@ async function openExamDetail(examId) {
       <button onclick="window.attachImage('${exam.id}','${q.id}')">Đính kèm ảnh</button>
     `;
     content.appendChild(div);
+    const optsDiv = div.querySelector(`#options_${q.id}`);
+    if (q.type === 'multiple_choice' && Array.isArray(q.options)) {
+      q.options.forEach(opt => {
+        const optEl = document.createElement('label');
+        optEl.className = 'option';
+        optEl.innerHTML = `
+          <input type="radio" name="ans_${q.id}" value="${opt.key}" ${q.correctAnswer === opt.key ? 'checked' : ''}>
+          ${opt.key}. ${opt.text}
+        `;
+        optsDiv.appendChild(optEl);
+      });
+    } else if (q.type === 'true_false') {
+      ['Đúng','Sai'].forEach(val => {
+        const optEl = document.createElement('label');
+        optEl.className = 'option';
+        optEl.innerHTML = `
+          <input type="radio" name="ans_${q.id}" value="${val}" ${q.correctAnswer === val ? 'checked' : ''}>
+          ${val}
+        `;
+        optsDiv.appendChild(optEl);
+      });
+    } else if (q.type === 'short_answer') {
+      const ta = document.createElement('textarea');
+      ta.name = `ans_${q.id}`;
+      ta.value = q.correctAnswer || '';
+      ta.rows = 2;
+      ta.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;';
+      optsDiv.appendChild(ta);
+    }
+
   });
   modal.classList.add('active');
 }
