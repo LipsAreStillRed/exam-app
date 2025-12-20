@@ -341,18 +341,34 @@ async function submitExam(autoSubmit = false) {
 
   const answers = {};
   document.querySelectorAll('[name^="q_"]').forEach(input => {
-    if ((input.type === 'radio' && input.checked) || input.tagName === 'TEXTAREA') {
+    if ((input.type === 'radio' && input.checked) || input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
       const nm = input.name;
-      if (nm.match(/^q_\d+_\w+$/)) {
-        const [_, qid, subKey] = nm.match(/^q_(\d+)_(\w+)$/);
+      const val = input.value.trim();
+
+      // Trường hợp đúng/sai nhiều ý: q_<id>_<subKey>
+      const matchSub = nm.match(/^q_(\d+)_(\w+)$/);
+      if (matchSub) {
+        const qid = matchSub[1];
+        const subKey = matchSub[2];
         answers[qid] = answers[qid] || {};
-        answers[qid][subKey] = input.value;
+        answers[qid][subKey] = val;
       } else {
-        const qid = nm.replace('q_', '');
-        answers[qid] = input.value;
+        // Trường hợp short_answer: q_<id>_1, q_<id>_2, q_<id>_3, q_<id>_4
+        const matchShort = nm.match(/^q_(\d+)_(\d)$/);
+        if (matchShort) {
+          const qid = matchShort[1];
+          const idx = matchShort[2];
+          answers[qid] = answers[qid] || [];
+          answers[qid][idx - 1] = val; // lưu vào mảng theo thứ tự
+        } else {
+          // Trường hợp thường: q_<id>
+          const qid = nm.replace('q_', '');
+          answers[qid] = val;
+        }
       }
     }
   });
+
 
   try {
     const res = await fetch('/student/submit', {
