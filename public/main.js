@@ -529,55 +529,74 @@ function setupEventHandlers() {
       }
     });
   }
-
   // ====================== TEACHER UPLOAD FORM ======================
-  const uploadForm = document.getElementById('uploadForm');
-  if (uploadForm) {
-    uploadForm.addEventListener('submit', async e => {
-      e.preventDefault();
-      const fileInput = document.getElementById('examFile');
-      const timeInput = document.getElementById('timeMinutes');
-      const passwordInput = document.getElementById('examPassword');
-      const p1Q = document.getElementById('p1ShuffleQuestions')?.checked;
-      const p1O = document.getElementById('p1ShuffleOptions')?.checked;
-      const p2Q = document.getElementById('p2ShuffleQuestions')?.checked;
-      const p2I = document.getElementById('p2ShuffleItems')?.checked;
-      const p3Q = document.getElementById('p3ShuffleQuestions')?.checked;
-      const variantCount = document.getElementById('variantCount')?.value || '1';
-      formData.append('p1Mode', document.getElementById('p1Mode')?.value || 'none');
-      formData.append('p2Mode', document.getElementById('p2Mode')?.value || 'none');
-      formData.append('p3Mode', document.getElementById('p3Mode')?.value || 'none');
-      if (!fileInput || !fileInput.files[0]) {
-        showMessage('uploadMessage', 'Vui lòng chọn file đề thi', true);
-        return;
-      }
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      formData.append('timeMinutes', timeInput.value || '45');
-      formData.append('password', passwordInput.value || '');
-      formData.append('p1ShuffleQuestions', String(!!p1Q));
-      formData.append('p1ShuffleOptions', String(!!p1O));
-      formData.append('p2ShuffleQuestions', String(!!p2Q));
-      formData.append('p2ShuffleItems', String(!!p2I));
-      formData.append('p3ShuffleQuestions', String(!!p3Q));
-      formData.append('variantCount', variantCount);
-      try {
-        const res = await fetch('/exam/upload', { method: 'POST', body: formData });
-        const data = await res.json();
-        if (data.ok) {
-          showMessage('uploadMessage', `✅ Upload thành công! ${data.count} câu hỏi • ${data.variantCount} phiên bản`);
-          uploadForm.reset();
-          await loadExamList();
-          await loadSubmissions();
-        } else {
-          showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
-        }
-      } catch (err) {
-        showMessage('uploadMessage', '❌ Lỗi kết nối: ' + err.message, true);
-      }
-    });
-  }
+const uploadForm = document.getElementById('uploadForm');
+if (uploadForm) {
+  uploadForm.addEventListener('submit', async e => {
+    e.preventDefault();
 
+    const fileInput = document.getElementById('examFile');
+    const timeInput = document.getElementById('timeMinutes');
+    const passwordInput = document.getElementById('examPassword');
+    const variantCount = document.getElementById('variantCount')?.value || '1';
+
+    if (!fileInput || !fileInput.files[0]) {
+      showMessage('uploadMessage', 'Vui lòng chọn file đề thi', true);
+      return;
+    }
+
+    // Tạo formData và append các trường
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('timeMinutes', timeInput.value || '45');
+    formData.append('password', passwordInput.value || '');
+    formData.append('variantCount', variantCount);
+
+    // Append các tùy chọn trộn
+    formData.append('p1Mode', document.getElementById('p1Mode')?.value || 'none');
+    formData.append('p2Mode', document.getElementById('p2Mode')?.value || 'none');
+    formData.append('p3Mode', document.getElementById('p3Mode')?.value || 'none');
+
+    try {
+      const res = await fetch('/exam/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.ok) {
+        showMessage(
+          'uploadMessage',
+          `✅ Upload thành công! ${data.count} câu hỏi • ${data.variantCount} phiên bản`
+        );
+        uploadForm.reset();
+        await loadExamList();
+        await loadSubmissions();
+
+        // Nút xem đề phụ
+        const expandBtn = document.createElement('button');
+        expandBtn.textContent = 'Xem các đề phụ';
+        expandBtn.className = 'btn btn-secondary';
+        expandBtn.onclick = () => {
+          fetch(`/exam/${data.examId}/variants`)
+            .then(res => res.json())
+            .then(variants => {
+              const listDiv = document.getElementById('examList');
+              variants.forEach(v => {
+                const item = document.createElement('div');
+                item.className = 'exam-item';
+                item.innerHTML = `<span>${v.name}</span>`;
+                listDiv.appendChild(item);
+              });
+            });
+        };
+        document.getElementById('uploadForm').appendChild(expandBtn);
+      } else {
+        showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
+      }
+    } catch (err) {
+      showMessage('uploadMessage', '❌ Lỗi kết nối: ' + err.message, true);
+    }
+  });
+}
+ 
   // ====================== OTHER BUTTONS ======================
   document.getElementById('submitBtn')?.addEventListener('click', e => {
     e.preventDefault();
