@@ -75,38 +75,53 @@ function makeVariants(exam, cfg) {
   const variants = [];
 
   for (let v = 1; v <= n; v++) {
-    const p1 = cfg.p1ShuffleQuestions ? shuffle(part1) : [...part1];
-    const p2 = cfg.p2ShuffleQuestions ? shuffle(part2) : [...part2];
-    const p3 = cfg.p3ShuffleQuestions ? shuffle(part3) : [...part3];
-
-    if (cfg.p1ShuffleOptions) {
-      p1.forEach(q => {
-        if (q.type === 'multiple_choice') shuffleOptionsKeepingCorrect(q);
-      });
-    }
-    if (cfg.p2ShuffleItems) {
-      p2.forEach(q => {
-        if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
-          q.subQuestions = shuffle(q.subQuestions);
-        }
-      });
-    }
-
-    const questions = [...p1, ...p2, ...p3].map((q, idx) => ({
-      ...q,
-      displayIndex: idx + 1 // hiển thị Câu 1, Câu 2...
-    }));
-
-    variants.push({
-      id: `${exam.id}_v${v}`,
-      name: `${exam.originalName} - Phiên bản ${v}`,
-      baseExamId: exam.id,
-      timeMinutes: exam.timeMinutes,
-      password: exam.password,
-      questions
+  // Phần 1
+  let p1 = [...part1];
+  if (cfg.p1Mode === 'questions' || cfg.p1Mode === 'both') {
+    p1 = shuffle(p1);
+  }
+  if (cfg.p1Mode === 'both') {
+    p1.forEach(q => {
+      if (q.type === 'multiple_choice') {
+        shuffleOptionsKeepingCorrect(q);
+      }
     });
   }
-  return variants;
+
+  // Phần 2
+  let p2 = [...part2];
+  if (cfg.p2Mode === 'questions' || cfg.p2Mode === 'both') {
+    p2 = shuffle(p2);
+  }
+  if (cfg.p2Mode === 'both') {
+    p2.forEach(q => {
+      if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
+        q.subQuestions = shuffle(q.subQuestions);
+      }
+    });
+  }
+
+  // Phần 3
+  let p3 = [...part3];
+  if (cfg.p3Mode === 'questions') {
+    p3 = shuffle(p3);
+  }
+
+  const questions = [...p1, ...p2, ...p3].map((q, idx) => ({
+    ...q,
+    displayIndex: idx + 1 // hiển thị Câu 1, Câu 2...
+  }));
+
+  variants.push({
+    id: `${exam.id}_v${v}`,
+    name: `${exam.originalName} - Phiên bản ${v}`,
+    baseExamId: exam.id,
+    timeMinutes: exam.timeMinutes,
+    password: exam.password,
+    questions
+  });
+}
+return variants;
 }
 
 router.post('/upload', upload.single('file'), async (req, res) => {
@@ -158,11 +173,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     // Tạo variants theo tuỳ chọn
     const cfg = {
-      p1ShuffleQuestions: req.body.p1ShuffleQuestions === 'true',
-      p1ShuffleOptions: req.body.p1ShuffleOptions === 'true',
-      p2ShuffleQuestions: req.body.p2ShuffleQuestions === 'true',
-      p2ShuffleItems: req.body.p2ShuffleItems === 'true',
-      p3ShuffleQuestions: req.body.p3ShuffleQuestions === 'true',
+      p1Mode: req.body.p1Mode || 'none',
+      p2Mode: req.body.p2Mode || 'none',
+      p3Mode: req.body.p3Mode || 'none',
       variantCount: req.body.variantCount || '1'
     };
     const variants = makeVariants(examData, cfg);
