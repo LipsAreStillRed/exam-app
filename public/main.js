@@ -288,18 +288,47 @@ function renderExam(exam) {
     qDiv.className = 'question-item';
     let optionsHtml = '';
     if (q.type === 'multiple_choice') {
-      optionsHtml = q.options.map(opt => `
-        <label><input type="radio" name="q_${q.id}" value="${opt.key}">${opt.key}. ${opt.text}</label>
-      `).join('');
-    } else if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
-      optionsHtml = q.subQuestions.map(sub => `
-        <div>${sub.key}) ${sub.text}
-          <label><input type="radio" name="q_${q.id}_${sub.key}" value="Đúng">Đúng</label>
-          <label><input type="radio" name="q_${q.id}_${sub.key}" value="Sai">Sai</label>
+      optionsHtml = `
+        <div class="option-block">
+          ${q.options.map(opt => `
+            <label>
+              <input type="radio" name="q_${q.id}" value="${opt.key}">
+              ${opt.key}. ${opt.text}
+            </label>
+          `).join('')}
         </div>
-      `).join('');
-    } else if (q.type === 'short_answer') {
-      optionsHtml = `<textarea name="q_${q.id}"></textarea>`;
+      `;
+    }
+    else if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
+      optionsHtml = `
+        <div class="truefalse-block">
+          ${q.subQuestions.map(sub => `
+            <div class="sub-item">
+              ${sub.key}) ${sub.text}
+              <label><input type="radio" name="q_${q.id}_${sub.key}" value="Đúng"> Đúng</label>
+              <label><input type="radio" name="q_${q.id}_${sub.key}" value="Sai"> Sai</label>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    else if (q.type === 'true_false') {
+      optionsHtml = `
+        <div class="truefalse-block">
+          <label><input type="radio" name="q_${q.id}" value="Đúng"> Đúng</label>
+          <label><input type="radio" name="q_${q.id}" value="Sai"> Sai</label>
+        </div>
+      `;
+    }
+    else if (q.type === 'short_answer') {
+      optionsHtml = `
+        <div class="short-form">
+          <input class="cell cell-1" maxlength="1" name="q_${q.id}_1">
+          <input class="cell cell-2" maxlength="1" name="q_${q.id}_2">
+          <input class="cell cell-3" maxlength="1" name="q_${q.id}_3">
+          <input class="cell cell-4" maxlength="1" name="q_${q.id}_4">
+        </div>
+      `;
     }
     qDiv.innerHTML = `<strong>Câu ${index+1}:</strong><p>${q.question}</p>${optionsHtml}`;
     container.appendChild(qDiv);
