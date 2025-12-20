@@ -71,9 +71,38 @@
                 <input type="text" id="examPassword" placeholder="Để trống nếu không cần" />
               </div>
             </div>
-            <div class="form-group">
-              <label><input type="checkbox" id="shuffleQuestions" checked /> Trộn câu hỏi (Phần 1 & 2) và trộn đáp án (Phần 1)</label>
+                        <div class="form-group">
+              <label for="variantCount"><strong>🔢 Số lượng mã đề:</strong></label>
+              <input type="number" id="variantCount" min="1" max="20" value="1" style="width:80px; padding:6px;">
+              <small>Nhập số lượng mã đề muốn trộn (ví dụ: 5, 10…)</small>
             </div>
+
+            <div class="form-group">
+              <label><strong>⚙️ Tùy chọn trộn phần 1:</strong></label>
+              <select id="p1Mode">
+                <option value="none">Không trộn</option>
+                <option value="questions">Chỉ trộn câu hỏi (giữ đáp án)</option>
+                <option value="both">Trộn cả câu hỏi và đáp án</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label><strong>⚙️ Tùy chọn trộn phần 2:</strong></label>
+              <select id="p2Mode">
+                <option value="none">Không trộn</option>
+                <option value="questions">Chỉ trộn câu hỏi (giữ thứ tự a,b,c,d)</option>
+                <option value="both">Trộn cả câu hỏi và các lựa chọn</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label><strong>⚙️ Tùy chọn trộn phần 3:</strong></label>
+              <select id="p3Mode">
+                <option value="none">Không trộn</option>
+                <option value="questions">Trộn câu hỏi</option>
+              </select>
+            </div>
+
             <button type="submit" class="btn btn-primary" id="uploadBtn">📤 Upload Đề</button>
           </form>
           <div id="uploadMessage" class="message" style="display:none;"></div>
