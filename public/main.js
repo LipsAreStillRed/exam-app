@@ -544,6 +544,9 @@ function setupEventHandlers() {
       const p2I = document.getElementById('p2ShuffleItems')?.checked;
       const p3Q = document.getElementById('p3ShuffleQuestions')?.checked;
       const variantCount = document.getElementById('variantCount')?.value || '1';
+      formData.append('p1Mode', document.getElementById('p1Mode')?.value || 'none');
+      formData.append('p2Mode', document.getElementById('p2Mode')?.value || 'none');
+      formData.append('p3Mode', document.getElementById('p3Mode')?.value || 'none');
       if (!fileInput || !fileInput.files[0]) {
         showMessage('uploadMessage', 'Vui lòng chọn file đề thi', true);
         return;
