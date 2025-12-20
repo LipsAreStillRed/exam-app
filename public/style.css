@@ -871,4 +871,32 @@ body {
   border-color: var(--primary);
   background: #f0f9ff;
 }
+/* True/False block: hiển thị từng ý rõ ràng */
+.truefalse-block .sub-item {
+  margin: 10px 0;
+  padding: 8px;
+  border-left: 4px solid var(--primary);
+  background: #f0f8ff;
+  border-radius: 6px;
+}
+.truefalse-block label {
+  margin-left: 12px;
+}
+/* Short answer form: 4 ô nhập */
+.short-form {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+}
+.cell {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+}
+.cell-1 { background: #fffbe6; }   /* ô đầu: có thể nhập -, , hoặc số */
+.cell-2, .cell-3 { background: #e6f7ff; } /* ô 2 và 3: , hoặc số */
+.cell-4 { background: #f0fff0; }   /* ô cuối: chỉ số */
 
