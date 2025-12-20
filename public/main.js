@@ -93,7 +93,7 @@ async function openExamDetail(examId) {
   const content = document.getElementById('examDetailContent');
   content.innerHTML = `<h3>${exam.originalName}</h3>`;
 
-  (exam.questions || []).forEach(q => {
+    (exam.questions || []).forEach(q => {
     const div = document.createElement('div');
     div.className = 'question-block';
     div.innerHTML = `
@@ -107,45 +107,67 @@ async function openExamDetail(examId) {
     `;
 
     const optsDiv = div.querySelector(`#options_${q.id}`);
+
+    // Trắc nghiệm nhiều lựa chọn
     if (q.type === 'multiple_choice' && Array.isArray(q.options)) {
+      const block = document.createElement('div');
+      block.className = 'option-block';
       q.options.forEach(opt => {
         const optEl = document.createElement('label');
-        optEl.className = 'option';
         optEl.innerHTML = `
           <input type="radio" name="ans_${q.id}" value="${opt.key}" ${q.correctAnswer === opt.key ? 'checked' : ''}>
           ${opt.key}. ${opt.text}
         `;
-        optsDiv.appendChild(optEl);
+        block.appendChild(optEl);
       });
-    } else if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
+      optsDiv.appendChild(block);
+    }
+
+    // Đúng/Sai nhiều ý
+    else if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
+      const block = document.createElement('div');
+      block.className = 'truefalse-block';
       q.subQuestions.forEach(sub => {
         const row = document.createElement('div');
-        row.className = 'option';
+        row.className = 'sub-item';
         const current = q.correctAnswer && q.correctAnswer[sub.key];
         row.innerHTML = `
           ${sub.key}) ${sub.text}
           <label><input type="radio" name="ans_${q.id}_${sub.key}" value="Đúng" ${current === 'Đúng' ? 'checked' : ''}> Đúng</label>
           <label><input type="radio" name="ans_${q.id}_${sub.key}" value="Sai" ${current === 'Sai' ? 'checked' : ''}> Sai</label>
         `;
-        optsDiv.appendChild(row);
+        block.appendChild(row);
       });
-    } else if (q.type === 'true_false') {
+      optsDiv.appendChild(block);
+    }
+
+    // Đúng/Sai một ý
+    else if (q.type === 'true_false') {
+      const block = document.createElement('div');
+      block.className = 'truefalse-block';
       ['Đúng','Sai'].forEach(val => {
         const optEl = document.createElement('label');
-        optEl.className = 'option';
         optEl.innerHTML = `
           <input type="radio" name="ans_${q.id}" value="${val}" ${q.correctAnswer === val ? 'checked' : ''}>
           ${val}
         `;
-        optsDiv.appendChild(optEl);
+        block.appendChild(optEl);
       });
-    } else if (q.type === 'short_answer') {
-      const ta = document.createElement('textarea');
-      ta.name = `ans_${q.id}`;
-      ta.value = (typeof q.correctAnswer === 'string') ? q.correctAnswer : '';
-      ta.rows = 2;
-      ta.style.cssText = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;';
-      optsDiv.appendChild(ta);
+      optsDiv.appendChild(block);
+    }
+
+    // Trả lời ngắn: 4 ô
+    else if (q.type === 'short_answer') {
+      const form = document.createElement('div');
+      form.className = 'short-form';
+      for (let i = 1; i <= 4; i++) {
+        const inp = document.createElement('input');
+        inp.className = `cell cell-${i}`;
+        inp.maxLength = 1;
+        inp.name = `ans_${q.id}_${i}`;
+        form.appendChild(inp);
+      }
+      optsDiv.appendChild(form);
     }
 
     content.appendChild(div);
@@ -153,12 +175,12 @@ async function openExamDetail(examId) {
 
   modal.classList.add('active');
 
-  // Gắn sự kiện cho các nút chức năng
+    // Lưu đáp án
   document.getElementById('saveAnswers').onclick = async () => {
     try {
       const answers = {};
       document.querySelectorAll("[name^='ans_']").forEach(input => {
-        if ((input.type === 'radio' && input.checked) || input.tagName === 'TEXTAREA') {
+        if ((input.type === 'radio' && input.checked) || input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
           const name = input.name;
           const value = input.value;
           const matchSub = name.match(/^ans_(\d+)_(\w+)$/);
@@ -186,6 +208,7 @@ async function openExamDetail(examId) {
     }
   };
 
+  // Gửi báo cáo
   document.getElementById('sendReport').onclick = async () => {
     try {
       const className = prompt('Nhập tên lớp cần gửi báo cáo:');
@@ -202,6 +225,7 @@ async function openExamDetail(examId) {
     }
   };
 
+  // Xóa đề
   document.getElementById('deleteExam').onclick = async () => {
     try {
       if (!confirm('Bạn có chắc muốn xóa đề này?')) return;
@@ -217,7 +241,6 @@ async function openExamDetail(examId) {
     }
   };
 }
-
 
 function closeExamDetail() {
   document.getElementById('examDetailModal')?.classList.remove('active');
