@@ -899,4 +899,36 @@ body {
 .cell-1 { background: #fffbe6; }   /* ô đầu: có thể nhập -, , hoặc số */
 .cell-2, .cell-3 { background: #e6f7ff; } /* ô 2 và 3: , hoặc số */
 .cell-4 { background: #f0fff0; }   /* ô cuối: chỉ số */
+/* Khối chứa danh sách đề phụ */
+.variants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fafafa;
+  min-height: 50px;
+}
+
+/* Item đề phụ */
+.variant-item {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+/* Hover hiệu ứng */
+.variant-item:hover {
+  background: #f0f8ff;
+}
+
+/* Empty state */
+.variants-list .empty-state {
+  color: #888;
+  font-style: italic;
+}
 
