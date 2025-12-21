@@ -293,5 +293,13 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+// Lấy danh sách đề phụ theo examId
+router.get('/:id/variants', (req, res) => {
+  const exam = readExam(req.params.id);
+  if (!exam) {
+    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  }
+  res.json(exam.variants || []);
+});
 
 export default router;
