@@ -575,18 +575,26 @@ if (uploadForm) {
         expandBtn.textContent = 'Xem các đề phụ';
         expandBtn.className = 'btn btn-secondary';
         expandBtn.onclick = () => {
-          fetch(`/exam/${data.examId}/variants`)
-            .then(res => res.json())
-            .then(variants => {
-              const listDiv = document.getElementById('examList');
-              variants.forEach(v => {
-                const item = document.createElement('div');
-                item.className = 'exam-item';
-                item.innerHTML = `<span>${v.name}</span>`;
-                listDiv.appendChild(item);
-              });
-            });
-        };
+  fetch(`/exam/${data.examId}/variants`)
+    .then(res => res.json())
+    .then(variants => {
+      const listDiv = document.getElementById('variantList');
+      listDiv.innerHTML = ''; // clear cũ
+      if (!variants.length) {
+        listDiv.innerHTML = '<p class="empty-state">Chưa có đề phụ nào</p>';
+        return;
+      }
+      variants.forEach(v => {
+        const item = document.createElement('div');
+        item.className = 'variant-item';
+        item.innerHTML = `<span>${v.name}</span>`;
+        listDiv.appendChild(item);
+      });
+    });
+};
+
+
+      
         document.getElementById('uploadForm').appendChild(expandBtn);
       } else {
         showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
