@@ -998,4 +998,20 @@ body {
 .close:hover {
   color: var(--primary);
 }
+.variant-list {
+  margin-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.variant-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border-left: 3px solid var(--primary);
+}
 
