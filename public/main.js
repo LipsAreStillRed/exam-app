@@ -709,4 +709,57 @@ window.onclick = (event) => {
     modal.style.display = 'none';
   }
 };
+function showExamDetail(exam) {
+  const detailDiv = document.getElementById('examDetailContent');
+  detailDiv.innerHTML = '';
+
+  const questions = exam.questions || [];
+  if (!questions.length) {
+    detailDiv.innerHTML = '<p class="empty-state">Đề không có câu hỏi</p>';
+  } else {
+    questions.forEach(q => {
+      const qDiv = document.createElement('div');
+      qDiv.className = 'question-block';
+      qDiv.innerHTML = `
+        <h4>Câu ${q.displayIndex || q.index || q.id}</h4>
+        <p>${q.text || q.question}</p>
+        ${q.image ? `<img src="${q.image}" />` : ''}
+        ${q.mathml ? `<div class="mathml">${q.mathml}</div>` : ''}
+      `;
+      // render đáp án nếu có
+      (q.options || []).forEach(opt => {
+        qDiv.innerHTML += `<div>- ${opt.text || opt.label}</div>`;
+      });
+      detailDiv.appendChild(qDiv);
+    });
+  }
+
+  document.getElementById('examDetailModal').style.display = 'block';
+}
+function showVariantDetail(exam, variant) {
+  const detailDiv = document.getElementById('examDetailContent');
+  detailDiv.innerHTML = '';
+
+  const vQuestions = variant.questions || [];
+  if (!vQuestions.length) {
+    detailDiv.innerHTML = '<p class="empty-state">Đề phụ không có câu hỏi</p>';
+  } else {
+    vQuestions.forEach(q => {
+      const qDiv = document.createElement('div');
+      qDiv.className = 'question-block';
+      qDiv.innerHTML = `
+        <h4>Câu ${q.displayIndex || q.index || q.id}</h4>
+        <p>${q.text || q.question}</p>
+        ${q.image ? `<img src="${q.image}" />` : ''}
+        ${q.mathml ? `<div class="mathml">${q.mathml}</div>` : ''}
+      `;
+      (q.options || []).forEach(opt => {
+        qDiv.innerHTML += `<div>- ${opt.text || opt.label}</div>`;
+      });
+      detailDiv.appendChild(qDiv);
+    });
+  }
+
+  document.getElementById('examDetailModal').style.display = 'block';
+}
 
