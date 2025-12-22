@@ -587,7 +587,7 @@ if (uploadForm) {
       variants.forEach(v => {
         const item = document.createElement('div');
         item.className = 'variant-item';
-        item.innerHTML = `<span>${v.name}</span>`;
+        item.innerHTML = `<span>${v.name}</span>
           <button class="btn btn-sm btn-primary">Chi tiết</button>`;
         // Khi bấm nút Chi tiết → mở modal giống đề gốc
         item.querySelector('button').onclick = () => { 
@@ -681,9 +681,4 @@ window.attachImage = async (examId, qid) => {
     alert('Lỗi: ' + (result.error || 'Không cập nhật được ảnh'));
   }
 };
-<div id="examDetailModal" class="modal" aria-hidden="true">
-  <div class="modal-content" role="dialog" aria-modal="true">
-    <button class="close" id="closeModal" title="Đóng" aria-label="Đóng">✖</button>
-    ...
-  </div>
-</div>
+
