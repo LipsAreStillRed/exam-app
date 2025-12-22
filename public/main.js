@@ -697,4 +697,16 @@ window.attachImage = async (examId, qid) => {
     alert('Lỗi: ' + (result.error || 'Không cập nhật được ảnh'));
   }
 };
+// ====== CLOSE MODAL ======
+document.getElementById('closeModal').onclick = () => {
+  document.getElementById('examDetailModal').style.display = 'none';
+};
+
+// Đóng modal khi click ra ngoài
+window.onclick = (event) => {
+  const modal = document.getElementById('examDetailModal');
+  if (event.target === modal) {
+    modal.style.display = 'none';
+  }
+};
 
