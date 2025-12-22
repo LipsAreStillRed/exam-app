@@ -987,4 +987,15 @@ body {
   color: #888;
   font-style: italic;
 }
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--primary);
+}
 
