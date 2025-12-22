@@ -444,6 +444,39 @@ body {
 .option input[type="radio"] {
   cursor: pointer;
 }
+.question-block {
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  border-left: 4px solid var(--primary);
+}
+
+.question-block h4 {
+  margin-bottom: 6px;
+  color: var(--primary);
+  font-size: 15px;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.option {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.option:hover {
+  background: #f0f9ff;
+  border-color: var(--primary);
+}
 
 /* EXAM LIST */
 .exams-list {
@@ -521,6 +554,29 @@ body {
   color: var(--text-light);
   padding: 40px;
   font-size: 15px;
+}
+.submissions-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.submissions-table th,
+.submissions-table td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.submissions-table th {
+  background: var(--bg);
+  font-weight: 600;
+  color: var(--text);
+}
+
+.submissions-table td {
+  background: #fff;
 }
 
 /* STUDENT INFO PAGE */
