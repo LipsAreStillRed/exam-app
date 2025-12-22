@@ -61,52 +61,124 @@ async function loadExamList() {
   });
 }
 
+// ====================== TEACHER ======================
+
+// Hiển thị danh sách đề gốc + số câu
+async function loadExamList() {
+  const listDiv = document.getElementById('examList');
+  if (!listDiv) return;
+  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
+
+  try {
+    const res = await fetch('/exam/list');
+    const data = await res.json();
+
+    if (!data.ok || !data.exams || !data.exams.length) {
+      listDiv.innerHTML = '<p class="empty-state">Chưa có đề thi nào</p>';
+      return;
+    }
+
+    listDiv.innerHTML = '';
+    data.exams.forEach(exam => {
+      const count = exam.questions?.length ?? exam.questionCount ?? 0;
+      const item = document.createElement('div');
+      item.className = 'exam-item';
+      item.innerHTML = `
+        <span>${exam.originalName || exam.name || 'Đề không tên'} (${count} câu)</span>
+        <button type="button" class="btn btn-primary">Chi tiết</button>
+      `;
+      item.querySelector('button').onclick = () => openExamDetail(exam.id);
+      listDiv.appendChild(item);
+    });
+  } catch (err) {
+    console.error('loadExamList error:', err);
+    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
+  }
+}
+
+// Hiển thị danh sách bài nộp (dạng thẻ đơn giản)
 async function loadSubmissions() {
-  const res = await fetch('/student/submissions');
-  const data = await res.json();
   const listDiv = document.getElementById('submissionsList');
   if (!listDiv) return;
-  if (!data.ok || !data.submissions || data.submissions.length === 0) {
-    listDiv.innerHTML = '<p class="empty-state">Chưa có bài nộp nào</p>';
-    return;
+  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
+
+  try {
+    const res = await fetch('/student/submissions');
+    const data = await res.json();
+
+    if (!data.ok || !data.submissions || !data.submissions.length) {
+      listDiv.innerHTML = '<p class="empty-state">Chưa có bài nộp nào</p>';
+      return;
+    }
+
+    listDiv.innerHTML = '';
+    data.submissions.slice(0, 10).forEach(sub => {
+      const item = document.createElement('div');
+      item.className = 'submission-item';
+      item.innerHTML = `
+        <strong>${sub.name}</strong>
+        <div>${sub.className} • ${sub.date}</div>
+        ${sub.score !== 'Chưa chấm'
+          ? `<span class="submission-score">${sub.score} điểm</span>`
+          : '<span style="color: var(--warning);">Chưa chấm</span>'}
+      `;
+      listDiv.appendChild(item);
+    });
+  } catch (err) {
+    console.error('loadSubmissions error:', err);
+    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
   }
-  listDiv.innerHTML = '';
-  data.submissions.slice(0, 10).forEach(sub => {
-    const item = document.createElement('div');
-    item.className = 'submission-item';
-    item.innerHTML = `
-      <strong>${sub.name}</strong>
-      <div>${sub.className} • ${sub.date}</div>
-      ${sub.score !== 'Chưa chấm'
-        ? `<span class="submission-score">${sub.score} điểm</span>`
-        : '<span style="color: var(--warning);">Chưa chấm</span>'}
-    `;
-    listDiv.appendChild(item);
-  });
 }
+
+// Mở modal chi tiết đề
 async function openExamDetail(examId) {
-  const res = await fetch(`/exam/${examId}`);
-  const data = await res.json();
-  if (!data.ok) return alert('Không tải được đề');
-  const exam = data.exam;
-  const modal = document.getElementById('examDetailModal');
-  const content = document.getElementById('examDetailContent');
-  content.innerHTML = `<h3>${exam.originalName}</h3>`;
+  try {
+    const res = await fetch(`/exam/${examId}`);
+    const data = await res.json();
+    if (!data.ok) return alert('Không tải được đề');
+
+    const exam = data.exam;
+    const modal = document.getElementById('examDetailModal');
+    const content = document.getElementById('examDetailContent');
+    content.innerHTML = `<h3>${exam.originalName || exam.name}</h3>`;
 
     (exam.questions || []).forEach(q => {
-    const div = document.createElement('div');
-    div.className = 'question-block';
-    div.innerHTML = `
-      <h4>Câu ${q.displayIndex ?? q.id}</h4>
-      <p>${q.question}</p>
-      ${q.image ? `<img src="${q.image}" />` : ''}
-      ${q.mathml ? `<div class="mathml">${q.mathml}</div>` : ''}
-      <div id="options_${q.id}"></div>
-      <input type="file" id="img_${q.id}" accept="image/*">
-      <button onclick="window.attachImage('${exam.id}','${q.id}')">Đính kèm ảnh</button>
-    `;
+      const div = document.createElement('div');
+      div.className = 'question-block';
+      div.innerHTML = `
+        <h4>Câu ${q.displayIndex ?? q.id}</h4>
+        <p>${q.question}</p>
+        ${q.image ? `<img src="${q.image}" />` : ''}
+        ${q.mathml ? `<div class="mathml">${q.mathml}</div>` : ''}
+        <div class="options" id="options_${q.id}"></div>
+        <input type="file" id="img_${q.id}" accept="image/*">
+        <button onclick="window.attachImage('${exam.id}','${q.id}')">Đính kèm ảnh</button>
+      `;
 
-    const optsDiv = div.querySelector(`#options_${q.id}`);
+      // Render các lựa chọn đáp án
+      const optsDiv = div.querySelector(`#options_${q.id}`);
+      (q.options || []).forEach(opt => {
+        const optEl = document.createElement('div');
+        optEl.className = 'option';
+        optEl.innerHTML = `
+          <label>
+            <input type="radio" name="q_${q.id}" value="${opt.value}">
+            ${opt.text}
+          </label>
+        `;
+        optsDiv.appendChild(optEl);
+      });
+
+      content.appendChild(div);
+    });
+
+    modal.style.display = 'block';
+  } catch (err) {
+    console.error('openExamDetail error:', err);
+    alert('Có lỗi khi tải chi tiết đề');
+  }
+}
+
 
     // Trắc nghiệm nhiều lựa chọn
     if (q.type === 'multiple_choice' && Array.isArray(q.options)) {
@@ -529,7 +601,7 @@ function setupEventHandlers() {
       }
     });
   }
-  // ====================== TEACHER UPLOAD FORM ======================
+// ====================== TEACHER UPLOAD FORM ======================
 const uploadForm = document.getElementById('uploadForm');
 if (uploadForm) {
   uploadForm.addEventListener('submit', async e => {
@@ -567,66 +639,9 @@ if (uploadForm) {
           `✅ Upload thành công! ${data.count} câu hỏi • ${data.variantCount} phiên bản`
         );
         uploadForm.reset();
-        await loadExamList();
+        // Sau khi upload thành công → load lại kho đề và danh sách bài nộp
+        await loadExams();
         await loadSubmissions();
-
-        // Nút xem đề phụ
-        const expandBtn = document.createElement('button');
-        expandBtn.textContent = 'Xem các đề phụ';
-        expandBtn.className = 'btn btn-secondary';
-        expandBtn.onclick = () => {
-  fetch(`/exam/${data.examId}/variants`)
-    .then(res => res.json())
-    .then(variants => {
-      const listDiv = document.getElementById('variantList');
-      listDiv.innerHTML = ''; // clear cũ
-      if (!variants.length) {
-        listDiv.innerHTML = '<p class="empty-state">Chưa có đề phụ nào</p>';
-        return;
-      }
-      variants.forEach(v => {
-        const item = document.createElement('div');
-        item.className = 'variant-item';
-        item.innerHTML = `<span>${v.name}</span>
-          <button class="btn btn-sm btn-primary">Chi tiết</button>`;
-        // Khi bấm nút Chi tiết → mở modal giống đề gốc
-        item.querySelector('button').onclick = () => { 
-          fetch(`/exam/${v.baseExamId}`) // lấy đề gốc để có đáp án 
-            .then(res => res.json()) 
-            .then(data => { 
-              if (!data.ok) return; 
-              const exam = data.exam; 
-              // tìm variant theo id 
-              const variant = (exam.variants || []).find(x => x.id === v.id); 
-              if (!variant) return;
-              // render chi tiết variant 
-              const detailDiv = document.getElementById('examDetailContent'); 
-              detailDiv.innerHTML = ''; 
-              variant.questions.forEach(q => { 
-                const qDiv = document.createElement('div'); 
-                qDiv.className = 'question'; 
-                qDiv.innerHTML = `<strong>Câu ${q.displayIndex}:</strong> ${q.text}`; 
-                if (q.options) { 
-                  q.options.forEach(opt => { 
-                    qDiv.innerHTML += `<div>- ${opt.text}</div>`; 
-                  }); 
-                } 
-                detailDiv.appendChild(qDiv); 
-              }); 
-              
-              // mở modal 
-              document.getElementById('examDetailModal').style.display = 'block'; 
-            }); 
-        }; 
-      
-        listDiv.appendChild(item); 
-      });    
-    });
-};
-
-
-      
-        document.getElementById('uploadForm').appendChild(expandBtn);
       } else {
         showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
       }
@@ -635,6 +650,7 @@ if (uploadForm) {
     }
   });
 }
+
  
   // ====================== OTHER BUTTONS ======================
   document.getElementById('submitBtn')?.addEventListener('click', e => {
