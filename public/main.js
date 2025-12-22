@@ -588,8 +588,39 @@ if (uploadForm) {
         const item = document.createElement('div');
         item.className = 'variant-item';
         item.innerHTML = `<span>${v.name}</span>`;
-        listDiv.appendChild(item);
-      });
+          <button class="btn btn-sm btn-primary">Chi tiết</button>`;
+        // Khi bấm nút Chi tiết → mở modal giống đề gốc
+        item.querySelector('button').onclick = () => { 
+          fetch(`/exam/${v.baseExamId}`) // lấy đề gốc để có đáp án 
+            .then(res => res.json()) 
+            .then(data => { 
+              if (!data.ok) return; 
+              const exam = data.exam; 
+              // tìm variant theo id 
+              const variant = (exam.variants || []).find(x => x.id === v.id); 
+              if (!variant) return;
+              // render chi tiết variant 
+              const detailDiv = document.getElementById('examDetailContent'); 
+              detailDiv.innerHTML = ''; 
+              variant.questions.forEach(q => { 
+                const qDiv = document.createElement('div'); 
+                qDiv.className = 'question'; 
+                qDiv.innerHTML = `<strong>Câu ${q.displayIndex}:</strong> ${q.text}`; 
+                if (q.options) { 
+                  q.options.forEach(opt => { 
+                    qDiv.innerHTML += `<div>- ${opt.text}</div>`; 
+                  }); 
+                } 
+                detailDiv.appendChild(qDiv); 
+              }); 
+              
+              // mở modal 
+              document.getElementById('examDetailModal').style.display = 'block'; 
+            }); 
+        }; 
+      
+        listDiv.appendChild(item); 
+      });    
     });
 };
 
@@ -650,3 +681,9 @@ window.attachImage = async (examId, qid) => {
     alert('Lỗi: ' + (result.error || 'Không cập nhật được ảnh'));
   }
 };
+<div id="examDetailModal" class="modal" aria-hidden="true">
+  <div class="modal-content" role="dialog" aria-modal="true">
+    <button class="close" id="closeModal" title="Đóng" aria-label="Đóng">✖</button>
+    ...
+  </div>
+</div>
