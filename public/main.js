@@ -38,9 +38,10 @@ async function handleLogin(password) {
   if (!res.ok || !data.ok) throw new Error(data.error || 'Đăng nhập thất bại');
   return data;
 }
+
 // ====================== TEACHER ======================
 
-// Hiển thị danh sách đề gốc + các variant
+// FIX #1: Load exam list với xử lý variants an toàn hơn
 async function loadExamList() {
   const listDiv = document.getElementById('examList');
   if (!listDiv) return;
@@ -56,18 +57,10 @@ async function loadExamList() {
     }
 
     listDiv.innerHTML = '';
-
-    data.exams.forEach(exam => {
-      const count = exam.questions?.length ?? exam.questionCount ?? 0;
-      
-      const examGroup = document.createElement('div');
-      examGroup.style.marginBottom = '20px';
     
-    // Duyệt qua từng đề gốc
     data.exams.forEach(exam => {
       const count = exam.questions?.length ?? exam.questionCount ?? 0;
       
-      // Container cho đề gốc + variants
       const examGroup = document.createElement('div');
       examGroup.style.marginBottom = '20px';
       
@@ -82,7 +75,7 @@ async function loadExamList() {
       mainItem.querySelector('button').onclick = () => openExamDetail(exam.id);
       examGroup.appendChild(mainItem);
       
-      // Variants (nếu có)
+      // FIX: Kiểm tra variants tồn tại và là array
       if (Array.isArray(exam.variants) && exam.variants.length > 0) {
         const variantsList = document.createElement('div');
         variantsList.className = 'variants-list';
@@ -118,9 +111,7 @@ async function loadExamList() {
     listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
   }
 }
-  
 
-// Hiển thị danh sách bài nộp
 async function loadSubmissions() {
   const listDiv = document.getElementById('submissionsList');
   if (!listDiv) return;
@@ -153,25 +144,42 @@ async function loadSubmissions() {
     listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
   }
 }
+
 // Mở modal chi tiết đề
 async function openExamDetail(examId) {
   try {
     const res = await fetch(`/exam/${examId}`);
     const data = await res.json();
-    if (!data.ok) return alert('Không tải được đề');
+    
+    if (!data.ok) {
+      alert('Không tải được đề: ' + (data.error || 'Unknown error'));
+      return;
+    }
 
     const exam = data.exam;
+    if (!exam) {
+      alert('Dữ liệu đề thi không hợp lệ');
+      return;
+    }
+
     const modal = document.getElementById('examDetailModal');
     const content = document.getElementById('examDetailContent');
     
-    content.innerHTML = `<h3>${exam.originalName || exam.name}</h3>`;
+    content.innerHTML = `<h3>${exam.originalName || exam.name || 'Đề thi'}</h3>`;
 
-    (exam.questions || []).forEach(q => {
+    const questions = exam.questions || [];
+    if (questions.length === 0) {
+      content.innerHTML += '<p class="empty-state">Đề thi không có câu hỏi</p>';
+      modal.style.display = 'block';
+      return;
+    }
+
+    questions.forEach(q => {
       const div = document.createElement('div');
       div.className = 'question-block';
       div.innerHTML = `
         <h4>Câu ${q.displayIndex ?? q.id}</h4>
-        <p>${q.question}</p>
+        <p>${q.question || q.text || ''}</p>
         ${q.image ? `<img src="${q.image}" style="max-width:100%;border-radius:8px;" />` : ''}
         ${q.mathml ? `<div class="mathml">${q.mathml}</div>` : ''}
       `;
@@ -228,12 +236,13 @@ async function openExamDetail(examId) {
       else if (q.type === 'short_answer') {
         const form = document.createElement('div');
         form.className = 'short-form';
+        const currentAnswer = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
         for (let i = 1; i <= 4; i++) {
           const inp = document.createElement('input');
           inp.className = `cell cell-${i}`;
           inp.maxLength = 1;
           inp.name = `ans_${q.id}_${i}`;
-          inp.value = q.correctAnswer && q.correctAnswer[i-1] ? q.correctAnswer[i-1] : '';
+          inp.value = currentAnswer[i-1] || '';
           form.appendChild(inp);
         }
         optsDiv.appendChild(form);
@@ -241,7 +250,7 @@ async function openExamDetail(examId) {
 
       div.appendChild(optsDiv);
       
-      // Upload image cho từng câu
+      // Upload image
       const uploadDiv = document.createElement('div');
       uploadDiv.style.marginTop = '12px';
       uploadDiv.innerHTML = `
@@ -255,26 +264,29 @@ async function openExamDetail(examId) {
     });
 
     modal.style.display = 'block';
-    
-    // Setup modal buttons
     setupModalButtons(examId);
     
   } catch (err) {
     console.error('openExamDetail error:', err);
-    alert('Có lỗi khi tải chi tiết đề' + err.message);
+    alert('Có lỗi khi tải chi tiết đề: ' + err.message);
   }
 }
+
+// FIX #2: Cải thiện lưu đáp án với validation và logging
 function setupModalButtons(examId) {
   // Lưu đáp án
   document.getElementById('saveAnswers').onclick = async () => {
     try {
       const answers = {};
+      
+      // Thu thập tất cả input
       document.querySelectorAll("[name^='ans_']").forEach(input => {
         const name = input.name;
         const value = input.value.trim();
+        
         // Bỏ qua radio button không được chọn
-        if ((input.type === 'radio' && input.checked) return;
-
+        if (input.type === 'radio' && !input.checked) return;
+        
         // Xử lý True/False nhiều ý: ans_<qid>_<subKey>
         const matchSub = name.match(/^ans_(\d+)_(\w+)$/);
         if (matchSub && input.type === 'radio') {
@@ -284,6 +296,7 @@ function setupModalButtons(examId) {
           answers[qid][subKey] = value;
           return;
         }
+        
         // Xử lý Short Answer: ans_<qid>_<1-4>
         const matchShort = name.match(/^ans_(\d+)_(\d)$/);
         if (matchShort && input.type !== 'radio') {
@@ -303,22 +316,23 @@ function setupModalButtons(examId) {
           answers[qid] = value;
         }
       });
-
+      
       console.log('📤 Gửi đáp án:', answers);
       
       if (Object.keys(answers).length === 0) {
         alert('⚠️ Chưa chọn đáp án nào!');
         return;
       }
-         
+      
       const res = await fetch(`/exam/${examId}/correct-answers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers })
       });
+      
       const result = await res.json();
       console.log('📥 Kết quả lưu:', result);
-
+      
       if (result.ok) {
         alert('✅ Đã lưu đáp án thành công!');
       } else {
@@ -329,7 +343,6 @@ function setupModalButtons(examId) {
       alert('Lỗi kết nối: ' + err.message);
     }
   };
-      
 
   // Gửi báo cáo
   document.getElementById('sendReport').onclick = async () => {
@@ -370,7 +383,6 @@ function closeExamDetail() {
   if (modal) modal.style.display = 'none';
 }
 
-// Đính kèm ảnh từng câu
 async function attachImage(examId, qid) {
   const input = document.getElementById(`img_${qid}`);
   if (!input || !input.files[0]) return alert('Chọn ảnh');
@@ -399,6 +411,7 @@ async function attachImage(examId, qid) {
     alert('❌ Lỗi kết nối: ' + err.message);
   }
 }
+
 // ====================== STUDENT ======================
 async function loadLatestExamVariant() {
   const res = await fetch('/exam/latest-variant');
@@ -433,6 +446,7 @@ function startExamTimer(timeMinutes) {
     document.getElementById('timer').textContent = `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
   }, 1000);
 }
+
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
@@ -488,6 +502,8 @@ function renderExam(exam) {
     container.appendChild(qDiv);
   });
 }
+
+// FIX #3: Cải thiện submit với logging để debug
 async function submitExam(autoSubmit = false) {
   if (!autoSubmit && !confirm('Nộp bài?')) return;
   if (examTimer) clearInterval(examTimer);
@@ -518,7 +534,7 @@ async function submitExam(autoSubmit = false) {
       }
     }
   });
-  
+
   console.log('📤 Học sinh nộp bài:', {
     examId: currentExamId,
     answers,
@@ -539,7 +555,7 @@ async function submitExam(autoSubmit = false) {
       })
     });
     const data = await res.json();
-
+    
     console.log('📥 Kết quả chấm:', data);
     
     if (data.ok) {
@@ -571,9 +587,9 @@ async function submitExam(autoSubmit = false) {
     alert('Lỗi: ' + err.message);
   }
 }
+
 // ====================== EVENT HANDLERS ======================
 function setupEventHandlers() {
-  // ====================== LOGIN FORM ======================
   const loginForm = document.getElementById('loginForm');
   const loginError = document.getElementById('loginError');
   if (loginForm) {
@@ -622,7 +638,6 @@ function setupEventHandlers() {
     });
   }
 
-  // ====================== TOGGLE PASSWORD ======================
   const togglePassword = document.getElementById('togglePassword');
   if (togglePassword) {
     togglePassword.addEventListener('click', () => {
@@ -638,7 +653,7 @@ function setupEventHandlers() {
       }
     });
   }
-// ====================== STUDENT INFO FORM ======================
+
   const studentInfoForm = document.getElementById('studentInfoForm');
   const studentInfoError = document.getElementById('studentInfoError');
   if (studentInfoForm) {
@@ -687,7 +702,6 @@ function setupEventHandlers() {
     });
   }
 
-  // ====================== TEACHER UPLOAD FORM ======================
   const uploadForm = document.getElementById('uploadForm');
   if (uploadForm) {
     uploadForm.addEventListener('submit', async e => {
@@ -732,7 +746,7 @@ function setupEventHandlers() {
       }
     });
   }
-  // ====================== OTHER BUTTONS ======================
+
   document.getElementById('submitBtn')?.addEventListener('click', e => {
     e.preventDefault();
     submitExam(false);
@@ -744,7 +758,6 @@ function setupEventHandlers() {
 
   document.getElementById('closeModal')?.addEventListener('click', closeExamDetail);
   
-  // Close modal khi click outside
   window.onclick = (event) => {
     const modal = document.getElementById('examDetailModal');
     if (event.target === modal) {
@@ -759,7 +772,6 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventHandlers();
 });
 
-// Expose for global access
 window.openExamDetail = openExamDetail;
 window.closeExamDetail = closeExamDetail;
 window.loadExamList = loadExamList;
