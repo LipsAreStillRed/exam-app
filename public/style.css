@@ -37,8 +37,7 @@ body {
   margin: 0 auto;
   padding: 20px;
 }
-
-/* PAGE SYSTEM - ✅ Chỉ hiển thị 1 trang tại 1 thời điểm */
+/* PAGE SYSTEM */
 .page {
   display: none;
   animation: fadeIn 0.3s ease-in;
@@ -54,9 +53,18 @@ body {
 }
 
 /* LOGIN PAGE */
+#loginPage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: rgba(0,0,0,0.03);
+}
+
 .login-box {
   max-width: 420px;
-  margin: 60px auto;
+  width: 92%;
+  margin: 24px auto;
   background: var(--card-bg);
   padding: 40px;
   border-radius: 16px;
@@ -92,7 +100,7 @@ body {
   margin-bottom: 30px;
   font-size: 15px;
 }
-
+/* INPUT GROUP */
 .input-group {
   position: relative;
   margin-bottom: 20px;
@@ -135,6 +143,7 @@ body {
   height: 20px;
 }
 
+/* BUTTONS */
 .btn {
   padding: 12px 24px;
   border: none;
@@ -188,7 +197,7 @@ body {
 .btn-danger:hover {
   background: #dc2626;
 }
-
+/* ERROR MESSAGE */
 .error-message {
   color: var(--danger);
   background: #fee2e2;
@@ -203,6 +212,7 @@ body {
   display: block;
 }
 
+/* INFO TEXT */
 .info-text {
   margin-top: 30px;
   padding-top: 20px;
@@ -227,6 +237,7 @@ body {
   margin-bottom: 30px;
   padding-bottom: 20px;
   border-bottom: 2px solid var(--border);
+  gap: 12px;
 }
 
 .header h2 {
@@ -237,6 +248,7 @@ body {
 /* DASHBOARD */
 .dashboard {
   display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 
@@ -246,6 +258,7 @@ body {
   border-radius: 12px;
   padding: 24px;
   box-shadow: var(--shadow);
+  border: 1px solid var(--border);
 }
 
 .card h3 {
@@ -256,7 +269,6 @@ body {
   align-items: center;
   gap: 8px;
 }
-
 /* FORM */
 .form-group {
   margin-bottom: 20px;
@@ -310,7 +322,6 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
-
 /* MODAL */
 .modal {
   display: none;
@@ -322,13 +333,13 @@ body {
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
   animation: fadeIn 0.3s;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 .modal.active {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
 }
 
 .modal-content {
@@ -373,7 +384,6 @@ body {
   color: var(--danger);
 }
 
-
 .modal-actions {
   position: sticky;
   bottom: 0;
@@ -390,7 +400,6 @@ body {
   flex: 1;
   min-width: 150px;
 }
-
 /* QUESTION BLOCK */
 .question-block {
   background: var(--bg);
@@ -418,6 +427,7 @@ body {
   margin: 12px 0;
 }
 
+/* OPTIONS */
 .options {
   display: flex;
   flex-direction: column;
@@ -444,40 +454,65 @@ body {
 .option input[type="radio"] {
   cursor: pointer;
 }
-.question-block {
-  background: var(--bg);
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  border-left: 4px solid var(--primary);
-}
 
-.question-block h4 {
-  margin-bottom: 6px;
-  color: var(--primary);
-  font-size: 15px;
-}
-
-.options {
+/* Multiple choice options */
+.option-block {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 8px;
 }
 
-.option {
-  padding: 8px;
+.option-block label {
+  display: block;
+  margin: 6px 0;
+  padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: #fff;
+  background: #f9f9f9;
   cursor: pointer;
 }
 
-.option:hover {
-  background: #f0f9ff;
-  border-color: var(--primary);
+.option-block input[type="radio"] {
+  margin-right: 8px;
 }
 
+.option-block label:hover {
+  border-color: var(--primary);
+  background: #f0f9ff;
+}
+
+/* True/False block */
+.truefalse-block .sub-item {
+  margin: 10px 0;
+  padding: 8px;
+  border-left: 4px solid var(--primary);
+  background: #f0f8ff;
+  border-radius: 6px;
+}
+
+.truefalse-block label {
+  margin-left: 12px;
+}
+
+/* Short answer form */
+.short-form {
+  display: flex;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.cell {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  text-align: center;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+}
+
+.cell-1 { background: #fffbe6; }
+.cell-2, .cell-3 { background: #e6f7ff; }
+.cell-4 { background: #f0fff0; }
 /* EXAM LIST */
 .exams-list {
   display: flex;
@@ -514,6 +549,31 @@ body {
 .exam-item button:hover {
   background: var(--primary-dark);
   transform: translateY(-1px);
+}
+
+/* Variants list */
+.variants-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fafafa;
+  min-height: 50px;
+}
+
+.variant-item {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+.variant-item:hover {
+  background: #f0f8ff;
 }
 
 /* SUBMISSIONS LIST */
@@ -554,31 +614,8 @@ body {
   color: var(--text-light);
   padding: 40px;
   font-size: 15px;
+  font-style: italic;
 }
-.submissions-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 10px;
-}
-
-.submissions-table th,
-.submissions-table td {
-  border: 1px solid var(--border);
-  padding: 8px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.submissions-table th {
-  background: var(--bg);
-  font-weight: 600;
-  color: var(--text);
-}
-
-.submissions-table td {
-  background: #fff;
-}
-
 /* STUDENT INFO PAGE */
 .student-form-container {
   max-width: 500px;
@@ -708,7 +745,6 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
   background: #dbeafe;
 }
-
 /* RESULT PAGE */
 .result-container {
   max-width: 500px;
@@ -774,6 +810,15 @@ body {
 }
 
 /* RESPONSIVE */
+@media (max-width: 880px) {
+  .dashboard { 
+    grid-template-columns: 1fr; 
+  }
+  .modal-content { 
+    width: 96%; 
+  }
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 12px;
@@ -847,11 +892,26 @@ body {
 
 @media (max-width: 480px) {
   .login-box {
+    width: 92%;
     padding: 24px 20px;
   }
   
   .login-box h1 {
     font-size: 24px;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+  }
+  
+  .input-group input {
+    font-size: 14px;
+    padding: 10px 36px 10px 10px;
+  }
+  
+  .btn {
+    font-size: 15px;
+    padding: 10px 12px;
   }
   
   .logo {
@@ -866,152 +926,8 @@ body {
   .exam-content {
     padding: 16px;
   }
+  
+  .option {
+    padding: 10px;
+  }
 }
-/* Login center + overlay nhẹ */
-#loginPage {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  background: rgba(0,0,0,0.03);
-}
-.login-box { max-width: 420px; width: 92%; margin: 24px auto; padding: 24px; }
-
-/* Modal */
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; }
-.modal.active { display: flex; align-items: center; justify-content: center; }
-.modal-content { background: #fff; width: 96%; max-width: 880px; border-radius: 12px; padding: 20px; box-shadow: 0 8px 28px rgba(0,0,0,0.2); }
-.modal .close { position: absolute; right: 16px; top: 12px; background: transparent; border: none; font-size: 20px; cursor: pointer; }
-
-/* Options UI */
-.options { display: grid; grid-template-columns: 1fr; gap: 10px; }
-.option { display: flex; align-items: center; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
-.option input { margin-right: 6px; }
-
-/* Short answer boxes */
-.short-answer-boxes .boxes-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-.answer-box { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: #fff; }
-
-/* Teacher dashboard cards */
-.dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-
-/* Responsive */
-@media (max-width: 880px) {
-  .dashboard { grid-template-columns: 1fr; }
-  .modal-content { width: 96%; }
-}
-@media (max-width: 480px) {
-  .login-box { width: 92%; padding: 20px; }
-  .login-box h1 { font-size: 22px; }
-  .subtitle { font-size: 14px; }
-  .input-group input { font-size: 14px; padding: 10px 36px 10px 10px; }
-  .btn { font-size: 15px; padding: 10px 12px; }
-  .option { padding: 10px; }
-}
-/* Multiple choice options: mỗi đáp án 1 dòng */
-.option-block label {
-  display: block;
-  margin: 6px 0;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: #f9f9f9;
-  cursor: pointer;
-}
-.option-block input[type="radio"] {
-  margin-right: 8px;
-}
-.option-block label:hover {
-  border-color: var(--primary);
-  background: #f0f9ff;
-}
-/* True/False block: hiển thị từng ý rõ ràng */
-.truefalse-block .sub-item {
-  margin: 10px 0;
-  padding: 8px;
-  border-left: 4px solid var(--primary);
-  background: #f0f8ff;
-  border-radius: 6px;
-}
-.truefalse-block label {
-  margin-left: 12px;
-}
-/* Short answer form: 4 ô nhập */
-.short-form {
-  display: flex;
-  gap: 10px;
-  margin: 12px 0;
-}
-.cell {
-  width: 40px;
-  height: 40px;
-  font-size: 20px;
-  text-align: center;
-  border: 2px solid var(--border);
-  border-radius: 6px;
-}
-.cell-1 { background: #fffbe6; }   /* ô đầu: có thể nhập -, , hoặc số */
-.cell-2, .cell-3 { background: #e6f7ff; } /* ô 2 và 3: , hoặc số */
-.cell-4 { background: #f0fff0; }   /* ô cuối: chỉ số */
-/* Khối chứa danh sách đề phụ */
-.variants-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  background: #fafafa;
-  min-height: 50px;
-}
-
-/* Item đề phụ */
-.variant-item {
-  padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fff;
-  transition: background 0.2s ease;
-  cursor: pointer;
-}
-
-/* Hover hiệu ứng */
-.variant-item:hover {
-  background: #f0f8ff;
-}
-
-/* Empty state */
-.variants-list .empty-state {
-  color: #888;
-  font-style: italic;
-}
-.close {
-  color: #aaa;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.close:hover {
-  color: var(--primary);
-}
-.variant-list {
-  margin-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.variant-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 6px 12px;
-  background: #f9f9f9;
-  border-radius: 6px;
-  border-left: 3px solid var(--primary);
-}
-
