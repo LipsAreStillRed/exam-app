@@ -50,6 +50,7 @@ router.post('/exam/report/:classId/export', async (req, res) => {
       attachments: attach ? [{ filename, content: buffer }] : []
     });
 
+
     // Xóa file tạm sau khi upload
     fs.unlinkSync(tmpPath);
 
