@@ -7,108 +7,132 @@ import { uploadToDrive } from '../utils/driveHelper.js';
 
 const router = express.Router();
 
+/* ====================== SCORE CALCULATION ====================== */
+/**
+ * answers: đối tượng đáp án học sinh, key theo questionId
+ * correctAnswers: đáp án chuẩn lưu trong exam.answers
+ * questions: mảng câu hỏi để xác định loại câu (multiple_choice, true_false, short_answer)
+ */
 function calculateScore(answers, correctAnswers, questions) {
-  if (!correctAnswers || Object.keys(correctAnswers).length === 0) {
-    return null;
-  }
-  
+  if (!correctAnswers || Object.keys(correctAnswers).length === 0) return null;
+
   let correct = 0;
   let total = 0;
-  
-  // Duyệt qua từng câu hỏi để xử lý đúng
-  questions.forEach(q => {
-    const questionId = q.id;
-    
-    // Câu đúng/sai có nhiều ý (a, b, c, d)
-    if (q.type === 'true_false' && q.subQuestions && q.subQuestions.length > 0) {
-      // Mỗi ý là 1 câu nhỏ
+
+  (questions || []).forEach(q => {
+    const qid = q.id;
+
+    // True/False nhiều ý (subQuestions)
+    if (q.type === 'true_false' && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
       q.subQuestions.forEach(sub => {
         total++;
-        const subKey = sub.key;
-        const correctAnswer = correctAnswers[questionId] && correctAnswers[questionId][subKey];
-        const studentAnswer = answers[questionId] && answers[questionId][subKey];
-        
-        if (correctAnswer && studentAnswer) {
-          const studentNorm = String(studentAnswer).toUpperCase().trim();
-          const correctNorm = String(correctAnswer).toUpperCase().trim();
-          
-          if (studentNorm === correctNorm) {
-            correct++;
-          }
-        }
+        const ca = correctAnswers[qid]?.[sub.key];
+        const sa = answers[qid]?.[sub.key];
+        if (!ca || !sa) return;
+        const saNorm = String(sa).trim().toUpperCase();
+        const caNorm = String(ca).trim().toUpperCase();
+        if (saNorm === caNorm) correct++;
       });
-    } else {
-      // Câu thường (trắc nghiệm, đúng/sai đơn, trả lời ngắn)
-      total++;
-      const correctAnswer = correctAnswers[questionId];
-      const studentAnswer = answers[questionId];
-      
-      if (!correctAnswer || !studentAnswer) return;
-      
-      let studentAnswerStr = studentAnswer;
-      if (typeof studentAnswer === 'object' && studentAnswer.boxes) {
-        studentAnswerStr = studentAnswer.boxes.filter(b => b).join('');
-      }
-      
-      const studentNorm = String(studentAnswerStr).toUpperCase().replace(/\s/g, '');
-      const correctNorm = String(correctAnswer).toUpperCase().replace(/\s/g, '');
-      
-      if (studentNorm === correctNorm) {
-        correct++;
-      }
+      return;
     }
+
+    // Câu đơn (multiple_choice, true_false đơn, short_answer)
+    total++;
+    const ca = correctAnswers[qid];
+    const sa = answers[qid];
+    if (!ca || !sa) return;
+
+    // short_answer: cho phép gửi dạng array boxes hoặc object {boxes:[]}
+    let saStr = sa;
+    if (Array.isArray(sa)) {
+      saStr = sa.filter(Boolean).join('');
+    } else if (typeof sa === 'object' && sa.boxes) {
+      saStr = sa.boxes.filter(Boolean).join('');
+    }
+
+    const saNorm = String(saStr).trim().toUpperCase().replace(/\s/g, '');
+    const caNorm = String(ca).trim().toUpperCase().replace(/\s/g, '');
+    if (saNorm === caNorm) correct++;
   });
-  
+
   if (total === 0) return null;
-  
-  return Math.round((correct / total) * 10 * 10) / 10;
+  return Math.round((correct / total) * 10 * 10) / 10; // làm tròn 0.1
 }
 
+/* ====================== RESULT.JSON UPDATE ====================== */
+const resultFile = path.join(process.cwd(), 'data', 'result.json');
+
+/**
+ * Cập nhật bảng tổng hợp theo lớp vào data/result.json
+ * - Thêm mới hoặc cập nhật theo studentData.id
+ */
+function updateResultJson(className, studentData) {
+  try {
+    let result = {};
+    if (fs.existsSync(resultFile)) {
+      result = JSON.parse(fs.readFileSync(resultFile, 'utf8'));
+    }
+    if (!result[className]) result[className] = [];
+
+    const idx = result[className].findIndex(s => s.id === studentData.id);
+    if (idx >= 0) {
+      result[className][idx] = studentData;
+    } else {
+      result[className].push(studentData);
+    }
+
+    fs.writeFileSync(resultFile, JSON.stringify(result, null, 2), 'utf8');
+  } catch (err) {
+    console.error('updateResultJson error:', err.message);
+  }
+}
+
+/* ====================== CSV UPDATE ====================== */
 function updateCSV(className, submissionData) {
   const dir = path.join(process.cwd(), 'data', 'csv');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  
+
   const filename = path.join(dir, `${className}.csv`);
   const isNewFile = !fs.existsSync(filename);
-  
+
   if (isNewFile) {
     const header = 'STT,Họ và tên,Ngày sinh,Lớp,Ngày giờ nộp,Điểm,Số lần vi phạm,Đáp án\n';
     fs.writeFileSync(filename, header, 'utf8');
   }
-  
+
   const content = fs.readFileSync(filename, 'utf8');
   const lines = content.split('\n').filter(l => l.trim().length > 0);
   const stt = lines.length;
-  
+
   const row = [
     stt,
-    `"${submissionData.name}"`,
+    `"${submissionData.name || ''}"`,
     submissionData.dob || '',
-    className,
+    className || '',
     new Date().toLocaleString('vi-VN'),
-    submissionData.score !== null ? submissionData.score : 'Chưa chấm',
+    submissionData.score !== null && submissionData.score !== undefined ? submissionData.score : 'Chưa chấm',
     submissionData.violations || 0,
-    `"${JSON.stringify(submissionData.answers).replace(/"/g, '""')}"`
+    `"${JSON.stringify(submissionData.answers || {}).replace(/"/g, '""')}"`
   ].join(',') + '\n';
-  
+
   fs.appendFileSync(filename, row, 'utf8');
-  
   return { filename, totalSubmissions: stt };
 }
 
+/* ====================== OPTIONAL EMAIL SENDER ====================== */
 async function sendClassEmail(className, filename, examId) {
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
     console.log('Email not configured');
     return;
   }
-  
+
   try {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || 465),
       secure: true,
-      auth: { 
-        user: process.env.MAIL_USER, 
+      auth: {
+        user: process.env.MAIL_USER,
         pass: (process.env.MAIL_PASS || '').replace(/\s/g, '')
       }
     });
@@ -118,38 +142,51 @@ async function sendClassEmail(className, filename, examId) {
       to: process.env.EMAIL_TO || process.env.MAIL_USER,
       subject: `📊 Kết quả lớp ${className} - ${new Date().toLocaleDateString('vi-VN')}`,
       text: `Kính gửi Thầy/Cô,\n\nĐính kèm file kết quả thi của lớp ${className}.\nMã đề: ${examId}\n\nTrân trọng.`,
-      attachments: [{ 
-        filename: path.basename(filename), 
-        path: filename 
+      attachments: [{
+        filename: path.basename(filename),
+        path: filename
       }]
     });
-    
+
     console.log(`Email sent for class ${className}`);
   } catch (error) {
     console.error('Email error:', error.message);
   }
 }
 
+/* ====================== SUBMIT ROUTE ====================== */
 router.post('/submit', async (req, res) => {
   try {
-    const { name, className, dob, answers, examId, violations } = req.body;
-    
+    const { id, name, className, dob, answers, examId, violations, email } = req.body;
+
+    // Tính điểm theo đáp án chuẩn trong exam JSON
     let score = null;
     let questions = [];
-    
     if (examId) {
       try {
         const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
         if (fs.existsSync(examPath)) {
           const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
-          questions = examData.questions;
-          score = calculateScore(answers, examData.answers, questions);
+          questions = examData.questions || [];
+          score = calculateScore(answers || {}, examData.answers || {}, questions);
         }
       } catch (e) {
         console.error('Error calculating score:', e);
       }
     }
-    
+
+    // Cập nhật result.json (tổng hợp theo lớp)
+    updateResultJson(className || 'unknown', {
+      id: id || name || `stu_${Date.now()}`,
+      name: name || '',
+      email: email || '',
+      score,
+      submittedAt: new Date().toISOString(),
+      status: 'submitted',
+      answers: JSON.stringify(answers || {})
+    });
+
+    // Lưu XML bài nộp
     const doc = create({ version: '1.0' })
       .ele('ketqua')
         .ele('hoten').txt(name || '').up()
@@ -160,119 +197,122 @@ router.post('/submit', async (req, res) => {
         .ele('violations').txt(String(violations || 0)).up()
         .ele('traloi').txt(JSON.stringify(answers || {})).up()
       .up();
-    
     const xml = doc.end({ prettyPrint: true });
+
     const xmlDir = path.join(process.cwd(), 'data', 'submissions');
     if (!fs.existsSync(xmlDir)) fs.mkdirSync(xmlDir, { recursive: true });
-    
+
     const timestamp = Date.now();
-    const xmlFilename = path.join(xmlDir, `${timestamp}_${className || 'unknown'}.xml`);
+    const xmlFilename = path.join(xmlDir, `${timestamp}_${(className || 'unknown')}.xml`);
     fs.writeFileSync(xmlFilename, xml, 'utf8');
-    // Upload file XML bài nộp lên Google Drive
+
+    // Upload lên Google Drive (tùy chọn, bật bằng biến môi trường DRIVE_ENABLED=true)
     let driveResult = null;
-    try {
-      driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
-      if (driveResult) {
-        console.log(`Uploaded submission to Drive: ${driveResult.webViewLink}`);
+    if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
+      try {
+        driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
+        if (driveResult) console.log(`Uploaded submission to Drive: ${driveResult.webViewLink}`);
+      } catch (err) {
+        console.error('Drive upload error:', err.message);
       }
-    } catch (err) {
-      console.error('Drive upload error:', err.message);
     }
-    
-    const csvResult = updateCSV(className, {
+
+    // Cập nhật CSV theo lớp
+    const csvResult = updateCSV(className || 'unknown', {
       name,
       dob,
       score,
       violations,
       answers
     });
-    
-    res.json({ 
-      ok: true, 
-      file: path.basename(xmlFilename), 
-      score,
-      totalSubmissions: csvResult.totalSubmissions - 1,
-      driveLink: driveResult ? driveResult.webViewLink : null
-    });
-    
-    setImmediate(async () => {
+
+    // Gửi email thông báo bài nộp (tùy chọn, khi đã cấu hình MAIL_USER/PASS)
+    if (process.env.MAIL_USER && process.env.MAIL_PASS) {
       try {
-        if (!process.env.MAIL_USER || !process.env.MAIL_PASS) return;
-        
         const transporter = nodemailer.createTransport({
           host: process.env.SMTP_HOST || 'smtp.gmail.com',
           port: parseInt(process.env.SMTP_PORT || 465),
           secure: true,
-          auth: { 
-            user: process.env.MAIL_USER, 
-            pass: (process.env.MAIL_PASS || '').replace(/\s/g, '')
+          auth: {
+            user: process.env.MAIL_USER,
+            pass: (process.env.MAIL_PASS || '').trim()
           }
         });
 
         await transporter.sendMail({
           from: process.env.MAIL_USER,
           to: process.env.EMAIL_TO || process.env.MAIL_USER,
-          subject: `Bài nộp: ${name} - ${className}${score !== null ? ` - ${score} điểm` : ''}`,
-          text: `Học sinh ${name} (${className}) đã nộp bài.\nSố lần vi phạm: ${violations || 0}${score !== null ? `\nĐiểm: ${score}/10` : ''}`,
-          attachments: [{ 
-            filename: path.basename(xmlFilename), 
-            path: xmlFilename 
+          subject: `Bài nộp: ${name || '(không tên)'} - ${className || '(không lớp)'}${score !== null ? ` - ${score} điểm` : ''}`,
+          text: `Học sinh ${name || ''} (${className || ''}) đã nộp bài.\nSố lần vi phạm: ${violations || 0}${score !== null ? `\nĐiểm: ${score}/10` : ''}`,
+          attachments: [{
+            filename: path.basename(xmlFilename),
+            path: xmlFilename
           }]
         });
       } catch (error) {
         console.error('Email error:', error.message);
       }
+    }
+
+    // Phản hồi cho frontend
+    res.json({
+      ok: true,
+      file: path.basename(xmlFilename),
+      score,
+      totalSubmissions: csvResult.totalSubmissions - 1,
+      driveLink: driveResult ? driveResult.webViewLink : null
     });
-    
-  } catch(e) { 
-    console.error(e); 
-    res.status(500).json({ ok: false, error: e.message }); 
+
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
+/* ====================== LIST SUBMISSIONS ====================== */
 router.get('/submissions', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'submissions');
     if (!fs.existsSync(dir)) return res.json({ ok: true, submissions: [] });
-    
+
     const files = fs.readdirSync(dir).filter(f => f.endsWith('.xml'));
     const submissions = files.map(f => {
       const content = fs.readFileSync(path.join(dir, f), 'utf8');
       const nameMatch = content.match(/<hoten>(.*?)<\/hoten>/);
       const classMatch = content.match(/<lop>(.*?)<\/lop>/);
       const scoreMatch = content.match(/<diem>(.*?)<\/diem>/);
-      const timestamp = f.split('_')[0];
-      
+      const timestamp = parseInt(f.split('_')[0], 10);
+
       return {
         filename: f,
         name: nameMatch ? nameMatch[1] : 'Unknown',
         className: classMatch ? classMatch[1] : 'Unknown',
         score: scoreMatch && scoreMatch[1] ? scoreMatch[1] : 'Chưa chấm',
-        timestamp: parseInt(timestamp),
-        date: new Date(parseInt(timestamp)).toLocaleString('vi-VN')
+        timestamp,
+        date: isNaN(timestamp) ? '' : new Date(timestamp).toLocaleString('vi-VN')
       };
     }).sort((a, b) => b.timestamp - a.timestamp);
-    
+
     res.json({ ok: true, submissions });
-  } catch(e) { 
-    console.error(e); 
-    res.status(500).json({ ok: false, error: e.message }); 
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
+/* ====================== SEND CLASS REPORT ====================== */
 router.post('/send-class-report', async (req, res) => {
   try {
     const { className, examId } = req.body;
     const csvPath = path.join(process.cwd(), 'data', 'csv', `${className}.csv`);
-    
+
     if (!fs.existsSync(csvPath)) {
       return res.status(404).json({ ok: false, error: 'Chưa có bài nộp' });
     }
-    
+
     await sendClassEmail(className, csvPath, examId);
-    
     res.json({ ok: true, message: 'Đã gửi email' });
-  } catch(e) {
+  } catch (e) {
     console.error(e);
     res.status(500).json({ ok: false, error: e.message });
   }
