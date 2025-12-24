@@ -2,7 +2,7 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { create } from 'xmlbuilder2';
-import nodemailer from 'nodemailer';
+import { sendEmail } from '../utils/emailHelper.js';
 import { uploadToDrive } from '../utils/driveHelper.js';
 
 const router = express.Router();
@@ -228,31 +228,18 @@ router.post('/submit', async (req, res) => {
 
     // Gửi email thông báo bài nộp (tùy chọn, khi đã cấu hình MAIL_USER/PASS)
     if (process.env.MAIL_USER && process.env.MAIL_PASS) {
-      try {
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST || 'smtp.gmail.com',
-          port: parseInt(process.env.SMTP_PORT || 465),
-          secure: true,
-          auth: {
-            user: process.env.MAIL_USER,
-            pass: (process.env.MAIL_PASS || '').trim()
-          }
-        });
+  try {
+    await sendEmail({
+      to: process.env.EMAIL_TO || process.env.MAIL_USER,
+      subject: `Bài nộp: ${name} - ${className}${score !== null ? ` - ${score} điểm` : ''}`,
+      html: `Học sinh ${name} (${className}) đã nộp bài.<br>Số lần vi phạm: ${violations}${score !== null ? `<br>Điểm: ${score}/10` : ''}`,
+      attachments: [{ filename: path.basename(xmlFilename), path: xmlFilename }]
+    });
+  } catch (error) {
+    console.error('Email error:', error.message);
+  }
+}
 
-        await transporter.sendMail({
-          from: process.env.MAIL_USER,
-          to: process.env.EMAIL_TO || process.env.MAIL_USER,
-          subject: `Bài nộp: ${name || '(không tên)'} - ${className || '(không lớp)'}${score !== null ? ` - ${score} điểm` : ''}`,
-          text: `Học sinh ${name || ''} (${className || ''}) đã nộp bài.\nSố lần vi phạm: ${violations || 0}${score !== null ? `\nĐiểm: ${score}/10` : ''}`,
-          attachments: [{
-            filename: path.basename(xmlFilename),
-            path: xmlFilename
-          }]
-        });
-      } catch (error) {
-        console.error('Email error:', error.message);
-      }
-    }
 
     // Phản hồi cho frontend
     res.json({
