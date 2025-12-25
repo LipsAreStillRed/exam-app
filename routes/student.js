@@ -156,7 +156,8 @@ router.post('/submit', async (req, res) => {
     let questions = [];
     if (examId) {
       try {
-        const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+        const baseId = examId.includes('_r') ? examId.split('_r')[0] : examId;
+        const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
         if (fs.existsSync(examJsonPath)) {
           const examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
           questions = examData.questions || [];
