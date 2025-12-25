@@ -247,21 +247,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     };
     writeExam(examData);
 
-    // Tạo variants theo tuỳ chọn
-    const cfg = {
-      p1Mode: req.body.p1Mode || 'none',
-      p2Mode: req.body.p2Mode || 'none',
-      p3Mode: req.body.p3Mode || 'none',
-      variantCount: req.body.variantCount || '1'
-    };
-    const variants = makeVariants(examData, cfg);
-    examData.variants = variants;
-    writeExam(examData);
-    const cfg = {
-      p1Mode: req.body.p1Mode || 'none',
-      p2Mode: req.body.p2Mode || 'none',
-      p3Mode: req.body.p3Mode || 'none',
-      variantCount: parseInt(req.body.variantCount || '1', 10)
+    // Lưu cấu hình trộn để dùng runtime (không tạo variants) 
+    const cfg = { 
+      p1Mode: req.body.p1Mode || 'none', 
+      p2Mode: req.body.p2Mode || 'none', 
+      p3Mode: req.body.p3Mode || 'none', 
+      variantCount: parseInt(req.body.variantCount || '1', 10) 
     };
     examData.shuffleConfig = cfg;
     writeExam(examData);
