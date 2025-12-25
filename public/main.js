@@ -456,9 +456,14 @@ function renderExam(exam) {
     let optionsHtml = '';
     
     if (q.type === 'multiple_choice') {
+      const letters = ['A','B','C','D'];
+      const options = (q.options || []).map((opt, idx) => ({
+        key: letters[idx],
+        text: opt.text
+      }));
       optionsHtml = `
         <div class="option-block">
-          ${q.options.map(opt => `
+          ${options.map(opt => `
             <label>
               <input type="radio" name="q_${q.id}" value="${opt.key}">
               ${opt.key}. ${opt.text}
