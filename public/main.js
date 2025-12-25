@@ -97,7 +97,7 @@ async function loadExamList() {
             <span>🔀 Mã đề ${idx + 1} (${variant.questions?.length || count} câu)</span>
             <button type="button" class="btn btn-secondary">Chi tiết</button>
           `;
-          variantItem.querySelector('button').onclick = () => openExamDetail(variant.id);
+          variantItem.querySelector('button').onclick = () => openExamDetail(exam.id);
           variantsList.appendChild(variantItem);
         });
         
