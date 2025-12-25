@@ -46,7 +46,7 @@ function calculateScore(answers, correctAnswers, questions) {
     let saStr = sa;
     if (Array.isArray(sa)) {
       saStr = sa.filter(Boolean).join('');
-    } else if (typeof sa === 'object' && sa.boxes) {
+    } else if (typeof sa === 'object' && sa?.boxes) {
       saStr = sa.boxes.filter(Boolean).join('');
     }
 
@@ -56,7 +56,8 @@ function calculateScore(answers, correctAnswers, questions) {
   });
 
   if (total === 0) return null;
-  return Math.round((correct / total) * 10 * 10) / 10; // làm tròn 0.1
+  // quy về thang 10, làm tròn đến 0.1
+  return Math.round((correct / total) * 10 * 10) / 10;
 }
 
 /* ====================== RESULT.JSON UPDATE ====================== */
@@ -119,7 +120,10 @@ function updateCSV(className, submissionData) {
   return { filename, totalSubmissions: stt };
 }
 
-/* ====================== OPTIONAL EMAIL SENDER ====================== */
+/* ====================== OPTIONAL EMAIL SENDER (CLASS REPORT) ====================== */
+/**
+ * Gửi báo cáo lớp qua email, dùng helper chung sendEmail (không dùng nodemailer trực tiếp)
+ */
 async function sendClassEmail(className, filename, examId) {
   if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
     console.log('Email not configured');
@@ -127,27 +131,15 @@ async function sendClassEmail(className, filename, examId) {
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || 465),
-      secure: true,
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: (process.env.MAIL_PASS || '').replace(/\s/g, '')
-      }
-    });
-
-    await transporter.sendMail({
-      from: process.env.MAIL_USER,
+    await sendEmail({
       to: process.env.EMAIL_TO || process.env.MAIL_USER,
       subject: `📊 Kết quả lớp ${className} - ${new Date().toLocaleDateString('vi-VN')}`,
-      text: `Kính gửi Thầy/Cô,\n\nĐính kèm file kết quả thi của lớp ${className}.\nMã đề: ${examId}\n\nTrân trọng.`,
-      attachments: [{
-        filename: path.basename(filename),
-        path: filename
-      }]
+      html: `<p>Kính gửi Thầy/Cô,</p>
+             <p>Đính kèm file kết quả thi của lớp <b>${className}</b>.</p>
+             <p>Mã đề: ${examId || '(không có)'}</p>
+             <p>Trân trọng.</p>`,
+      attachments: [{ filename: path.basename(filename), path: filename }]
     });
-
     console.log(`Email sent for class ${className}`);
   } catch (error) {
     console.error('Email error:', error.message);
@@ -164,9 +156,9 @@ router.post('/submit', async (req, res) => {
     let questions = [];
     if (examId) {
       try {
-        const examPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
-        if (fs.existsSync(examPath)) {
-          const examData = JSON.parse(fs.readFileSync(examPath, 'utf8'));
+        const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${examId}.json`);
+        if (fs.existsSync(examJsonPath)) {
+          const examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
           questions = examData.questions || [];
           score = calculateScore(answers || {}, examData.answers || {}, questions);
         }
@@ -206,17 +198,6 @@ router.post('/submit', async (req, res) => {
     const xmlFilename = path.join(xmlDir, `${timestamp}_${(className || 'unknown')}.xml`);
     fs.writeFileSync(xmlFilename, xml, 'utf8');
 
-    // Upload lên Google Drive (tùy chọn, bật bằng biến môi trường DRIVE_ENABLED=true)
-    let driveResult = null;
-    if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
-      try {
-        driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
-        if (driveResult) console.log(`Uploaded submission to Drive: ${driveResult.webViewLink}`);
-      } catch (err) {
-        console.error('Drive upload error:', err.message);
-      }
-    }
-
     // Cập nhật CSV theo lớp
     const csvResult = updateCSV(className || 'unknown', {
       name,
@@ -226,30 +207,37 @@ router.post('/submit', async (req, res) => {
       answers
     });
 
-    // Gửi email thông báo bài nộp (tùy chọn, khi đã cấu hình MAIL_USER/PASS)
-    if (process.env.MAIL_USER && process.env.MAIL_PASS) {
-  try {
-    await sendEmail({
-      to: process.env.EMAIL_TO || process.env.MAIL_USER,
-      subject: `Bài nộp: ${name} - ${className}${score !== null ? ` - ${score} điểm` : ''}`,
-      html: `Học sinh ${name} (${className}) đã nộp bài.<br>Số lần vi phạm: ${violations}${score !== null ? `<br>Điểm: ${score}/10` : ''}`,
-      attachments: [{ filename: path.basename(xmlFilename), path: xmlFilename }]
-    });
-  } catch (error) {
-    console.error('Email error:', error.message);
-  }
-}
-
-
-    // Phản hồi cho frontend
+    // Phản hồi cho frontend sớm (không chờ I/O mạng)
     res.json({
       ok: true,
       file: path.basename(xmlFilename),
       score,
       totalSubmissions: csvResult.totalSubmissions - 1,
-      driveLink: driveResult ? driveResult.webViewLink : null
+      driveLink: null
     });
 
+    // Chạy tác vụ chậm sau phản hồi
+    queueMicrotask(async () => {
+      try {
+        // Upload lên Google Drive (tùy chọn, bật bằng DRIVE_ENABLED=true)
+        if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
+          const driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
+          if (driveResult) console.log(`Uploaded submission to Drive: ${driveResult.webViewLink || driveResult.webContentLink}`);
+        }
+
+        // Gửi email thông báo bài nộp (tùy chọn)
+        if (process.env.MAIL_USER && process.env.MAIL_PASS) {
+          await sendEmail({
+            to: process.env.EMAIL_TO || process.env.MAIL_USER,
+            subject: `Bài nộp: ${name || '(không tên)'} - ${className || '(không lớp)'}${score !== null ? ` - ${score} điểm` : ''}`,
+            html: `Học sinh ${name || ''} (${className || ''}) đã nộp bài.<br>Số lần vi phạm: ${violations || 0}${score !== null ? `<br>Điểm: ${score}/10` : ''}`,
+            attachments: [{ filename: path.basename(xmlFilename), path: xmlFilename }]
+          });
+        }
+      } catch (error) {
+        console.error('Post-submit tasks error:', error.message);
+      }
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ ok: false, error: e.message });
