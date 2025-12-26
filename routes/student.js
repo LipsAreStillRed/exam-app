@@ -8,59 +8,53 @@ import { sendEmail, sendClassEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
 
-/* ====================== SCORE CALCULATION ====================== */
+// Hàm chuẩn hóa chuỗi để so sánh
+function normalizeStr(x) {
+  return String(x ?? '').trim().toUpperCase().replace(/\s/g, '');
+}
+
+// Hàm chấm điểm
 function calculateScore(answers, correctAnswers, questions) {
-  if (!correctAnswers || Object.keys(correctAnswers).length === 0) return null;
+  const studentAns = Object.fromEntries(Object.entries(answers || {}).map(([k, v]) => [String(k), v]));
+  const correctAns = Object.fromEntries(Object.entries(correctAnswers || {}).map(([k, v]) => [String(k), v]));
+
+  if (!correctAns || Object.keys(correctAns).length === 0) return null;
 
   let correct = 0;
   let total = 0;
 
   (questions || []).forEach(q => {
-    const qid = String(q.id); // dùng id gốc
+    const qid = String(q.id);
 
-    // True/False nhiều ý
-    if (q.type === 'true_false' && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
+    if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
       q.subQuestions.forEach(sub => {
         total++;
-        const subKey = String(sub.key);
-        const ca = correctAnswers[qid]?.[subKey];
-        const sa = answers[qid]?.[subKey];
+        const key = String(sub.key);
+        const ca = correctAns[qid]?.[key];
+        const sa = studentAns[qid]?.[key];
         if (!ca || !sa) return;
-
-        const match = String(sa).trim().toUpperCase() === String(ca).trim().toUpperCase();
-        if (match) correct++;
+        if (normalizeStr(sa) === normalizeStr(ca)) correct++;
       });
       return;
     }
 
-    // Câu đơn
     total++;
-    const ca = correctAnswers[qid];
-    const sa = answers[qid];
+    const ca = correctAns[qid];
+    const sa = studentAns[qid];
     if (!ca || !sa) return;
 
     let saStr = sa;
     let caStr = ca;
+    if (Array.isArray(sa)) saStr = sa.filter(Boolean).join('');
+    else if (typeof sa === 'object' && sa?.boxes) saStr = sa.boxes.filter(Boolean).join('');
+    if (Array.isArray(ca)) caStr = ca.filter(Boolean).join('');
 
-    if (Array.isArray(sa)) {
-      saStr = sa.filter(Boolean).join('');
-    } else if (typeof sa === 'object' && sa?.boxes) {
-      saStr = sa.boxes.filter(Boolean).join('');
-    }
-    if (Array.isArray(ca)) {
-      caStr = ca.filter(Boolean).join('');
-    }
-
-    const saClean = String(saStr).trim().toUpperCase().replace(/\s/g, '');
-    const caClean = String(caStr).trim().toUpperCase().replace(/\s/g, '');
-
-    if (saClean === caClean) correct++;
+    if (normalizeStr(saStr) === normalizeStr(caStr)) correct++;
   });
 
   if (total === 0) return null;
   return Math.round((correct / total) * 10 * 10) / 10;
 }
-
 const resultFile = path.join(process.cwd(), 'data', 'result.json');
 
 function updateResultJson(className, studentData) {
@@ -102,7 +96,7 @@ function updateCSV(className, submissionData) {
     `"${submissionData.name || ''}"`,
     submissionData.dob || '',
     className || '',
-    new Date().toLocaleString('vi-VN'),
+    new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }), // GMT+7
     submissionData.score !== null && submissionData.score !== undefined ? submissionData.score : 'Chưa chấm',
     submissionData.violations || 0,
     `"${JSON.stringify(submissionData.answers || {}).replace(/"/g, '""')}"`
@@ -111,8 +105,7 @@ function updateCSV(className, submissionData) {
   fs.appendFileSync(filename, row, 'utf8');
   return { filename, totalSubmissions: stt };
 }
-
-/* ====================== SUBMIT ====================== */
+// Nộp bài
 router.post('/submit', async (req, res) => {
   try {
     const { id, name, className, dob, answers, examId, violations, email } = req.body;
@@ -122,7 +115,6 @@ router.post('/submit', async (req, res) => {
 
     if (examId) {
       try {
-        // Tách baseId từ examId (loại bỏ _r/_v)
         const baseId = String(examId).split('_r')[0].split('_v')[0];
         const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
         let examData = null;
@@ -136,9 +128,7 @@ router.post('/submit', async (req, res) => {
               const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
               if (meta.driveFileId) {
                 examData = await downloadFromDrive(meta.driveFileId);
-                if (examData) {
-                  fs.writeFileSync(examJsonPath, JSON.stringify(examData, null, 2), 'utf8');
-                }
+                if (examData) fs.writeFileSync(examJsonPath, JSON.stringify(examData, null, 2), 'utf8');
               }
             }
           } catch (err) {
@@ -161,8 +151,9 @@ router.post('/submit', async (req, res) => {
       name: name || '',
       email: email || '',
       score,
-      submittedAt: new Date().toISOString(),
+      submittedAt: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }), // GMT+7
       status: 'submitted',
+      violations: violations || 0,
       answers: JSON.stringify(answers || {})
     });
 
@@ -219,8 +210,7 @@ router.post('/submit', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
-/* ====================== LIST SUBMISSIONS ====================== */
+// Danh sách bài nộp
 router.get('/submissions', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'submissions');
@@ -240,7 +230,7 @@ router.get('/submissions', (req, res) => {
         className: classMatch ? classMatch[1] : 'Unknown',
         score: scoreMatch && scoreMatch[1] && scoreMatch[1] !== 'Chưa chấm' ? scoreMatch[1] : 'Chưa chấm',
         timestamp,
-        date: isNaN(timestamp) ? '' : new Date(timestamp).toLocaleString('vi-VN')
+        date: isNaN(timestamp) ? '' : new Date(timestamp).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })
       };
     }).sort((a, b) => b.timestamp - a.timestamp);
 
@@ -250,8 +240,7 @@ router.get('/submissions', (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
-/* ====================== SEND CLASS REPORT ====================== */
+// Gửi báo cáo lớp qua email
 router.post('/send-class-report', async (req, res) => {
   try {
     const { className, examId } = req.body;
