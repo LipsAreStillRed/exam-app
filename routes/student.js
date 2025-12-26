@@ -1,3 +1,4 @@
+// routes/student.js
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -7,22 +8,15 @@ import { sendEmail, sendClassEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
 
-/* ====================== SCORE CALCULATION - FIXED ====================== */
+/* ====================== SCORE CALCULATION ====================== */
 function calculateScore(answers, correctAnswers, questions) {
-  console.log('🔢 Bắt đầu chấm điểm...');
-  console.log('📝 Đáp án đúng:', correctAnswers);
-  console.log('✍️  Đáp án học sinh:', answers);
-  
-  if (!correctAnswers || Object.keys(correctAnswers).length === 0) {
-    console.log('❌ Không có đáp án đúng');
-    return null;
-  }
+  if (!correctAnswers || Object.keys(correctAnswers).length === 0) return null;
 
   let correct = 0;
   let total = 0;
 
   (questions || []).forEach(q => {
-    const qid = String(q.id); // Đảm bảo qid là string
+    const qid = String(q.id); // dùng id gốc
 
     // True/False nhiều ý
     if (q.type === 'true_false' && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
@@ -31,67 +25,40 @@ function calculateScore(answers, correctAnswers, questions) {
         const subKey = String(sub.key);
         const ca = correctAnswers[qid]?.[subKey];
         const sa = answers[qid]?.[subKey];
-        
-        if (!ca || !sa) {
-          console.log(`❌ Câu ${qid}-${subKey}: Thiếu đáp án (CA: ${ca}, SA: ${sa})`);
-          return;
-        }
-        
+        if (!ca || !sa) return;
+
         const match = String(sa).trim().toUpperCase() === String(ca).trim().toUpperCase();
-        if (match) {
-          correct++;
-          console.log(`✅ Câu ${qid}-${subKey}: Đúng`);
-        } else {
-          console.log(`❌ Câu ${qid}-${subKey}: Sai (CA: ${ca}, SA: ${sa})`);
-        }
+        if (match) correct++;
       });
       return;
     }
 
-    // Câu đơn (Multiple Choice, True/False đơn, Short Answer)
+    // Câu đơn
     total++;
     const ca = correctAnswers[qid];
     const sa = answers[qid];
-    
-    if (!ca || !sa) {
-      console.log(`❌ Câu ${qid}: Thiếu đáp án (CA: ${ca}, SA: ${sa})`);
-      return;
-    }
+    if (!ca || !sa) return;
 
-    // Xử lý Short Answer (array)
     let saStr = sa;
     let caStr = ca;
-    
+
     if (Array.isArray(sa)) {
       saStr = sa.filter(Boolean).join('');
     } else if (typeof sa === 'object' && sa?.boxes) {
       saStr = sa.boxes.filter(Boolean).join('');
     }
-    
     if (Array.isArray(ca)) {
       caStr = ca.filter(Boolean).join('');
     }
 
-    // So sánh (bỏ khoảng trắng, uppercase)
     const saClean = String(saStr).trim().toUpperCase().replace(/\s/g, '');
     const caClean = String(caStr).trim().toUpperCase().replace(/\s/g, '');
-    
-    if (saClean === caClean) {
-      correct++;
-      console.log(`✅ Câu ${qid}: Đúng`);
-    } else {
-      console.log(`❌ Câu ${qid}: Sai (CA: "${caClean}", SA: "${saClean}")`);
-    }
+
+    if (saClean === caClean) correct++;
   });
 
-  if (total === 0) {
-    console.log('❌ Không có câu hỏi nào để chấm');
-    return null;
-  }
-  
-  const score = Math.round((correct / total) * 10 * 10) / 10;
-  console.log(`🎯 Kết quả: ${correct}/${total} = ${score}/10`);
-  return score;
+  if (total === 0) return null;
+  return Math.round((correct / total) * 10 * 10) / 10;
 }
 
 const resultFile = path.join(process.cwd(), 'data', 'result.json');
@@ -145,67 +112,50 @@ function updateCSV(className, submissionData) {
   return { filename, totalSubmissions: stt };
 }
 
-// FIX: Submit với chấm điểm chính xác
+/* ====================== SUBMIT ====================== */
 router.post('/submit', async (req, res) => {
   try {
     const { id, name, className, dob, answers, examId, violations, email } = req.body;
 
-    console.log('📥 Nhận bài nộp:', { examId, name, className });
-
-    // Tính điểm theo đề gốc
     let score = null;
     let questions = [];
-    
+
     if (examId) {
       try {
-        // Lấy baseId từ examId (loại bỏ _r hoặc _v)
+        // Tách baseId từ examId (loại bỏ _r/_v)
         const baseId = String(examId).split('_r')[0].split('_v')[0];
-        console.log('🔍 Tìm đề gốc:', baseId);
-        
         const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
         let examData = null;
 
-        // Đọc từ file local
         if (fs.existsSync(examJsonPath)) {
           examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
-          console.log('✅ Đọc đề từ file local');
         } else {
-          // Fallback: đọc từ Drive
           try {
             const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
             if (fs.existsSync(metaPath)) {
               const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
               if (meta.driveFileId) {
                 examData = await downloadFromDrive(meta.driveFileId);
-                console.log('✅ Đọc đề từ Drive');
+                if (examData) {
+                  fs.writeFileSync(examJsonPath, JSON.stringify(examData, null, 2), 'utf8');
+                }
               }
             }
           } catch (err) {
-            console.error('❌ Không tải được đề từ Drive:', err.message);
+            console.error('Không tải được đề từ Drive:', err?.response?.data || err.message);
           }
         }
 
         if (examData) {
           questions = examData.questions || [];
           const correctAnswers = examData.answers || {};
-          
-          console.log('📊 Số câu hỏi:', questions.length);
-          console.log('📊 Số đáp án đúng:', Object.keys(correctAnswers).length);
-          
-          if (Object.keys(correctAnswers).length === 0) {
-            console.log('⚠️  Đề chưa có đáp án!');
-          }
-          
           score = calculateScore(answers || {}, correctAnswers, questions);
-        } else {
-          console.log('❌ Không tìm thấy đề thi');
         }
       } catch (e) {
-        console.error('❌ Error calculating score:', e);
+        console.error('Error calculating score:', e);
       }
     }
 
-    // Cập nhật result.json
     updateResultJson(className || 'unknown', {
       id: id || name || `stu_${Date.now()}`,
       name: name || '',
@@ -216,7 +166,6 @@ router.post('/submit', async (req, res) => {
       answers: JSON.stringify(answers || {})
     });
 
-    // Lưu XML bài nộp
     const doc = create({ version: '1.0' })
       .ele('ketqua')
         .ele('hoten').txt(name || '').up()
@@ -236,10 +185,8 @@ router.post('/submit', async (req, res) => {
     const xmlFilename = path.join(xmlDir, `${timestamp}_${(className || 'unknown')}.xml`);
     fs.writeFileSync(xmlFilename, xml, 'utf8');
 
-    // Cập nhật CSV
     const csvResult = updateCSV(className || 'unknown', { name, dob, score, violations, answers });
 
-    // Phản hồi cho frontend
     res.json({
       ok: true,
       file: path.basename(xmlFilename),
@@ -248,7 +195,6 @@ router.post('/submit', async (req, res) => {
       driveLink: null
     });
 
-    // Tác vụ chậm sau phản hồi
     queueMicrotask(async () => {
       try {
         if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
