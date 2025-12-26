@@ -8,7 +8,7 @@ import { sendEmail, sendClassEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
 
-// Hàm chuẩn hóa chuỗi để so sánh
+// Chuẩn hóa chuỗi để so sánh
 function normalizeStr(x) {
   return String(x ?? '').trim().toUpperCase().replace(/\s/g, '');
 }
