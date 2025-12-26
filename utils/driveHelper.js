@@ -5,13 +5,14 @@ const SCOPES = ['https://www.googleapis.com/auth/drive.file'];
 
 // Khởi tạo OAuth2 client
 function getAuthClient() {
-  const { OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET, OAUTH_REFRESH_TOKEN } = process.env;
+  const { OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET, OAUTH_REFRESH_TOKEN, GOOGLE_REDIRECT_URI } = process.env;
   const oauth2Client = new google.auth.OAuth2(
     OAUTH_CLIENT_ID,
     OAUTH_CLIENT_SECRET,
-    'urn:ietf:wg:oauth:2.0:oob'
-  );
-  oauth2Client.setCredentials({ refresh_token: OAUTH_REFRESH_TOKEN });
+    GOOGLE_REDIRECT_URI
+);
+oauth2Client.setCredentials({ refresh_token: OAUTH_REFRESH_TOKEN });
+
   return oauth2Client;
 }
 // ✅ Upload file bằng đường dẫn
