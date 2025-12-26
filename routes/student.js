@@ -2,7 +2,6 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { create } from 'xmlbuilder2';
-import { sendEmail } from '../utils/emailHelper.js';
 import { uploadToDrive, downloadFromDrive } from '../utils/driveHelper.js';
 import { sendEmail, sendClassEmail } from '../utils/emailHelper.js';
 
