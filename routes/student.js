@@ -4,7 +4,7 @@ import path from 'path';
 import { create } from 'xmlbuilder2';
 import { sendEmail } from '../utils/emailHelper.js';
 import { uploadToDrive, downloadFromDrive } from '../utils/driveHelper.js';
-import { sendClassEmail } from '../utils/emailHelper.js';
+import { sendEmail, sendClassEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
 
