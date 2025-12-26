@@ -14,7 +14,6 @@ import { parseExamContent, flattenSections } from '../utils/parseExamContent.js'
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
-// storage helpers
 function ensureDir() {
   const dir = path.join(process.cwd(), 'data', 'exams');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -41,91 +40,66 @@ function shuffle(arr) {
   return a;
 }
 
-// Resequence các lựa chọn thành A/B/C/D theo thứ tự mới
-function resequenceOptionsABCD(optionsByText) {
+function resequenceOptionsABCD(options) {
   const letters = ['A','B','C','D','E','F'];
-  return optionsByText.map((opt, idx) => ({ key: letters[idx], text: opt.text }));
+  return options.map((opt, idx) => ({ key: letters[idx], text: opt.text }));
 }
 
-// Trộn đáp án trắc nghiệm dựa theo text để giữ đúng đáp án
-function shuffleOptionsWithTextPreserved(q) {
-  if (q.type !== 'multiple_choice' || !Array.isArray(q.options) || q.options.length === 0) return q;
-
-  // Lấy text của đáp án đúng
+function shuffleOptionsWithRekey(q) {
+  if (!Array.isArray(q.options) || q.options.length === 0) return q;
+  const correctKey = q.correctAnswer;
   let correctText = null;
-  if (q.correctAnswer) {
-    const found = q.options.find(o => o.key === q.correctAnswer);
+  if (correctKey) {
+    const found = q.options.find(o => o.key === correctKey);
     if (found) correctText = found.text;
   } else if (q.correctAnswerText) {
     correctText = q.correctAnswerText;
   }
-
-  // Trộn theo text và đánh lại key A/B/C/D
   const shuffledByText = shuffle(q.options.map(o => ({ text: o.text })));
   const rekeyed = resequenceOptionsABCD(shuffledByText);
-
-  // Tìm key mới tương ứng với text đúng
   let newCorrectKey = null;
   if (correctText) {
-    const match = rekeyed.find(o => String(o.text).trim() === String(correctText).trim());
+    const match = rekeyed.find(o => o.text === correctText);
     if (match) newCorrectKey = match.key;
   }
-
-  return {
-    ...q,
-    options: rekeyed,
-    ...(newCorrectKey ? { correctAnswer: newCorrectKey } : {})
-  };
+  return { ...q, options: rekeyed, ...(newCorrectKey ? { correctAnswer: newCorrectKey } : {}) };
 }
 
-// Trộn True/False nhiều ý, map correctAnswer theo text để tránh lệch key
 function shuffleTrueFalseSubQuestions(q) {
-  if (q.type !== 'true_false' || !Array.isArray(q.subQuestions) || q.subQuestions.length === 0) return q;
-
+  if (!(q.type === 'true_false' && Array.isArray(q.subQuestions))) return q;
   const shuffled = shuffle(q.subQuestions.map(sq => ({ text: sq.text })));
   const letters = ['a','b','c','d','e','f'];
   const rekeyed = shuffled.map((sq, idx) => ({ key: letters[idx], text: sq.text }));
-
   let newCorrect = {};
   if (q.correctAnswer && typeof q.correctAnswer === 'object') {
-    // Map theo text để bảo toàn Đ/S
     for (const sq of rekeyed) {
-      const old = (q.subQuestions || []).find(x => String(x.text).trim() === String(sq.text).trim());
-      if (old && q.correctAnswer[old.key] !== undefined) {
-        newCorrect[sq.key] = q.correctAnswer[old.key];
-      }
+      const oldKey = (q.subQuestions || []).find(x => x.text === sq.text)?.key;
+      if (oldKey && q.correctAnswer[oldKey]) newCorrect[sq.key] = q.correctAnswer[oldKey];
     }
   }
-
   return { ...q, subQuestions: rekeyed, correctAnswer: newCorrect };
 }
 
-// Giữ nguyên q.id gốc, chỉ thay đổi displayIndex và nội dung trộn theo config
 function makeRuntimeVariant(baseExam) {
   const cfg = baseExam.shuffleConfig || {};
-  // Nếu đề không có part, coi như tất cả là part 1
   const part1 = baseExam.questions.filter(q => q.part === 1 || q.part === undefined);
   const part2 = baseExam.questions.filter(q => q.part === 2);
   const part3 = baseExam.questions.filter(q => q.part === 3);
 
-  // Phần 1
   let p1 = [...part1];
   if (cfg.p1Mode === 'questions' || cfg.p1Mode === 'both') p1 = shuffle(p1);
-  p1 = p1.map(q => (cfg.p1Mode === 'both' ? shuffleOptionsWithTextPreserved(q)
+  p1 = p1.map(q => (cfg.p1Mode === 'both' ? shuffleOptionsWithRekey(q)
                                           : (q.type === 'multiple_choice'
                                              ? { ...q, options: resequenceOptionsABCD(q.options.map(o => ({ text: o.text }))) }
                                              : q)));
 
-  // Phần 2
   let p2 = [...part2];
   if (cfg.p2Mode === 'questions' || cfg.p2Mode === 'both') p2 = shuffle(p2);
   p2 = p2.map(q => (cfg.p2Mode === 'both' ? shuffleTrueFalseSubQuestions(q) : q));
 
-  // Phần 3
   let p3 = [...part3];
   if (cfg.p3Mode === 'questions') p3 = shuffle(p3);
 
-  // Kết hợp, giữ nguyên id gốc, chỉ thêm displayIndex
   const questions = [...p1, ...p2, ...p3].map((q, idx) => ({
     ...q,
     displayIndex: idx + 1 // chỉ để hiển thị; id gốc giữ nguyên
@@ -138,13 +112,11 @@ function makeRuntimeVariant(baseExam) {
     questions
   };
 }
-
 // Upload đề từ Word
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
 
-    // Parse đề
     const raw = await mammoth.extractRawText({ path: req.file.path });
     const text = raw.value || '';
     const sections = parseExamContent(text);
@@ -153,7 +125,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
     }
 
-    // OMML -> MathML
     let mathmlMapByIndex = {};
     try {
       const zip = await JSZip.loadAsync(fs.readFileSync(req.file.path));
@@ -165,7 +136,15 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 
     const examId = uuidv4();
     const timeMinutes = parseInt(req.body.timeMinutes || '45', 10);
-    const baseQuestions = flattenSections(sections);
+
+    let nextId = 1;
+    const seen = new Set();
+    const baseQuestions = flattenSections(sections).map(q => {
+      let id = q.id != null ? String(q.id) : String(nextId++);
+      while (seen.has(id)) id = String(nextId++);
+      seen.add(id);
+      return { ...q, id };
+    });
 
     baseQuestions.forEach((q, idx) => {
       if (mathmlMapByIndex[idx]) q.mathml = String(mathmlMapByIndex[idx]);
@@ -187,13 +166,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       password: req.body.password || null,
       sections,
       questions: baseQuestions,
-      answers: {}, // Khởi tạo để lưu đáp án
+      answers: {},
       variants: [],
       shuffleConfig: cfg
     };
     writeExam(examData);
 
-    // Upload exam JSON lên Drive
     let driveResult = null;
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
       try {
@@ -227,26 +205,20 @@ router.post('/:id/correct-answers', async (req, res) => {
     const exam = readExam(baseId);
     if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
 
-    const incomingAnswers = req.body.answers || {};
-    console.log('📥 Nhận đáp án:', incomingAnswers);
-
-    // Lưu map đáp án gốc
+    const incomingAnswers = Object.fromEntries(
+      Object.entries(req.body.answers || {}).map(([k, v]) => [String(k), v])
+    );
     exam.answers = incomingAnswers;
 
-    // Gán correctAnswer lên từng câu để GV xem lại
-    if (Array.isArray(exam.questions)) {
-      exam.questions = exam.questions.map(q => {
-        if (incomingAnswers[q.id] !== undefined) {
-          return { ...q, correctAnswer: incomingAnswers[q.id] };
-        }
-        return q;
-      });
-    }
+    exam.questions = (exam.questions || []).map(q => {
+      const ans = incomingAnswers[String(q.id)];
+      if (ans !== undefined) return { ...q, correctAnswer: ans };
+      return q;
+    });
 
     writeExam(exam);
     console.log('✅ Đã lưu đáp án vào file local');
 
-    // Đồng bộ lên Drive: xóa cũ → upload mới
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
       try {
         if (exam.driveFileId) {
@@ -271,8 +243,64 @@ router.post('/:id/correct-answers', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+// Trả đề variant cho học sinh
+router.get('/latest-variant', (req, res) => {
+  const dir = ensureDir();
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
+  if (!files.length) return res.json({ ok: true, exam: null });
 
-// Danh sách đề (lọc chỉ đề gốc)
+  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
+                      .sort((a, b) => b.createdAt - a.createdAt)[0];
+
+  const runtime = makeRuntimeVariant(latest);
+  const examForStudent = {
+    id: runtime.id,
+    baseId: latest.id,
+    originalName: latest.originalName,
+    timeMinutes: runtime.timeMinutes,
+    password: runtime.password,
+    questions: runtime.questions
+  };
+  res.json({ ok: true, exam: examForStudent });
+});
+
+// Fallback lấy đề từ Drive nếu local mất
+router.get('/:id', async (req, res) => {
+  const baseId = String(req.params.id);
+  let exam = readExam(baseId);
+
+  if (!exam) {
+    try {
+      const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
+      if (fs.existsSync(metaPath)) {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (meta.driveFileId) {
+          const remoteExam = await downloadFromDrive(meta.driveFileId);
+          if (remoteExam && remoteExam.id === baseId) {
+            exam = remoteExam;
+            writeExam(exam);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Fallback load exam from Drive error:', err?.response?.data || err.message);
+    }
+  }
+
+  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  res.json({ ok: true, exam });
+});
+
+// Xác thực mật khẩu đề
+router.post('/verify-password', (req, res) => {
+  const { examId, password } = req.body;
+  const baseId = String(examId).split('_r')[0].split('_v')[0];
+  const exam = readExam(baseId);
+  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  const verified = !exam.password || exam.password === password;
+  res.json({ ok: verified });
+});
+// Danh sách đề gốc
 router.get('/list', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
@@ -299,54 +327,6 @@ router.get('/latest', (req, res) => {
   const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
                       .sort((a, b) => b.createdAt - a.createdAt)[0];
   res.json({ ok: true, exam: latest });
-});
-
-// Học sinh: nhận một phiên bản đề ngẫu nhiên từ đề mới nhất
-router.get('/latest-variant', (req, res) => {
-  const dir = ensureDir();
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
-  if (!files.length) return res.json({ ok: true, exam: null });
-  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
-  const runtime = makeRuntimeVariant(latest);
-  const examForStudent = {
-    id: runtime.id,
-    baseId: latest.id, // QUAN TRỌNG: để backend biết đề gốc
-    originalName: latest.originalName, 
-    timeMinutes: runtime.timeMinutes, 
-    password: runtime.password, 
-    questions: runtime.questions  // giữ nguyên id gốc
-  };
-  res.json({ ok: true, exam: examForStudent });
-});
-
-// Lấy chi tiết đề (giáo viên) – có fallback từ Drive nếu file local mất
-router.get('/:id', async (req, res) => {
-  const baseId = String(req.params.id);
-  let exam = readExam(baseId);
-
-  // Nếu file local không tồn tại, thử tải từ Drive
-  if (!exam) {
-    try {
-      const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
-      if (fs.existsSync(metaPath)) {
-        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-        if (meta.driveFileId) {
-          const remoteExam = await downloadFromDrive(meta.driveFileId);
-          if (remoteExam && remoteExam.id === baseId) {
-            exam = remoteExam;
-            // Ghi lại local để lần sau không cần tải lại
-            writeExam(exam);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Fallback load exam from Drive error:', err?.response?.data || err.message);
-    }
-  }
-
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  res.json({ ok: true, exam });
 });
 
 // Xác thực mật khẩu đề
@@ -381,7 +361,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Lấy danh sách đề phụ theo examId (nếu có sử dụng)
+// Lấy danh sách đề phụ theo examId
 router.get('/:id/variants', (req, res) => {
   const exam = readExam(req.params.id);
   if (!exam) {
