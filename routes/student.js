@@ -6,45 +6,92 @@ import { uploadToDrive, downloadFromDrive } from '../utils/driveHelper.js';
 import { sendEmail, sendClassEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
-/* ====================== SCORE CALCULATION ====================== */
+
+/* ====================== SCORE CALCULATION - FIXED ====================== */
 function calculateScore(answers, correctAnswers, questions) {
-  if (!correctAnswers || Object.keys(correctAnswers).length === 0) return null;
+  console.log('🔢 Bắt đầu chấm điểm...');
+  console.log('📝 Đáp án đúng:', correctAnswers);
+  console.log('✍️  Đáp án học sinh:', answers);
+  
+  if (!correctAnswers || Object.keys(correctAnswers).length === 0) {
+    console.log('❌ Không có đáp án đúng');
+    return null;
+  }
 
   let correct = 0;
   let total = 0;
 
   (questions || []).forEach(q => {
-    const qid = q.id;
+    const qid = String(q.id); // Đảm bảo qid là string
 
     // True/False nhiều ý
     if (q.type === 'true_false' && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
       q.subQuestions.forEach(sub => {
         total++;
-        const ca = correctAnswers[qid]?.[sub.key];
-        const sa = answers[qid]?.[sub.key];
-        if (!ca || !sa) return;
-        if (String(sa).trim().toUpperCase() === String(ca).trim().toUpperCase()) correct++;
+        const subKey = String(sub.key);
+        const ca = correctAnswers[qid]?.[subKey];
+        const sa = answers[qid]?.[subKey];
+        
+        if (!ca || !sa) {
+          console.log(`❌ Câu ${qid}-${subKey}: Thiếu đáp án (CA: ${ca}, SA: ${sa})`);
+          return;
+        }
+        
+        const match = String(sa).trim().toUpperCase() === String(ca).trim().toUpperCase();
+        if (match) {
+          correct++;
+          console.log(`✅ Câu ${qid}-${subKey}: Đúng`);
+        } else {
+          console.log(`❌ Câu ${qid}-${subKey}: Sai (CA: ${ca}, SA: ${sa})`);
+        }
       });
       return;
     }
 
-    // Câu đơn
+    // Câu đơn (Multiple Choice, True/False đơn, Short Answer)
     total++;
     const ca = correctAnswers[qid];
     const sa = answers[qid];
-    if (!ca || !sa) return;
+    
+    if (!ca || !sa) {
+      console.log(`❌ Câu ${qid}: Thiếu đáp án (CA: ${ca}, SA: ${sa})`);
+      return;
+    }
 
+    // Xử lý Short Answer (array)
     let saStr = sa;
-    if (Array.isArray(sa)) saStr = sa.filter(Boolean).join('');
-    else if (typeof sa === 'object' && sa?.boxes) saStr = sa.boxes.filter(Boolean).join('');
+    let caStr = ca;
+    
+    if (Array.isArray(sa)) {
+      saStr = sa.filter(Boolean).join('');
+    } else if (typeof sa === 'object' && sa?.boxes) {
+      saStr = sa.boxes.filter(Boolean).join('');
+    }
+    
+    if (Array.isArray(ca)) {
+      caStr = ca.filter(Boolean).join('');
+    }
 
-    if (String(saStr).trim().toUpperCase().replace(/\s/g, '') === String(ca).trim().toUpperCase().replace(/\s/g, '')) {
+    // So sánh (bỏ khoảng trắng, uppercase)
+    const saClean = String(saStr).trim().toUpperCase().replace(/\s/g, '');
+    const caClean = String(caStr).trim().toUpperCase().replace(/\s/g, '');
+    
+    if (saClean === caClean) {
       correct++;
+      console.log(`✅ Câu ${qid}: Đúng`);
+    } else {
+      console.log(`❌ Câu ${qid}: Sai (CA: "${caClean}", SA: "${saClean}")`);
     }
   });
 
-  if (total === 0) return null;
-  return Math.round((correct / total) * 10 * 10) / 10;
+  if (total === 0) {
+    console.log('❌ Không có câu hỏi nào để chấm');
+    return null;
+  }
+  
+  const score = Math.round((correct / total) * 10 * 10) / 10;
+  console.log(`🎯 Kết quả: ${correct}/${total} = ${score}/10`);
+  return score;
 }
 
 const resultFile = path.join(process.cwd(), 'data', 'result.json');
@@ -97,42 +144,64 @@ function updateCSV(className, submissionData) {
   fs.appendFileSync(filename, row, 'utf8');
   return { filename, totalSubmissions: stt };
 }
+
+// FIX: Submit với chấm điểm chính xác
 router.post('/submit', async (req, res) => {
   try {
     const { id, name, className, dob, answers, examId, violations, email } = req.body;
 
+    console.log('📥 Nhận bài nộp:', { examId, name, className });
+
     // Tính điểm theo đề gốc
     let score = null;
     let questions = [];
+    
     if (examId) {
       try {
-        const baseId = examId.includes('_r') ? examId.split('_r')[0] : examId;
+        // Lấy baseId từ examId (loại bỏ _r hoặc _v)
+        const baseId = String(examId).split('_r')[0].split('_v')[0];
+        console.log('🔍 Tìm đề gốc:', baseId);
+        
         const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
         let examData = null;
 
+        // Đọc từ file local
         if (fs.existsSync(examJsonPath)) {
           examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
+          console.log('✅ Đọc đề từ file local');
         } else {
+          // Fallback: đọc từ Drive
           try {
-            // Đọc metadata để lấy driveFileId
             const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
             if (fs.existsSync(metaPath)) {
               const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
               if (meta.driveFileId) {
                 examData = await downloadFromDrive(meta.driveFileId);
+                console.log('✅ Đọc đề từ Drive');
               }
             }
           } catch (err) {
-            console.error('Không tải được đề từ Drive:', err.message);
+            console.error('❌ Không tải được đề từ Drive:', err.message);
           }
         }
 
         if (examData) {
           questions = examData.questions || [];
-          score = calculateScore(answers || {}, examData.answers || {}, questions);
+          const correctAnswers = examData.answers || {};
+          
+          console.log('📊 Số câu hỏi:', questions.length);
+          console.log('📊 Số đáp án đúng:', Object.keys(correctAnswers).length);
+          
+          if (Object.keys(correctAnswers).length === 0) {
+            console.log('⚠️  Đề chưa có đáp án!');
+          }
+          
+          score = calculateScore(answers || {}, correctAnswers, questions);
+        } else {
+          console.log('❌ Không tìm thấy đề thi');
         }
       } catch (e) {
-        console.error('Error calculating score:', e);
+        console.error('❌ Error calculating score:', e);
       }
     }
 
@@ -154,7 +223,7 @@ router.post('/submit', async (req, res) => {
         .ele('lop').txt(className || '').up()
         .ele('ngaysinh').txt(dob || '').up()
         .ele('examId').txt(examId || '').up()
-        .ele('diem').txt(score !== null ? String(score) : '').up()
+        .ele('diem').txt(score !== null ? String(score) : 'Chưa chấm').up()
         .ele('violations').txt(String(violations || 0)).up()
         .ele('traloi').txt(JSON.stringify(answers || {})).up()
       .up();
@@ -184,7 +253,7 @@ router.post('/submit', async (req, res) => {
       try {
         if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
           const driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
-          if (driveResult) console.log(`Uploaded submission to Drive: ${driveResult.webViewLink || driveResult.webContentLink}`);
+          if (driveResult) console.log(`✅ Uploaded submission to Drive: ${driveResult.webViewLink || driveResult.webContentLink}`);
         }
 
         if (process.env.MAIL_USER && process.env.MAIL_PASS) {
@@ -204,6 +273,7 @@ router.post('/submit', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 /* ====================== LIST SUBMISSIONS ====================== */
 router.get('/submissions', (req, res) => {
   try {
@@ -222,7 +292,7 @@ router.get('/submissions', (req, res) => {
         filename: f,
         name: nameMatch ? nameMatch[1] : 'Unknown',
         className: classMatch ? classMatch[1] : 'Unknown',
-        score: scoreMatch && scoreMatch[1] ? scoreMatch[1] : 'Chưa chấm',
+        score: scoreMatch && scoreMatch[1] && scoreMatch[1] !== 'Chưa chấm' ? scoreMatch[1] : 'Chưa chấm',
         timestamp,
         date: isNaN(timestamp) ? '' : new Date(timestamp).toLocaleString('vi-VN')
       };
@@ -234,6 +304,7 @@ router.get('/submissions', (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 /* ====================== SEND CLASS REPORT ====================== */
 router.post('/send-class-report', async (req, res) => {
   try {
