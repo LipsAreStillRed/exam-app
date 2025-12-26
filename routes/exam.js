@@ -249,11 +249,35 @@ router.get('/latest-variant', (req, res) => {
 });
 
 // Lấy chi tiết đề (giáo viên)
-router.get('/:id', (req, res) => {
-  const exam = readExam(req.params.id);
+// Lấy chi tiết đề (giáo viên) – có fallback từ Drive nếu file local mất
+router.get('/:id', async (req, res) => {
+  const baseId = String(req.params.id);
+  let exam = readExam(baseId);
+
+  // Nếu file local không tồn tại, thử tải từ Drive
+  if (!exam) {
+    try {
+      const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
+      if (fs.existsSync(metaPath)) {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (meta.driveFileId) {
+          const remoteExam = await downloadFromDrive(meta.driveFileId);
+          if (remoteExam && remoteExam.id === baseId) {
+            exam = remoteExam;
+            // Ghi lại local để lần sau không cần tải lại
+            writeExam(exam);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Fallback load exam from Drive error:', err.message);
+    }
+  }
+
   if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
   res.json({ ok: true, exam });
 });
+
 
 // Xác thực mật khẩu đề
 router.post('/verify-password', (req, res) => {
