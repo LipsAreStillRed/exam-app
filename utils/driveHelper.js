@@ -20,7 +20,7 @@ export async function uploadToDrive(filePath, filename, mimeType) {
   const auth = getAuthClient();
   const drive = google.drive({ version: 'v3', auth });
 
-  const fileMetadata = { name: filename };
+  const fileMetadata = { name: filename, parents: [process.env.GOOGLE_DRIVE_FOLDER_ID] };
   const media = { mimeType, body: fs.createReadStream(filePath) };
 
   const res = await drive.files.create({
