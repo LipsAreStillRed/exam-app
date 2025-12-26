@@ -1,4 +1,4 @@
-// routes/exam.js
+// routes/exam.js - FIXED VERSION
 import express from 'express';
 import multer from 'multer';
 import mammoth from 'mammoth';
@@ -8,7 +8,7 @@ import JSZip from 'jszip';
 import { DOMParser } from '@xmldom/xmldom';
 import omml2mathml from 'omml2mathml';
 import { v4 as uuidv4 } from 'uuid';
-import { uploadToDrive, deleteFromDrive } from '../utils/driveHelper.js';
+import { uploadToDrive, deleteFromDrive, downloadFromDrive } from '../utils/driveHelper.js';
 import { parseExamContent, flattenSections } from '../utils/parseExamContent.js';
 
 const router = express.Router();
@@ -86,7 +86,6 @@ function makeRuntimeVariant(baseExam) {
   const part2 = baseExam.questions.filter(q => q.part === 2);
   const part3 = baseExam.questions.filter(q => q.part === 3);
 
-  // Phần 1
   let p1 = [...part1];
   if (cfg.p1Mode === 'questions' || cfg.p1Mode === 'both') p1 = shuffle(p1);
   if (cfg.p1Mode === 'both') {
@@ -98,12 +97,10 @@ function makeRuntimeVariant(baseExam) {
     }) : q);
   }
 
-  // Phần 2
   let p2 = [...part2];
   if (cfg.p2Mode === 'questions' || cfg.p2Mode === 'both') p2 = shuffle(p2);
   if (cfg.p2Mode === 'both') p2 = p2.map(shuffleTrueFalseSubQuestions);
 
-  // Phần 3
   let p3 = [...part3];
   if (cfg.p3Mode === 'questions') p3 = shuffle(p3);
 
@@ -115,11 +112,11 @@ function makeRuntimeVariant(baseExam) {
     questions
   };
 }
+
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
 
-    // Parse đề
     const raw = await mammoth.extractRawText({ path: req.file.path });
     const text = raw.value || '';
     const sections = parseExamContent(text);
@@ -128,7 +125,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
     }
 
-    // OMML -> MathML
     let mathmlMapByIndex = {};
     try {
       const zip = await JSZip.loadAsync(fs.readFileSync(req.file.path));
@@ -147,6 +143,13 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       if (typeof q.mathml !== 'string') delete q.mathml;
     });
 
+    const cfg = {
+      p1Mode: req.body.p1Mode || 'none',
+      p2Mode: req.body.p2Mode || 'none',
+      p3Mode: req.body.p3Mode || 'none',
+      variantCount: parseInt(req.body.variantCount || '1', 10)
+    };
+
     const examData = {
       id: examId,
       originalName: req.file.originalname,
@@ -155,91 +158,160 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       password: req.body.password || null,
       sections,
       questions: baseQuestions,
-      answers: {},
-      variants: []
+      answers: {}, // Khởi tạo object rỗng để lưu đáp án
+      variants: [],
+      shuffleConfig: cfg
     };
+    
     writeExam(examData);
 
-    // Lưu cấu hình trộn
-    const cfg = {
-      p1Mode: req.body.p1Mode || 'none',
-      p2Mode: req.body.p2Mode || 'none',
-      p3Mode: req.body.p3Mode || 'none',
-      variantCount: parseInt(req.body.variantCount || '1', 10)
-    };
-    examData.shuffleConfig = cfg;
-    writeExam(examData);
-
-    // Upload exam JSON lên Drive
+    // FIX: Upload lên Drive ngay sau khi tạo
     let driveResult = null;
-    try {
-      driveResult = await uploadToDrive(examPath(examId), `${examId}.json`, 'application/json');
-    } catch (err) {
-      console.error('Drive upload error:', err.message);
-    }
-    if (driveResult) {
-      examData.driveFileId = driveResult.id;
-      examData.driveLink = driveResult.webViewLink || driveResult.webContentLink;
-      writeExam(examData);
+    if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
+      try {
+        driveResult = await uploadToDrive(
+          examPath(examId), 
+          `exam_${examId}.json`, 
+          'application/json'
+        );
+        
+        if (driveResult) {
+          examData.driveFileId = driveResult.id;
+          examData.driveLink = driveResult.webViewLink || driveResult.webContentLink;
+          writeExam(examData); // Lưu lại với driveFileId
+          console.log('✅ Uploaded exam to Drive:', driveResult.webViewLink);
+        }
+      } catch (err) {
+        console.error('❌ Drive upload error:', err.message);
+      }
     }
 
     fs.unlinkSync(req.file.path);
-    res.json({ ok: true, examId, count: baseQuestions.length, variantCount: cfg.variantCount, savedToDrive: !!driveResult });
+    res.json({ 
+      ok: true, 
+      examId, 
+      count: baseQuestions.length, 
+      variantCount: cfg.variantCount, 
+      savedToDrive: !!driveResult 
+    });
   } catch (e) {
     try { fs.unlinkSync(req.file.path); } catch {}
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// FIX: Lưu đáp án đúng cách + đồng bộ Drive
 router.post('/:id/correct-answers', async (req, res) => {
-  const baseId = String(req.params.id);
-  if (baseId.includes('_v') || baseId.includes('_r')) {
-    return res.status(400).json({ ok: false, error: 'Chỉ được lưu đáp án trên đề gốc' });
-  }
-  const exam = readExam(baseId);
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-
-  exam.answers = req.body.answers || {};
-  writeExam(exam);
-
-  // Đồng bộ lên Drive
-  if (exam.driveFileId) {
-    try {
-      await uploadToDrive(examPath(baseId), `${baseId}.json`, 'application/json');
-    } catch (err) {
-      console.error('Drive update error:', err.message);
+  try {
+    const baseId = String(req.params.id);
+    
+    // Không cho lưu đáp án vào variant
+    if (baseId.includes('_v') || baseId.includes('_r')) {
+      return res.status(400).json({ ok: false, error: 'Chỉ được lưu đáp án trên đề gốc' });
     }
-  }
+    
+    const exam = readExam(baseId);
+    if (!exam) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
 
-  res.json({ ok: true, message: 'Đã lưu đáp án' });
+    // Lưu đáp án vào exam.answers
+    const incomingAnswers = req.body.answers || {};
+    
+    console.log('📥 Nhận đáp án:', incomingAnswers);
+    
+    // Cập nhật answers vào exam object
+    exam.answers = incomingAnswers;
+    
+    // Đồng thời cập nhật correctAnswer vào từng câu hỏi
+    if (exam.questions && Array.isArray(exam.questions)) {
+      exam.questions = exam.questions.map(q => {
+        if (incomingAnswers[q.id] !== undefined) {
+          return { ...q, correctAnswer: incomingAnswers[q.id] };
+        }
+        return q;
+      });
+    }
+    
+    // Lưu vào file local
+    writeExam(exam);
+    console.log('✅ Đã lưu đáp án vào file local');
+
+    // FIX: Đồng bộ lên Drive ngay lập tức
+    if (exam.driveFileId && String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
+      try {
+        // Xóa file cũ trên Drive
+        await deleteFromDrive(exam.driveFileId);
+        console.log('🗑️  Đã xóa file cũ trên Drive');
+        
+        // Upload file mới
+        const driveResult = await uploadToDrive(
+          examPath(baseId), 
+          `exam_${baseId}.json`, 
+          'application/json'
+        );
+        
+        if (driveResult) {
+          exam.driveFileId = driveResult.id;
+          exam.driveLink = driveResult.webViewLink || driveResult.webContentLink;
+          writeExam(exam); // Lưu lại driveFileId mới
+          console.log('✅ Đã đồng bộ đáp án lên Drive:', driveResult.webViewLink);
+        }
+      } catch (err) {
+        console.error('❌ Drive sync error:', err.message);
+        // Không return lỗi vì đã lưu local thành công
+      }
+    }
+
+    res.json({ ok: true, message: 'Đã lưu đáp án thành công' });
+  } catch (e) {
+    console.error('❌ Error saving answers:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
+
 // Danh sách đề
 router.get('/list', (req, res) => {
   const dir = ensureDir();
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
-  const exams = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')));
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
+  const exams = files.map(f => {
+    const exam = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+    return {
+      id: exam.id,
+      originalName: exam.originalName,
+      createdAt: exam.createdAt,
+      timeMinutes: exam.timeMinutes,
+      questionCount: exam.questions?.length || 0,
+      hasAnswers: exam.answers && Object.keys(exam.answers).length > 0,
+      variants: exam.variants || []
+    };
+  });
   res.json({ ok: true, exams });
 });
 
-// Đề gốc mới nhất (giáo viên xem/nhập đáp án)
+// Đề gốc mới nhất
 router.get('/latest', (req, res) => {
   const dir = ensureDir();
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
   if (!files.length) return res.json({ ok: true, exam: null });
   const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
                       .sort((a, b) => b.createdAt - a.createdAt)[0];
   res.json({ ok: true, exam: latest });
 });
 
-// Học sinh: nhận một phiên bản đề ngẫu nhiên từ đề mới nhất
+// Học sinh: nhận variant ngẫu nhiên
 router.get('/latest-variant', (req, res) => {
   const dir = ensureDir();
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json'));
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
   if (!files.length) return res.json({ ok: true, exam: null });
   const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
     .sort((a, b) => b.createdAt - a.createdAt)[0];
   const runtime = makeRuntimeVariant(latest);
+  
+  // Truyền baseId để backend biết đề gốc khi chấm điểm
   const examForStudent = {
     id: runtime.id,
+    baseId: latest.id, // QUAN TRỌNG: để backend biết đề gốc
     originalName: latest.originalName, 
     timeMinutes: runtime.timeMinutes, 
     password: runtime.password, 
@@ -248,13 +320,12 @@ router.get('/latest-variant', (req, res) => {
   res.json({ ok: true, exam: examForStudent });
 });
 
-// Lấy chi tiết đề (giáo viên)
-// Lấy chi tiết đề (giáo viên) – có fallback từ Drive nếu file local mất
+// Lấy chi tiết đề
 router.get('/:id', async (req, res) => {
   const baseId = String(req.params.id);
   let exam = readExam(baseId);
 
-  // Nếu file local không tồn tại, thử tải từ Drive
+  // Fallback từ Drive nếu không có local
   if (!exam) {
     try {
       const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
@@ -264,13 +335,12 @@ router.get('/:id', async (req, res) => {
           const remoteExam = await downloadFromDrive(meta.driveFileId);
           if (remoteExam && remoteExam.id === baseId) {
             exam = remoteExam;
-            // Ghi lại local để lần sau không cần tải lại
             writeExam(exam);
           }
         }
       }
     } catch (err) {
-      console.error('Fallback load exam from Drive error:', err.message);
+      console.error('Fallback load from Drive error:', err.message);
     }
   }
 
@@ -278,11 +348,10 @@ router.get('/:id', async (req, res) => {
   res.json({ ok: true, exam });
 });
 
-
-// Xác thực mật khẩu đề
+// Xác thực mật khẩu
 router.post('/verify-password', (req, res) => {
   const { examId, password } = req.body;
-  const baseId = (String(examId).includes('_v')) ? String(examId).split('_v')[0] : examId;
+  const baseId = String(examId).split('_r')[0].split('_v')[0];
   const exam = readExam(baseId);
   if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
   const verified = !exam.password || exam.password === password;
@@ -311,13 +380,18 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Lấy danh sách đề phụ theo examId
-router.get('/:id/variants', (req, res) => {
+// FIX: API để test đáp án đã lưu chưa
+router.get('/:id/check-answers', (req, res) => {
   const exam = readExam(req.params.id);
-  if (!exam) {
-    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  }
-  res.json(exam.variants || []);
+  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  
+  const hasAnswers = exam.answers && Object.keys(exam.answers).length > 0;
+  res.json({ 
+    ok: true, 
+    hasAnswers,
+    answerCount: Object.keys(exam.answers || {}).length,
+    answers: exam.answers 
+  });
 });
 
 export default router;
