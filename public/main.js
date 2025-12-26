@@ -98,20 +98,41 @@ async function handleLogin(password) {
 async function loadExamList() {
   const listDiv = document.getElementById('examList');
   if (!listDiv) return;
+  
   listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
 
   try {
+    console.log('🔄 Fetching /exam/list...');
+    
     const res = await fetch('/exam/list');
     const data = await res.json();
 
-    if (!data.ok || !data.exams || !data.exams.length) {
+    console.log('📥 /exam/list response:', data);
+
+    if (!data.ok) {
+      console.error('❌ API returned ok: false');
+      listDiv.innerHTML = '<p class="empty-state">Lỗi tải danh sách đề</p>';
+      return;
+    }
+
+    if (!data.exams || !Array.isArray(data.exams)) {
+      console.error('❌ Invalid exams data:', data.exams);
+      listDiv.innerHTML = '<p class="empty-state">Dữ liệu không hợp lệ</p>';
+      return;
+    }
+
+    if (data.exams.length === 0) {
+      console.log('ℹ️ No exams found');
       listDiv.innerHTML = '<p class="empty-state">Chưa có đề thi nào</p>';
       return;
     }
 
+    console.log(`✅ Found ${data.exams.length} exams`);
     listDiv.innerHTML = '';
     
-    data.exams.forEach(exam => {
+    data.exams.forEach((exam, idx) => {
+      console.log(`📝 Exam ${idx + 1}:`, exam);
+      
       const count = exam.questionCount || 0;
       
       const examGroup = document.createElement('div');
@@ -125,28 +146,39 @@ async function loadExamList() {
         <span><strong>📚 ${exam.originalName || 'Đề không tên'}</strong> (${count} câu)</span>
         <button type="button" class="btn btn-primary">Chi tiết</button>
       `;
-      mainItem.querySelector('button').onclick = () => openExamDetail(exam.id);
+      mainItem.querySelector('button').onclick = () => {
+        console.log('🖱️ Opening exam:', exam.id);
+        openExamDetail(exam.id);
+      };
       examGroup.appendChild(mainItem);
       
       // Variants
       if (Array.isArray(exam.variants) && exam.variants.length > 0) {
+        console.log(`🔀 ${exam.variants.length} variants found`);
+        
         const variantsList = document.createElement('div');
         variantsList.className = 'variants-list';
         variantsList.style.marginLeft = '30px';
         variantsList.style.marginTop = '8px';
         
-        exam.variants.forEach((variant, idx) => {
-          if (!variant?.id) return;
+        exam.variants.forEach((variant, vidx) => {
+          if (!variant?.id) {
+            console.warn('⚠️ Variant without id:', variant);
+            return;
+          }
           
           const variantItem = document.createElement('div');
           variantItem.className = 'exam-item variant-item';
           variantItem.style.borderLeft = '4px solid var(--success)';
           variantItem.style.background = '#f8f9fa';
           variantItem.innerHTML = `
-            <span>🔀 Mã đề ${idx + 1}</span>
+            <span>🔀 Mã đề ${vidx + 1}</span>
             <button type="button" class="btn btn-secondary">Chi tiết</button>
           `;
-          variantItem.querySelector('button').onclick = () => openExamDetail(exam.id);
+          variantItem.querySelector('button').onclick = () => {
+            console.log('🖱️ Opening exam (from variant):', exam.id);
+            openExamDetail(exam.id);
+          };
           variantsList.appendChild(variantItem);
         });
         
@@ -155,6 +187,8 @@ async function loadExamList() {
       
       listDiv.appendChild(examGroup);
     });
+    
+    console.log('✅ Exam list rendered successfully');
   } catch (err) {
     console.error('❌ loadExamList error:', err);
     listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
@@ -844,48 +878,59 @@ function setupEventHandlers() {
     });
   }
 
-  // ✅ UPLOAD FORM
-  const uploadForm = document.getElementById('uploadForm');
-  if (uploadForm) {
-    uploadForm.addEventListener('submit', async e => {
-      e.preventDefault();
+// ✅ UPLOAD FORM với logging và reload đầy đủ
+const uploadForm = document.getElementById('uploadForm');
+if (uploadForm) {
+  uploadForm.addEventListener('submit', async e => {
+    e.preventDefault();
 
-      const fileInput = document.getElementById('examFile');
-      const timeInput = document.getElementById('timeMinutes');
-      const passwordInput = document.getElementById('examPassword');
-      const variantCount = document.getElementById('variantCount')?.value || '1';
+    const fileInput = document.getElementById('examFile');
+    const timeInput = document.getElementById('timeMinutes');
+    const passwordInput = document.getElementById('examPassword');
+    const variantCount = document.getElementById('variantCount')?.value || '1';
 
-      if (!fileInput?.files[0]) {
-        showMessage('uploadMessage', 'Chọn file đề thi', true);
-        return;
-      }
+    if (!fileInput?.files[0]) {
+      showMessage('uploadMessage', 'Chọn file đề thi', true);
+      return;
+    }
 
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-      formData.append('timeMinutes', timeInput.value || '45');
-      formData.append('password', passwordInput.value || '');
-      formData.append('variantCount', variantCount);
-      formData.append('p1Mode', document.getElementById('p1Mode')?.value || 'none');
-      formData.append('p2Mode', document.getElementById('p2Mode')?.value || 'none');
-      formData.append('p3Mode', document.getElementById('p3Mode')?.value || 'none');
+    console.log('📤 Uploading exam...');
 
-      try {
-        const res = await fetch('/exam/upload', { method: 'POST', body: formData });
-        const data = await res.json();
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('timeMinutes', timeInput.value || '45');
+    formData.append('password', passwordInput.value || '');
+    formData.append('variantCount', variantCount);
+    formData.append('p1Mode', document.getElementById('p1Mode')?.value || 'none');
+    formData.append('p2Mode', document.getElementById('p2Mode')?.value || 'none');
+    formData.append('p3Mode', document.getElementById('p3Mode')?.value || 'none');
 
-        if (data.ok) {
-          showMessage('uploadMessage', `✅ Upload thành công! ${data.count} câu • ${data.variantCount} phiên bản`);
-          uploadForm.reset();
+    try {
+      const res = await fetch('/exam/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      console.log('📥 Upload response:', data);
+
+      if (data.ok) {
+        showMessage('uploadMessage', `✅ Upload thành công! ${data.count} câu • ${data.variantCount} phiên bản`);
+        uploadForm.reset();
+        
+        // ✅ Đợi 500ms rồi reload lại danh sách
+        console.log('🔄 Reloading exam list...');
+        setTimeout(async () => {
           await loadExamList();
           await loadSubmissions();
-        } else {
-          showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
-        }
-      } catch (err) {
-        showMessage('uploadMessage', '❌ Lỗi: ' + err.message, true);
+          console.log('✅ Exam list reloaded');
+        }, 500);
+      } else {
+        showMessage('uploadMessage', '❌ ' + (data.error || 'Lỗi upload'), true);
       }
-    });
-  }
+    } catch (err) {
+      console.error('❌ Upload error:', err);
+      showMessage('uploadMessage', '❌ Lỗi: ' + err.message, true);
+    }
+  });
+}
 
   // ✅ SUBMIT EXAM
   document.getElementById('submitBtn')?.addEventListener('click', e => {
