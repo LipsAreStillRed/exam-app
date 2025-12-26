@@ -931,3 +931,22 @@ body {
     padding: 10px;
   }
 }
+/* ====================== VIOLATION WARNING ====================== */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.warning-message {
+  color: var(--danger);
+  font-weight: 600;
+  margin-top: 8px;
+  min-height: 24px;
+  font-size: 14px;
+  display: none;
+}
+
+.warning-message[style*="display: block"] {
+  display: block !important;
+  animation: blink 0.5s ease-in-out 3;
+}
