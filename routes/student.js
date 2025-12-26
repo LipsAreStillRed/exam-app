@@ -3,16 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import { create } from 'xmlbuilder2';
 import { sendEmail } from '../utils/emailHelper.js';
-import { uploadToDrive } from '../utils/driveHelper.js';
+import { uploadToDrive, downloadFromDrive } from '../utils/driveHelper.js';
 
 const router = express.Router();
 
 /* ====================== SCORE CALCULATION ====================== */
-/**
- * answers: đối tượng đáp án học sinh, key theo questionId
- * correctAnswers: đáp án chuẩn lưu trong exam.answers
- * questions: mảng câu hỏi để xác định loại câu (multiple_choice, true_false, short_answer)
- */
 function calculateScore(answers, correctAnswers, questions) {
   if (!correctAnswers || Object.keys(correctAnswers).length === 0) return null;
 
@@ -22,51 +17,38 @@ function calculateScore(answers, correctAnswers, questions) {
   (questions || []).forEach(q => {
     const qid = q.id;
 
-    // True/False nhiều ý (subQuestions)
+    // True/False nhiều ý
     if (q.type === 'true_false' && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
       q.subQuestions.forEach(sub => {
         total++;
         const ca = correctAnswers[qid]?.[sub.key];
         const sa = answers[qid]?.[sub.key];
         if (!ca || !sa) return;
-        const saNorm = String(sa).trim().toUpperCase();
-        const caNorm = String(ca).trim().toUpperCase();
-        if (saNorm === caNorm) correct++;
+        if (String(sa).trim().toUpperCase() === String(ca).trim().toUpperCase()) correct++;
       });
       return;
     }
 
-    // Câu đơn (multiple_choice, true_false đơn, short_answer)
+    // Câu đơn
     total++;
     const ca = correctAnswers[qid];
     const sa = answers[qid];
     if (!ca || !sa) return;
 
-    // short_answer: cho phép gửi dạng array boxes hoặc object {boxes:[]}
     let saStr = sa;
-    if (Array.isArray(sa)) {
-      saStr = sa.filter(Boolean).join('');
-    } else if (typeof sa === 'object' && sa?.boxes) {
-      saStr = sa.boxes.filter(Boolean).join('');
-    }
+    if (Array.isArray(sa)) saStr = sa.filter(Boolean).join('');
+    else if (typeof sa === 'object' && sa?.boxes) saStr = sa.boxes.filter(Boolean).join('');
 
-    const saNorm = String(saStr).trim().toUpperCase().replace(/\s/g, '');
-    const caNorm = String(ca).trim().toUpperCase().replace(/\s/g, '');
-    if (saNorm === caNorm) correct++;
+    if (String(saStr).trim().toUpperCase().replace(/\s/g, '') === String(ca).trim().toUpperCase().replace(/\s/g, '')) {
+      correct++;
+    }
   });
 
   if (total === 0) return null;
-  // quy về thang 10, làm tròn đến 0.1
   return Math.round((correct / total) * 10 * 10) / 10;
 }
-
-/* ====================== RESULT.JSON UPDATE ====================== */
 const resultFile = path.join(process.cwd(), 'data', 'result.json');
 
-/**
- * Cập nhật bảng tổng hợp theo lớp vào data/result.json
- * - Thêm mới hoặc cập nhật theo studentData.id
- */
 function updateResultJson(className, studentData) {
   try {
     let result = {};
@@ -76,11 +58,8 @@ function updateResultJson(className, studentData) {
     if (!result[className]) result[className] = [];
 
     const idx = result[className].findIndex(s => s.id === studentData.id);
-    if (idx >= 0) {
-      result[className][idx] = studentData;
-    } else {
-      result[className].push(studentData);
-    }
+    if (idx >= 0) result[className][idx] = studentData;
+    else result[className].push(studentData);
 
     fs.writeFileSync(resultFile, JSON.stringify(result, null, 2), 'utf8');
   } catch (err) {
@@ -88,7 +67,6 @@ function updateResultJson(className, studentData) {
   }
 }
 
-/* ====================== CSV UPDATE ====================== */
 function updateCSV(className, submissionData) {
   const dir = path.join(process.cwd(), 'data', 'csv');
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -119,47 +97,30 @@ function updateCSV(className, submissionData) {
   fs.appendFileSync(filename, row, 'utf8');
   return { filename, totalSubmissions: stt };
 }
-
-/* ====================== OPTIONAL EMAIL SENDER (CLASS REPORT) ====================== */
-/**
- * Gửi báo cáo lớp qua email, dùng helper chung sendEmail (không dùng nodemailer trực tiếp)
- */
-async function sendClassEmail(className, filename, examId) {
-  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
-    console.log('Email not configured');
-    return;
-  }
-
-  try {
-    await sendEmail({
-      to: process.env.EMAIL_TO || process.env.MAIL_USER,
-      subject: `📊 Kết quả lớp ${className} - ${new Date().toLocaleDateString('vi-VN')}`,
-      html: `<p>Kính gửi Thầy/Cô,</p>
-             <p>Đính kèm file kết quả thi của lớp <b>${className}</b>.</p>
-             <p>Mã đề: ${examId || '(không có)'}</p>
-             <p>Trân trọng.</p>`,
-      attachments: [{ filename: path.basename(filename), path: filename }]
-    });
-    console.log(`Email sent for class ${className}`);
-  } catch (error) {
-    console.error('Email error:', error.message);
-  }
-}
-
-/* ====================== SUBMIT ROUTE ====================== */
 router.post('/submit', async (req, res) => {
   try {
     const { id, name, className, dob, answers, examId, violations, email } = req.body;
 
-    // Tính điểm theo đáp án chuẩn trong exam JSON
+    // Tính điểm theo đề gốc
     let score = null;
     let questions = [];
     if (examId) {
       try {
         const baseId = examId.includes('_r') ? examId.split('_r')[0] : examId;
         const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
+        let examData = null;
+
         if (fs.existsSync(examJsonPath)) {
-          const examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
+          examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
+        } else {
+          try {
+            examData = await downloadFromDrive(baseId);
+          } catch (err) {
+            console.error('Không tải được đề từ Drive:', err.message);
+          }
+        }
+
+        if (examData) {
           questions = examData.questions || [];
           score = calculateScore(answers || {}, examData.answers || {}, questions);
         }
@@ -168,7 +129,7 @@ router.post('/submit', async (req, res) => {
       }
     }
 
-    // Cập nhật result.json (tổng hợp theo lớp)
+    // Cập nhật result.json
     updateResultJson(className || 'unknown', {
       id: id || name || `stu_${Date.now()}`,
       name: name || '',
@@ -199,16 +160,10 @@ router.post('/submit', async (req, res) => {
     const xmlFilename = path.join(xmlDir, `${timestamp}_${(className || 'unknown')}.xml`);
     fs.writeFileSync(xmlFilename, xml, 'utf8');
 
-    // Cập nhật CSV theo lớp
-    const csvResult = updateCSV(className || 'unknown', {
-      name,
-      dob,
-      score,
-      violations,
-      answers
-    });
+    // Cập nhật CSV
+    const csvResult = updateCSV(className || 'unknown', { name, dob, score, violations, answers });
 
-    // Phản hồi cho frontend sớm (không chờ I/O mạng)
+    // Phản hồi cho frontend
     res.json({
       ok: true,
       file: path.basename(xmlFilename),
@@ -217,16 +172,14 @@ router.post('/submit', async (req, res) => {
       driveLink: null
     });
 
-    // Chạy tác vụ chậm sau phản hồi
+    // Tác vụ chậm sau phản hồi
     queueMicrotask(async () => {
       try {
-        // Upload lên Google Drive (tùy chọn, bật bằng DRIVE_ENABLED=true)
         if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
           const driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
           if (driveResult) console.log(`Uploaded submission to Drive: ${driveResult.webViewLink || driveResult.webContentLink}`);
         }
 
-        // Gửi email thông báo bài nộp (tùy chọn)
         if (process.env.MAIL_USER && process.env.MAIL_PASS) {
           await sendEmail({
             to: process.env.EMAIL_TO || process.env.MAIL_USER,
@@ -244,7 +197,6 @@ router.post('/submit', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 /* ====================== LIST SUBMISSIONS ====================== */
 router.get('/submissions', (req, res) => {
   try {
