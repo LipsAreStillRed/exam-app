@@ -14,17 +14,13 @@ function getAuthClient() {
   oauth2Client.setCredentials({ refresh_token: OAUTH_REFRESH_TOKEN });
   return oauth2Client;
 }
-
 // ✅ Upload file bằng đường dẫn
 export async function uploadToDrive(filePath, filename, mimeType) {
   const auth = getAuthClient();
   const drive = google.drive({ version: 'v3', auth });
 
   const fileMetadata = { name: filename };
-  const media = {
-    mimeType,
-    body: fs.createReadStream(filePath)
-  };
+  const media = { mimeType, body: fs.createReadStream(filePath) };
 
   const res = await drive.files.create({
     resource: fileMetadata,
@@ -34,12 +30,17 @@ export async function uploadToDrive(filePath, filename, mimeType) {
 
   return res.data;
 }
-
 // ✅ Xóa file trên Drive
 export async function deleteFromDrive(fileId) {
   const auth = getAuthClient();
   const drive = google.drive({ version: 'v3', auth });
-
   await drive.files.delete({ fileId });
   return true;
+}
+// ✅ Tải file JSON từ Drive
+export async function downloadFromDrive(fileId) {
+  const auth = getAuthClient();
+  const drive = google.drive({ version: 'v3', auth });
+  const res = await drive.files.get({ fileId, alt: 'media' });
+  return res.data; // nội dung JSON
 }
