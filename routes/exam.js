@@ -102,7 +102,7 @@ function makeRuntimeVariant(baseExam) {
 
   const questions = [...p1, ...p2, ...p3].map((q, idx) => ({
     ...q,
-    displayIndex: idx + 1 // chỉ để hiển thị; id gốc giữ nguyên
+    displayIndex: idx + 1
   }));
 
   return {
@@ -112,7 +112,6 @@ function makeRuntimeVariant(baseExam) {
     questions
   };
 }
-// Upload đề từ Word
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
@@ -125,15 +124,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
     }
 
-    let mathmlMapByIndex = {};
-    try {
-      const zip = await JSZip.loadAsync(fs.readFileSync(req.file.path));
-      const docXml = await zip.file('word/document.xml').async('string');
-      const ommlBlocks = docXml.match(/<m:oMath[^>]*>[\s\S]*?<\/m:oMath>/g) || [];
-      const mathmlList = ommlBlocks.map(convertOmmlToMathml).filter(Boolean);
-      mathmlList.forEach((mml, idx) => { mathmlMapByIndex[idx] = mml; });
-    } catch {}
-
     const examId = uuidv4();
     const timeMinutes = parseInt(req.body.timeMinutes || '45', 10);
 
@@ -144,11 +134,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       while (seen.has(id)) id = String(nextId++);
       seen.add(id);
       return { ...q, id };
-    });
-
-    baseQuestions.forEach((q, idx) => {
-      if (mathmlMapByIndex[idx]) q.mathml = String(mathmlMapByIndex[idx]);
-      if (typeof q.mathml !== 'string') delete q.mathml;
     });
 
     const cfg = {
@@ -170,7 +155,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       variants: [],
       shuffleConfig: cfg
     };
-    writeExam(examData);
+
+    writeExam(examData); // ✅ ghi local
 
     let driveResult = null;
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
@@ -179,7 +165,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         if (driveResult) {
           examData.driveFileId = driveResult.id;
           examData.driveLink = driveResult.webViewLink || driveResult.webContentLink;
-          writeExam(examData);
+          writeExam(examData); // ✅ ghi lại local với driveFileId
           console.log('✅ Uploaded exam to Drive:', driveResult.webViewLink);
         }
       } catch (err) {
@@ -194,7 +180,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 // Lưu đáp án và đồng bộ Drive
 router.post('/:id/correct-answers', async (req, res) => {
   try {
@@ -243,6 +228,7 @@ router.post('/:id/correct-answers', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 // Trả đề variant cho học sinh
 router.get('/latest-variant', (req, res) => {
   const dir = ensureDir();
@@ -263,7 +249,6 @@ router.get('/latest-variant', (req, res) => {
   };
   res.json({ ok: true, exam: examForStudent });
 });
-
 // Fallback lấy đề từ Drive nếu local mất
 router.get('/:id', async (req, res) => {
   const baseId = String(req.params.id);
@@ -300,6 +285,7 @@ router.post('/verify-password', (req, res) => {
   const verified = !exam.password || exam.password === password;
   res.json({ ok: verified });
 });
+
 // Danh sách đề gốc
 router.get('/list', (req, res) => {
   const dir = ensureDir();
@@ -313,13 +299,14 @@ router.get('/list', (req, res) => {
       timeMinutes: exam.timeMinutes,
       questionCount: exam.questions?.length || 0,
       hasAnswers: exam.answers && Object.keys(exam.answers).length > 0,
-      variants: exam.variants || []
+      variants: exam.variants || [],
+      driveLink: exam.driveLink || null
     };
   });
   res.json({ ok: true, exams });
 });
 
-// Đề gốc mới nhất (giáo viên xem/nhập đáp án)
+// Đề gốc mới nhất
 router.get('/latest', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
@@ -328,17 +315,6 @@ router.get('/latest', (req, res) => {
                       .sort((a, b) => b.createdAt - a.createdAt)[0];
   res.json({ ok: true, exam: latest });
 });
-
-// Xác thực mật khẩu đề
-router.post('/verify-password', (req, res) => {
-  const { examId, password } = req.body;
-  const baseId = String(examId).split('_r')[0].split('_v')[0];
-  const exam = readExam(baseId);
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  const verified = !exam.password || exam.password === password;
-  res.json({ ok: verified });
-});
-
 // Xóa đề
 router.delete('/:id', async (req, res) => {
   try {
