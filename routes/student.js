@@ -6,7 +6,6 @@ import { uploadToDrive, downloadFromDrive } from '../utils/driveHelper.js';
 import { sendEmail, sendClassEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
-
 /* ====================== SCORE CALCULATION ====================== */
 function calculateScore(answers, correctAnswers, questions) {
   if (!correctAnswers || Object.keys(correctAnswers).length === 0) return null;
@@ -47,6 +46,7 @@ function calculateScore(answers, correctAnswers, questions) {
   if (total === 0) return null;
   return Math.round((correct / total) * 10 * 10) / 10;
 }
+
 const resultFile = path.join(process.cwd(), 'data', 'result.json');
 
 function updateResultJson(className, studentData) {
@@ -114,7 +114,14 @@ router.post('/submit', async (req, res) => {
           examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
         } else {
           try {
-            examData = await downloadFromDrive(baseId);
+            // Đọc metadata để lấy driveFileId
+            const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
+            if (fs.existsSync(metaPath)) {
+              const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+              if (meta.driveFileId) {
+                examData = await downloadFromDrive(meta.driveFileId);
+              }
+            }
           } catch (err) {
             console.error('Không tải được đề từ Drive:', err.message);
           }
@@ -227,7 +234,6 @@ router.get('/submissions', (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 /* ====================== SEND CLASS REPORT ====================== */
 router.post('/send-class-report', async (req, res) => {
   try {
