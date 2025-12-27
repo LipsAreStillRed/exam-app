@@ -1,4 +1,4 @@
-// routes/exam.js - COMPLETE VERSION
+// routes/exam.js - FIXED ROUTE ORDER
 import express from 'express';
 import multer from 'multer';
 import mammoth from 'mammoth';
@@ -34,16 +34,6 @@ function readExam(id) {
 
 function writeExam(exam) { 
   fs.writeFileSync(examPath(exam.id), JSON.stringify(exam, null, 2), 'utf8'); 
-}
-
-function convertOmmlToMathml(xml) {
-  try {
-    const doc = new DOMParser().parseFromString(xml, 'text/xml');
-    const mmlNode = omml2mathml(doc);
-    return mmlNode?.toString ? mmlNode.toString() : String(mmlNode);
-  } catch { 
-    return null; 
-  }
 }
 
 function shuffle(arr) {
@@ -128,7 +118,9 @@ function makeRuntimeVariant(baseExam) {
   };
 }
 
-// ✅ UPLOAD
+// ==================== ROUTES - ĐÚNG THỨ TỰ ====================
+
+// ✅ 1. UPLOAD (POST /exam/upload)
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
@@ -212,7 +204,102 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// ✅ SAVE CORRECT ANSWERS
+// ✅ 2. LIST - PHẢI ĐẶT TRƯỚC /:id
+router.get('/list', (req, res) => {
+  try {
+    console.log('📥 GET /exam/list called');
+    const dir = ensureDir();
+    const files = fs.readdirSync(dir).filter(f => {
+      return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
+    });
+    
+    console.log(`📁 Found ${files.length} exam files:`, files);
+    
+    if (files.length === 0) {
+      return res.json({ ok: true, exams: [] });
+    }
+    
+    const exams = files.map(f => {
+      try {
+        const fullPath = path.join(dir, f);
+        const exam = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+        
+        const questionCount = exam.questions?.length || 0;
+        console.log(`📝 Exam ${exam.id}: ${questionCount} questions`);
+        
+        return {
+          id: exam.id,
+          originalName: exam.originalName || exam.name || 'Đề không tên',
+          createdAt: exam.createdAt || Date.now(),
+          timeMinutes: exam.timeMinutes || 45,
+          questionCount,
+          hasAnswers: exam.answers && Object.keys(exam.answers).length > 0,
+          variants: exam.variants || [],
+          driveLink: exam.driveLink || null
+        };
+      } catch (err) {
+        console.error(`❌ Error parsing ${f}:`, err.message);
+        return null;
+      }
+    }).filter(Boolean);
+    
+    console.log(`✅ Returning ${exams.length} exams`);
+    res.json({ ok: true, exams });
+  } catch (err) {
+    console.error('❌ /exam/list error:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ✅ 3. LATEST - PHẢI ĐẶT TRƯỚC /:id
+router.get('/latest', (req, res) => {
+  const dir = ensureDir();
+  const files = fs.readdirSync(dir).filter(f => {
+    return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
+  });
+  
+  if (!files.length) return res.json({ ok: true, exam: null });
+  
+  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
+                      .sort((a, b) => b.createdAt - a.createdAt)[0];
+  res.json({ ok: true, exam: latest });
+});
+
+// ✅ 4. LATEST-VARIANT - PHẢI ĐẶT TRƯỚC /:id
+router.get('/latest-variant', (req, res) => {
+  const dir = ensureDir();
+  const files = fs.readdirSync(dir).filter(f => {
+    return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
+  });
+  
+  if (!files.length) return res.json({ ok: true, exam: null });
+
+  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
+                      .sort((a, b) => b.createdAt - a.createdAt)[0];
+
+  const runtime = makeRuntimeVariant(latest);
+  const examForStudent = {
+    id: runtime.id,
+    baseId: latest.id,
+    originalName: latest.originalName,
+    timeMinutes: runtime.timeMinutes,
+    password: runtime.password,
+    questions: runtime.questions
+  };
+  res.json({ ok: true, exam: examForStudent });
+});
+
+// ✅ 5. VERIFY-PASSWORD - PHẢI ĐẶT TRƯỚC /:id
+router.post('/verify-password', (req, res) => {
+  const { examId, password } = req.body;
+  const baseId = String(examId).split('_r')[0].split('_v')[0];
+  const exam = readExam(baseId);
+  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  const verified = !exam.password || exam.password === password;
+  res.json({ ok: verified });
+});
+
+// ✅ 6. CORRECT-ANSWERS
 router.post('/:id/correct-answers', async (req, res) => {
   try {
     const baseId = String(req.params.id);
@@ -261,128 +348,16 @@ router.post('/:id/correct-answers', async (req, res) => {
   }
 });
 
-// ✅ GET LATEST VARIANT
-router.get('/latest-variant', (req, res) => {
-  const dir = ensureDir();
-  const files = fs.readdirSync(dir).filter(f => {
-    return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
-  });
-  
-  if (!files.length) return res.json({ ok: true, exam: null });
-
-  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
-                      .sort((a, b) => b.createdAt - a.createdAt)[0];
-
-  const runtime = makeRuntimeVariant(latest);
-  const examForStudent = {
-    id: runtime.id,
-    baseId: latest.id,
-    originalName: latest.originalName,
-    timeMinutes: runtime.timeMinutes,
-    password: runtime.password,
-    questions: runtime.questions
-  };
-  res.json({ ok: true, exam: examForStudent });
-});
-
-// ✅ GET EXAM BY ID
-router.get('/:id', async (req, res) => {
-  const baseId = String(req.params.id);
-  let exam = readExam(baseId);
-
+// ✅ 7. VARIANTS
+router.get('/:id/variants', (req, res) => {
+  const exam = readExam(req.params.id);
   if (!exam) {
-    try {
-      const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
-      if (fs.existsSync(metaPath)) {
-        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-        if (meta.driveFileId) {
-          const remoteExam = await downloadFromDrive(meta.driveFileId);
-          if (remoteExam && remoteExam.id === baseId) {
-            exam = remoteExam;
-            writeExam(exam);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Fallback load exam from Drive error:', err?.response?.data || err.message);
-    }
+    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
   }
-
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  res.json({ ok: true, exam });
+  res.json(exam.variants || []);
 });
 
-// ✅ VERIFY PASSWORD
-router.post('/verify-password', (req, res) => {
-  const { examId, password } = req.body;
-  const baseId = String(examId).split('_r')[0].split('_v')[0];
-  const exam = readExam(baseId);
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  const verified = !exam.password || exam.password === password;
-  res.json({ ok: verified });
-});
-
-// ✅ LIST EXAMS - FIXED
-router.get('/list', (req, res) => {
-  try {
-    const dir = ensureDir();
-    const files = fs.readdirSync(dir).filter(f => {
-      return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
-    });
-    
-    console.log(`📁 Found ${files.length} exam files:`, files);
-    
-    if (files.length === 0) {
-      return res.json({ ok: true, exams: [] });
-    }
-    
-    const exams = files.map(f => {
-      try {
-        const examPath = path.join(dir, f);
-        const exam = JSON.parse(fs.readFileSync(examPath, 'utf8'));
-        
-        const questionCount = exam.questions?.length || 0;
-        console.log(`📝 Exam ${exam.id}: ${questionCount} questions`);
-        
-        return {
-          id: exam.id,
-          originalName: exam.originalName || exam.name || 'Đề không tên',
-          createdAt: exam.createdAt || Date.now(),
-          timeMinutes: exam.timeMinutes || 45,
-          questionCount,
-          hasAnswers: exam.answers && Object.keys(exam.answers).length > 0,
-          variants: exam.variants || [],
-          driveLink: exam.driveLink || null
-        };
-      } catch (err) {
-        console.error(`❌ Error parsing ${f}:`, err.message);
-        return null;
-      }
-    }).filter(Boolean);
-    
-    console.log(`✅ Returning ${exams.length} exams`);
-    res.json({ ok: true, exams });
-  } catch (err) {
-    console.error('❌ /exam/list error:', err);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ✅ GET LATEST EXAM
-router.get('/latest', (req, res) => {
-  const dir = ensureDir();
-  const files = fs.readdirSync(dir).filter(f => {
-    return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
-  });
-  
-  if (!files.length) return res.json({ ok: true, exam: null });
-  
-  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
-                      .sort((a, b) => b.createdAt - a.createdAt)[0];
-  res.json({ ok: true, exam: latest });
-});
-
-// ✅ DELETE EXAM
+// ✅ 8. DELETE
 router.delete('/:id', async (req, res) => {
   try {
     const exam = readExam(req.params.id);
@@ -408,13 +383,31 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// ✅ GET VARIANTS
-router.get('/:id/variants', (req, res) => {
-  const exam = readExam(req.params.id);
+// ✅ 9. GET BY ID - PHẢI ĐẶT CUỐI CÙNG
+router.get('/:id', async (req, res) => {
+  const baseId = String(req.params.id);
+  let exam = readExam(baseId);
+
   if (!exam) {
-    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    try {
+      const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
+      if (fs.existsSync(metaPath)) {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (meta.driveFileId) {
+          const remoteExam = await downloadFromDrive(meta.driveFileId);
+          if (remoteExam && remoteExam.id === baseId) {
+            exam = remoteExam;
+            writeExam(exam);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Fallback load exam from Drive error:', err?.response?.data || err.message);
+    }
   }
-  res.json(exam.variants || []);
+
+  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  res.json({ ok: true, exam });
 });
 
 export default router;
