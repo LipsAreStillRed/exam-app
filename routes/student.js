@@ -96,7 +96,7 @@ function updateCSV(className, submissionData) {
     `"${submissionData.name || ''}"`,
     submissionData.dob || '',
     className || '',
-    new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }), // GMT+7
+    new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
     submissionData.score !== null && submissionData.score !== undefined ? submissionData.score : 'Chưa chấm',
     submissionData.violations || 0,
     `"${JSON.stringify(submissionData.answers || {}).replace(/"/g, '""')}"`
@@ -138,7 +138,12 @@ router.post('/submit', async (req, res) => {
 
         if (examData) {
           questions = examData.questions || [];
-          const correctAnswers = examData.answers || {};
+
+          // ✅ Fallback lấy đáp án từ correctAnswer nếu examData.answers rỗng
+          const correctAnswers = examData.answers && Object.keys(examData.answers).length > 0
+            ? examData.answers
+            : Object.fromEntries((examData.questions || []).map(q => [String(q.id), q.correctAnswer]));
+
           score = calculateScore(answers || {}, correctAnswers, questions);
         }
       } catch (e) {
@@ -151,7 +156,7 @@ router.post('/submit', async (req, res) => {
       name: name || '',
       email: email || '',
       score,
-      submittedAt: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }), // GMT+7
+      submittedAt: new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
       status: 'submitted',
       violations: violations || 0,
       answers: JSON.stringify(answers || {})
