@@ -29,29 +29,72 @@ function showMessage(elementId, message, isError = false) {
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-// ✅ FIX: CHỈ DÙNG visibilitychange, BỎ blur
+// ====================== ADVANCED VIOLATION DETECTION ======================
+
+let lastActivityTime = Date.now();
+let inactivityCheckInterval = null;
+
 function setupViolationDetection() {
   if (visibilityCheckEnabled) return;
   visibilityCheckEnabled = true;
   violations = 0;
 
-  // ✅ CHỈ DÙNG 1 EVENT: visibilitychange
+  // 1. Phát hiện chuyển tab (trong cùng trình duyệt)
   document.addEventListener('visibilitychange', handleVisibilityChange);
   
-  console.log('✅ Bật phát hiện vi phạm');
+  // 2. Phát hiện mất focus cửa sổ
+  window.addEventListener('blur', handleWindowBlur);
+  
+  // 3. Phát hiện không hoạt động > 30s (nghi tra đáp án ở nơi khác)
+  startInactivityCheck();
+  
+  // 4. Track hoạt động chuột/bàn phím
+  document.addEventListener('mousemove', updateActivity);
+  document.addEventListener('keypress', updateActivity);
+  
+  console.log('✅ Bật phát hiện vi phạm nâng cao');
 }
 
 function handleVisibilityChange() {
   if (!visibilityCheckEnabled || !document.hidden) return;
+  recordViolation('Chuyển tab');
+}
 
+function handleWindowBlur() {
+  if (!visibilityCheckEnabled) return;
+  // Chỉ tăng nếu không phải do visibility
+  if (!document.hidden) {
+    recordViolation('Rời cửa sổ');
+  }
+}
+
+function updateActivity() {
+  lastActivityTime = Date.now();
+}
+
+function startInactivityCheck() {
+  inactivityCheckInterval = setInterval(() => {
+    if (!visibilityCheckEnabled) return;
+    
+    const inactiveTime = (Date.now() - lastActivityTime) / 1000;
+    
+    // Nếu không hoạt động > 30s và trang vẫn visible
+    if (inactiveTime > 30 && !document.hidden) {
+      recordViolation('Không hoạt động quá 30s');
+      lastActivityTime = Date.now(); // Reset để không spam
+    }
+  }, 5000); // Check mỗi 5s
+}
+
+function recordViolation(reason) {
   violations++;
-  console.warn(`⚠️ Vi phạm #${violations}: Chuyển tab`);
+  console.warn(`⚠️ Vi phạm #${violations}: ${reason}`);
   showViolationWarning();
 
   if (violations === 1) {
-    alert('⚠️ Vi phạm lần 1! Nếu tiếp tục sẽ bị thu bài.');
+    alert(`⚠️ Vi phạm lần 1 (${reason})! Nếu tiếp tục sẽ bị thu bài.`);
   } else if (violations >= 2) {
-    alert('⛔ Vi phạm 2 lần! Tự động nộp bài.');
+    alert(`⛔ Vi phạm 2 lần! Tự động nộp bài.`);
     submitExam(true);
   }
 }
@@ -68,8 +111,44 @@ function showViolationWarning() {
 function disableViolationDetection() {
   visibilityCheckEnabled = false;
   document.removeEventListener('visibilitychange', handleVisibilityChange);
+  window.removeEventListener('blur', handleWindowBlur);
+  document.removeEventListener('mousemove', updateActivity);
+  document.removeEventListener('keypress', updateActivity);
+  
+  if (inactivityCheckInterval) {
+    clearInterval(inactivityCheckInterval);
+    inactivityCheckInterval = null;
+  }
+  
   console.log('🔒 Tắt phát hiện vi phạm');
 }
+
+// ====================== BONUS: Phát hiện copy/paste ======================
+document.addEventListener('paste', (e) => {
+  if (!visibilityCheckEnabled) return;
+  e.preventDefault();
+  recordViolation('Copy/Paste');
+});
+
+// ====================== BONUS: Phát hiện DevTools ======================
+let devtoolsOpen = false;
+const threshold = 160;
+
+setInterval(() => {
+  if (!visibilityCheckEnabled) return;
+  
+  const widthThreshold = window.outerWidth - window.innerWidth > threshold;
+  const heightThreshold = window.outerHeight - window.innerHeight > threshold;
+  
+  if (widthThreshold || heightThreshold) {
+    if (!devtoolsOpen) {
+      devtoolsOpen = true;
+      recordViolation('Mở DevTools');
+    }
+  } else {
+    devtoolsOpen = false;
+  }
+}, 1000);
 
 
 // ====================== AUTH ======================
