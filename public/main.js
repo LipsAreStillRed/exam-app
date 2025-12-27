@@ -40,9 +40,9 @@ function setupViolationDetection() {
   visibilityCheckEnabled = true;
   violations = 0;
 
-  // ✅ Đợi 3 giây sau khi vào trang mới bật giám sát
+  // ✅ FIX: Đợi 3 giây sau khi vào trang mới bật giám sát
   setTimeout(() => {
-  // 1. Phát hiện chuyển tab (trong cùng trình duyệt)
+    // 1. Phát hiện chuyển tab (trong cùng trình duyệt)
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // 2. Phát hiện mất focus cửa sổ
@@ -153,7 +153,6 @@ setInterval(() => {
     devtoolsOpen = false;
   }
 }, 1000);
-
 // ====================== AUTH ======================
 async function handleLogin(password) {
   console.log('🔑 Attempting login...');
@@ -168,6 +167,133 @@ async function handleLogin(password) {
   return data;
 }
 
+// ====================== TEACHER FUNCTIONS ======================
+async function loadExamList() {
+  const listDiv = document.getElementById('examList');
+  if (!listDiv) {
+    console.error('❌ examList element not found');
+    return;
+  }
+  
+  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
+  console.log('🔄 Fetching /exam/list...');
+
+  try {
+    const res = await fetch('/exam/list');
+    console.log('📡 Response status:', res.status, res.statusText);
+    
+    const data = await res.json();
+    console.log('📥 /exam/list response:', data);
+
+    if (!data.ok) {
+      console.error('❌ API returned ok: false');
+      listDiv.innerHTML = '<p class="empty-state">Lỗi tải danh sách đề</p>';
+      return;
+    }
+
+    if (!data.exams || !Array.isArray(data.exams)) {
+      console.error('❌ Invalid exams data:', data.exams);
+      listDiv.innerHTML = '<p class="empty-state">Dữ liệu không hợp lệ</p>';
+      return;
+    }
+
+    if (data.exams.length === 0) {
+      console.log('ℹ️ No exams found');
+      listDiv.innerHTML = '<p class="empty-state">Chưa có đề thi nào</p>';
+      return;
+    }
+
+    console.log(`✅ Found ${data.exams.length} exams`);
+    listDiv.innerHTML = '';
+    
+    data.exams.forEach((exam, idx) => {
+      console.log(`📝 Exam ${idx + 1}:`, exam);
+      
+      const count = exam.questionCount || 0;
+      const examGroup = document.createElement('div');
+      examGroup.style.marginBottom = '20px';
+      
+      const mainItem = document.createElement('div');
+      mainItem.className = 'exam-item';
+      mainItem.style.borderLeft = '4px solid var(--primary)';
+      mainItem.innerHTML = `
+        <span><strong>📚 ${exam.originalName || 'Đề không tên'}</strong> (${count} câu)</span>
+        <button type="button" class="btn btn-primary">Chi tiết</button>
+      `;
+      mainItem.querySelector('button').onclick = () => {
+        console.log('🖱️ Opening exam:', exam.id);
+        openExamDetail(exam.id);
+      };
+      examGroup.appendChild(mainItem);
+      
+      if (Array.isArray(exam.variants) && exam.variants.length > 0) {
+        console.log(`🔀 ${exam.variants.length} variants found`);
+        const variantsList = document.createElement('div');
+        variantsList.className = 'variants-list';
+        variantsList.style.marginLeft = '30px';
+        variantsList.style.marginTop = '8px';
+        
+        exam.variants.forEach((variant, vidx) => {
+          if (!variant?.id) return;
+          const variantItem = document.createElement('div');
+          variantItem.className = 'exam-item variant-item';
+          variantItem.style.borderLeft = '4px solid var(--success)';
+          variantItem.style.background = '#f8f9fa';
+          variantItem.innerHTML = `
+            <span>🔀 Mã đề ${vidx + 1}</span>
+            <button type="button" class="btn btn-secondary">Chi tiết</button>
+          `;
+          variantItem.querySelector('button').onclick = () => openExamDetail(exam.id);
+          variantsList.appendChild(variantItem);
+        });
+        examGroup.appendChild(variantsList);
+      }
+      
+      listDiv.appendChild(examGroup);
+    });
+    
+    console.log('✅ Exam list rendered successfully');
+  } catch (err) {
+    console.error('❌ loadExamList error:', err);
+    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
+  }
+}
+
+async function loadSubmissions() {
+  const listDiv = document.getElementById('submissionsList');
+  if (!listDiv) return;
+  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
+  console.log('🔄 Fetching /student/submissions...');
+
+  try {
+    const res = await fetch('/student/submissions');
+    const data = await res.json();
+    console.log('📥 Submissions response:', data);
+
+    if (!data.ok || !data.submissions?.length) {
+      listDiv.innerHTML = '<p class="empty-state">Chưa có bài nộp nào</p>';
+      return;
+    }
+
+    listDiv.innerHTML = '';
+    data.submissions.slice(0, 10).forEach(sub => {
+      const item = document.createElement('div');
+      item.className = 'submission-item';
+      item.innerHTML = `
+        <strong>${sub.name}</strong>
+        <div>${sub.className} • ${sub.date}</div>
+        ${sub.score !== 'Chưa chấm'
+          ? `<span class="submission-score">${sub.score} điểm</span>`
+          : '<span style="color:var(--warning)">Chưa chấm</span>'}
+      `;
+      listDiv.appendChild(item);
+    });
+    console.log('✅ Submissions loaded');
+  } catch (err) {
+    console.error('❌ loadSubmissions error:', err);
+    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
+  }
+}
 // ====================== MODAL CHI TIẾT ĐỀ ======================
 async function openExamDetail(examId) {
   try {
@@ -181,7 +307,7 @@ async function openExamDetail(examId) {
       return;
     }
 
-     const exam = data.exam;
+    const exam = data.exam;
     if (!exam) {
       alert('❌ Không có dữ liệu đề thi');
       return;
@@ -332,8 +458,6 @@ async function attachImage(examId, qid) {
     alert('❌ Lỗi: ' + err.message);
   }
 }
-
-
 // ====================== MODAL ACTIONS ======================
 function setupModalButtons(examId) {
   document.getElementById('saveAnswers').onclick = async () => {
@@ -418,135 +542,91 @@ function setupModalButtons(examId) {
       alert('Lỗi: ' + err.message);
     }
   };
-}
-// ====================== TEACHER FUNCTIONS ======================
-async function loadExamList() {
-  const listDiv = document.getElementById('examList');
-  if (!listDiv) {
-    console.error('❌ examList element not found');
-    return;
-  }
-  
-  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
-  console.log('🔄 Fetching /exam/list...');
-
-  try {
-    const res = await fetch('/exam/list');
-    console.log('📡 Response status:', res.status, res.statusText);
-    
-    const data = await res.json();
-    console.log('📥 /exam/list response:', data);
-
-    if (!data.ok) {
-      console.error('❌ API returned ok: false');
-      listDiv.innerHTML = '<p class="empty-state">Lỗi tải danh sách đề</p>';
-      return;
-    }
-
-    if (!data.exams || !Array.isArray(data.exams)) {
-      console.error('❌ Invalid exams data:', data.exams);
-      listDiv.innerHTML = '<p class="empty-state">Dữ liệu không hợp lệ</p>';
-      return;
-    }
-
-    if (data.exams.length === 0) {
-      console.log('ℹ️ No exams found');
-      listDiv.innerHTML = '<p class="empty-state">Chưa có đề thi nào</p>';
-      return;
-    }
-
-    console.log(`✅ Found ${data.exams.length} exams`);
-    listDiv.innerHTML = '';
-    
-    data.exams.forEach((exam, idx) => {
-      console.log(`📝 Exam ${idx + 1}:`, exam);
-      
-      const count = exam.questionCount || 0;
-      const examGroup = document.createElement('div');
-      examGroup.style.marginBottom = '20px';
-      
-      const mainItem = document.createElement('div');
-      mainItem.className = 'exam-item';
-      mainItem.style.borderLeft = '4px solid var(--primary)';
-      mainItem.innerHTML = `
-        <span><strong>📚 ${exam.originalName || 'Đề không tên'}</strong> (${count} câu)</span>
-        <button type="button" class="btn btn-primary">Chi tiết</button>
-      `;
-      mainItem.querySelector('button').onclick = () => {
-        console.log('🖱️ Opening exam:', exam.id);
-        openExamDetail(exam.id);
-      };
-      examGroup.appendChild(mainItem);
-      
-      if (Array.isArray(exam.variants) && exam.variants.length > 0) {
-        console.log(`🔀 ${exam.variants.length} variants found`);
-        const variantsList = document.createElement('div');
-        variantsList.className = 'variants-list';
-        variantsList.style.marginLeft = '30px';
-        variantsList.style.marginTop = '8px';
+}// ====================== MODAL ACTIONS ======================
+function setupModalButtons(examId) {
+  document.getElementById('saveAnswers').onclick = async () => {
+    try {
+      const answers = {};
+      document.querySelectorAll("[name^='ans_']").forEach(input => {
+        const name = input.name;
+        const value = input.value.trim();
+        if (input.type === 'radio' && !input.checked) return;
         
-        exam.variants.forEach((variant, vidx) => {
-          if (!variant?.id) return;
-          const variantItem = document.createElement('div');
-          variantItem.className = 'exam-item variant-item';
-          variantItem.style.borderLeft = '4px solid var(--success)';
-          variantItem.style.background = '#f8f9fa';
-          variantItem.innerHTML = `
-            <span>🔀 Mã đề ${vidx + 1}</span>
-            <button type="button" class="btn btn-secondary">Chi tiết</button>
-          `;
-          variantItem.querySelector('button').onclick = () => openExamDetail(exam.id);
-          variantsList.appendChild(variantItem);
-        });
-        examGroup.appendChild(variantsList);
+        const matchSub = name.match(/^ans_(\d+)_(\w+)$/);
+        if (matchSub && input.type === 'radio') {
+          const qid = matchSub[1];
+          const subKey = matchSub[2];
+          if (!answers[qid]) answers[qid] = {};
+          answers[qid][subKey] = value;
+          return;
+        }
+        
+        const matchShort = name.match(/^ans_(\d+)_(\d)$/);
+        if (matchShort && input.type !== 'radio') {
+          const qid = matchShort[1];
+          const idx = parseInt(matchShort[2]) - 1;
+          if (!answers[qid]) answers[qid] = ['', '', '', ''];
+          if (Array.isArray(answers[qid])) answers[qid][idx] = value;
+          return;
+        }
+        
+        const matchMain = name.match(/^ans_(\d+)$/);
+        if (matchMain && input.type === 'radio') {
+          answers[matchMain[1]] = value;
+        }
+      });
+      
+      console.log('📤 Gửi đáp án:', answers);
+      if (Object.keys(answers).length === 0) {
+        alert('⚠️ Chưa chọn đáp án nào!');
+        return;
       }
       
-      listDiv.appendChild(examGroup);
-    });
-    
-    console.log('✅ Exam list rendered successfully');
-  } catch (err) {
-    console.error('❌ loadExamList error:', err);
-    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
-  }
-}
-
-async function loadSubmissions() {
-  const listDiv = document.getElementById('submissionsList');
-  if (!listDiv) return;
-  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
-  console.log('🔄 Fetching /student/submissions...');
-
-  try {
-    const res = await fetch('/student/submissions');
-    const data = await res.json();
-    console.log('📥 Submissions response:', data);
-
-    if (!data.ok || !data.submissions?.length) {
-      listDiv.innerHTML = '<p class="empty-state">Chưa có bài nộp nào</p>';
-      return;
+      const res = await fetch(`/exam/${examId}/correct-answers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers })
+      });
+      const result = await res.json();
+      console.log('📥 Kết quả:', result);
+      alert(result.ok ? '✅ Đã lưu đáp án!' : '❌ Lỗi: ' + (result.error || 'Unknown'));
+    } catch (err) {
+      console.error('❌ Lỗi lưu:', err);
+      alert('Lỗi: ' + err.message);
     }
+  };
 
-    listDiv.innerHTML = '';
-    data.submissions.slice(0, 10).forEach(sub => {
-      const item = document.createElement('div');
-      item.className = 'submission-item';
-      item.innerHTML = `
-        <strong>${sub.name}</strong>
-        <div>${sub.className} • ${sub.date}</div>
-        ${sub.score !== 'Chưa chấm'
-          ? `<span class="submission-score">${sub.score} điểm</span>`
-          : '<span style="color:var(--warning)">Chưa chấm</span>'}
-      `;
-      listDiv.appendChild(item);
-    });
-    console.log('✅ Submissions loaded');
-  } catch (err) {
-    console.error('❌ loadSubmissions error:', err);
-    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
-  }
+  document.getElementById('sendReport').onclick = async () => {
+    try {
+      const className = prompt('Nhập tên lớp:');
+      if (!className) return;
+      const res = await fetch('/student/send-class-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ className, examId })
+      });
+      const result = await res.json();
+      alert(result.message || (result.ok ? '✅ Đã gửi' : '❌ Lỗi'));
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+    }
+  };
+
+  document.getElementById('deleteExam').onclick = async () => {
+    try {
+      if (!confirm('Xóa đề này?')) return;
+      const res = await fetch(`/exam/${examId}`, { method: 'DELETE' });
+      const result = await res.json();
+      alert(result.message || (result.ok ? '✅ Đã xóa' : '❌ Lỗi'));
+      if (result.ok) {
+        closeExamDetail();
+        await loadExamList();
+      }
+    } catch (err) {
+      alert('Lỗi: ' + err.message);
+    }
+  };
 }
-
 // ====================== STUDENT FUNCTIONS ======================
 async function loadLatestExamVariant() {
   const res = await fetch('/exam/latest-variant');
@@ -583,32 +663,36 @@ function startExamTimer(timeMinutes) {
   }, 1000);
 }
 
-// ✅ FIX: renderExam - GIỮ NGUYÊN KEY TỪ BACKEND
+// ✅ FIX: renderExam - LƯU MAPPING ĐỂ CONVERT KEY KHI SUBMIT
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
+  questionKeyMapping = {}; // Reset mapping
   
   console.log('📝 Rendering exam:', exam.id);
   console.log('📋 Questions:', exam.questions);
   
   (exam.questions || []).forEach((q, index) => {
-    console.log(`Render câu ${index + 1}:`, q);
+    const displayIndex = index + 1;
+    questionKeyMapping[displayIndex] = q.id; // ✅ Lưu mapping: displayIndex → originalQuestionId
+    
+    console.log(`Render câu ${displayIndex}: ID=${q.id}`, q);
     
     const qDiv = document.createElement('div');
     qDiv.className = 'question-item';
     let optionsHtml = '';
     
-    // ✅ Multiple choice - GIỮ NGUYÊN KEY TỪ BACKEND
+    // ✅ Multiple choice - SỬ DỤNG displayIndex THAY VÌ q.id
     if (q.type === 'multiple_choice') {
       const options = q.options || [];
       
-      console.log(`Câu ${q.id} options:`, options);
+      console.log(`Câu ${displayIndex} options:`, options);
       
       optionsHtml = `
         <div class="option-block">
           ${options.map(opt => `
             <label>
-              <input type="radio" name="q_${q.id}" value="${opt.key}">
+              <input type="radio" name="q_${displayIndex}" value="${opt.key}">
               ${opt.key}. ${opt.text}
             </label>
           `).join('')}
@@ -622,8 +706,8 @@ function renderExam(exam) {
           ${q.subQuestions.map(sub => `
             <div class="sub-item">
               ${sub.key}) ${sub.text}
-              <label><input type="radio" name="q_${q.id}_${sub.key}" value="Đúng"> Đúng</label>
-              <label><input type="radio" name="q_${q.id}_${sub.key}" value="Sai"> Sai</label>
+              <label><input type="radio" name="q_${displayIndex}_${sub.key}" value="Đúng"> Đúng</label>
+              <label><input type="radio" name="q_${displayIndex}_${sub.key}" value="Sai"> Sai</label>
             </div>
           `).join('')}
         </div>
@@ -633,8 +717,8 @@ function renderExam(exam) {
     else if (q.type === 'true_false') {
       optionsHtml = `
         <div class="truefalse-block">
-          <label><input type="radio" name="q_${q.id}" value="Đúng"> Đúng</label>
-          <label><input type="radio" name="q_${q.id}" value="Sai"> Sai</label>
+          <label><input type="radio" name="q_${displayIndex}" value="Đúng"> Đúng</label>
+          <label><input type="radio" name="q_${displayIndex}" value="Sai"> Sai</label>
         </div>
       `;
     }
@@ -642,23 +726,23 @@ function renderExam(exam) {
     else if (q.type === 'short_answer') {
       optionsHtml = `
         <div class="short-form">
-          <input class="cell cell-1" maxlength="1" name="q_${q.id}_1">
-          <input class="cell cell-2" maxlength="1" name="q_${q.id}_2">
-          <input class="cell cell-3" maxlength="1" name="q_${q.id}_3">
-          <input class="cell cell-4" maxlength="1" name="q_${q.id}_4">
+          <input class="cell cell-1" maxlength="1" name="q_${displayIndex}_1">
+          <input class="cell cell-2" maxlength="1" name="q_${displayIndex}_2">
+          <input class="cell cell-3" maxlength="1" name="q_${displayIndex}_3">
+          <input class="cell cell-4" maxlength="1" name="q_${displayIndex}_4">
         </div>
       `;
     }
     
     qDiv.innerHTML = `
-      <strong>Câu ${index+1}:</strong>
+      <strong>Câu ${displayIndex}:</strong>
       <p>${q.question || q.text}</p>
       ${optionsHtml}
     `;
     container.appendChild(qDiv);
   });
   
-  console.log('✅ Exam rendered');
+  console.log('✅ Exam rendered with mapping:', questionKeyMapping);
 }
 
 async function submitExam(autoSubmit = false) {
@@ -671,28 +755,35 @@ async function submitExam(autoSubmit = false) {
     if ((input.type === 'radio' && input.checked) || input.tagName === 'INPUT') {
       const nm = input.name;
       const val = input.value.trim();
+      
+      // ✅ Parse displayIndex từ input name
+      const matchMain = nm.match(/^q_(\d+)$/);
       const matchSub = nm.match(/^q_(\d+)_(\w+)$/);
+      const matchShort = nm.match(/^q_(\d+)_(\d)$/);
+      
+      let displayIndex;
+      if (matchMain) displayIndex = matchMain[1];
+      else if (matchSub) displayIndex = matchSub[1];
+      else if (matchShort) displayIndex = matchShort[1];
+      
+      // ✅ QUAN TRỌNG: Convert displayIndex → originalQuestionId
+      const qid = questionKeyMapping[displayIndex] || displayIndex;
+      
       if (matchSub) {
-        const qid = matchSub[1];
         const subKey = matchSub[2];
         answers[qid] = answers[qid] || {};
         answers[qid][subKey] = val;
+      } else if (matchShort) {
+        const idx = matchShort[2];
+        answers[qid] = answers[qid] || [];
+        answers[qid][idx - 1] = val;
       } else {
-        const matchShort = nm.match(/^q_(\d+)_(\d)$/);
-        if (matchShort) {
-          const qid = matchShort[1];
-          const idx = matchShort[2];
-          answers[qid] = answers[qid] || [];
-          answers[qid][idx - 1] = val;
-        } else {
-          const qid = nm.replace('q_', '');
-          answers[qid] = val;
-        }
+        answers[qid] = val;
       }
     }
   });
 
-  console.log('📤 Nộp bài:', { examId: currentExamId, answers, violations });
+  console.log('📤 Nộp bài:', { examId: currentExamId, answers, violations, mapping: questionKeyMapping });
 
   try {
     const res = await fetch('/student/submit', {
@@ -742,7 +833,6 @@ async function submitExam(autoSubmit = false) {
     alert('Lỗi: ' + err.message);
   }
 }
-
 // ====================== EVENT HANDLERS ======================
 function setupEventHandlers() {
   const loginForm = document.getElementById('loginForm');
