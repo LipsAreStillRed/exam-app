@@ -30,12 +30,15 @@ function showMessage(elementId, message, isError = false) {
 }
 
 // ====================== VIOLATION TRACKING ======================
+
 function setupViolationDetection() {
   if (visibilityCheckEnabled) return;
   visibilityCheckEnabled = true;
   violations = 0;
+
   document.addEventListener('visibilitychange', handleVisibilityChange);
   window.addEventListener('blur', handleWindowBlur);
+
   console.log('✅ Bật phát hiện vi phạm');
 }
 
@@ -47,7 +50,7 @@ function handleVisibilityChange() {
   showViolationWarning();
 
   if (violations === 1) {
-    alert('⚠️ Bạn đã vi phạm lần 1. Nếu tiếp tục sẽ bị thu bài.');
+    alert('⚠️ Vi phạm lần 1 rồi đấy. Làm bài cho ngoan đi nếu tiếp tục sẽ bị thu bài.');
   } else if (violations >= 2) {
     alert('⛔ Vi phạm 2 lần! Tự động nộp bài.');
     submitExam(true);
@@ -57,21 +60,20 @@ function handleVisibilityChange() {
 function handleWindowBlur() {
   if (!visibilityCheckEnabled) return;
 
-  // Chỉ tăng nếu chưa tăng ở visibilitychange
+  // Chỉ tăng nếu không đồng thời bị document.hidden
   if (!document.hidden) {
     violations++;
     console.warn(`⚠️ Vi phạm #${violations}: Rời cửa sổ`);
     showViolationWarning();
 
     if (violations === 1) {
-      alert('⚠️ Bạn đã vi phạm lần 1. Nếu tiếp tục sẽ bị thu bài.');
+      alert('⚠️ Vi phạm lần 1 rồi đấy. Làm bài cho ngoan đi nếu tiếp tục sẽ bị thu bài.');
     } else if (violations >= 2) {
       alert('⛔ Vi phạm 2 lần! Tự động nộp bài.');
       submitExam(true);
     }
   }
 }
-
 
 function showViolationWarning() {
   const warningEl = document.getElementById('warningMessage');
@@ -88,6 +90,7 @@ function disableViolationDetection() {
   window.removeEventListener('blur', handleWindowBlur);
   console.log('🔒 Tắt phát hiện vi phạm');
 }
+
 
 // ====================== AUTH ======================
 async function handleLogin(password) {
