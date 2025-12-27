@@ -1,4 +1,4 @@
-// routes/student.js
+// routes/student.js - FIXED
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -8,17 +8,27 @@ import { sendEmail, sendClassEmail } from '../utils/emailHelper.js';
 
 const router = express.Router();
 
-// Chuẩn hóa chuỗi để so sánh
 function normalizeStr(x) {
   return String(x ?? '').trim().toUpperCase().replace(/\s/g, '');
 }
 
-// Hàm chấm điểm
+// ✅ FIX: Hàm chấm điểm với logging chi tiết
 function calculateScore(answers, correctAnswers, questions) {
-  const studentAns = Object.fromEntries(Object.entries(answers || {}).map(([k, v]) => [String(k), v]));
-  const correctAns = Object.fromEntries(Object.entries(correctAnswers || {}).map(([k, v]) => [String(k), v]));
+  console.log('🔍 calculateScore called');
+  console.log('📝 Student answers:', answers);
+  console.log('✅ Correct answers:', correctAnswers);
+  
+  const studentAns = Object.fromEntries(
+    Object.entries(answers || {}).map(([k, v]) => [String(k), v])
+  );
+  const correctAns = Object.fromEntries(
+    Object.entries(correctAnswers || {}).map(([k, v]) => [String(k), v])
+  );
 
-  if (!correctAns || Object.keys(correctAns).length === 0) return null;
+  if (!correctAns || Object.keys(correctAns).length === 0) {
+    console.warn('⚠️ Không có đáp án đúng');
+    return null;
+  }
 
   let correct = 0;
   let total = 0;
@@ -26,35 +36,60 @@ function calculateScore(answers, correctAnswers, questions) {
   (questions || []).forEach(q => {
     const qid = String(q.id);
 
+    // True/False nhiều ý
     if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
       q.subQuestions.forEach(sub => {
         total++;
         const key = String(sub.key);
         const ca = correctAns[qid]?.[key];
         const sa = studentAns[qid]?.[key];
+        
+        console.log(`Câu ${qid}${key}: HS="${sa}" vs ĐA="${ca}"`);
+        
         if (!ca || !sa) return;
-        if (normalizeStr(sa) === normalizeStr(ca)) correct++;
+        if (normalizeStr(sa) === normalizeStr(ca)) {
+          correct++;
+          console.log(`✅ Đúng`);
+        } else {
+          console.log(`❌ Sai`);
+        }
       });
       return;
     }
 
+    // Câu đơn (multiple_choice, true_false đơn, short_answer)
     total++;
     const ca = correctAns[qid];
     const sa = studentAns[qid];
+    
+    console.log(`Câu ${qid}: HS="${sa}" vs ĐA="${ca}"`);
+
     if (!ca || !sa) return;
 
     let saStr = sa;
     let caStr = ca;
+    
+    // Xử lý short_answer (array)
     if (Array.isArray(sa)) saStr = sa.filter(Boolean).join('');
     else if (typeof sa === 'object' && sa?.boxes) saStr = sa.boxes.filter(Boolean).join('');
     if (Array.isArray(ca)) caStr = ca.filter(Boolean).join('');
 
-    if (normalizeStr(saStr) === normalizeStr(caStr)) correct++;
+    if (normalizeStr(saStr) === normalizeStr(caStr)) {
+      correct++;
+      console.log(`✅ Đúng`);
+    } else {
+      console.log(`❌ Sai`);
+    }
   });
 
   if (total === 0) return null;
-  return Math.round((correct / total) * 10 * 10) / 10;
+  
+  const score = Math.round((correct / total) * 10 * 10) / 10;
+  console.log(`📊 Kết quả: ${correct}/${total} = ${score}/10`);
+  
+  return score;
 }
+
 const resultFile = path.join(process.cwd(), 'data', 'result.json');
 
 function updateResultJson(className, studentData) {
@@ -105,10 +140,13 @@ function updateCSV(className, submissionData) {
   fs.appendFileSync(filename, row, 'utf8');
   return { filename, totalSubmissions: stt };
 }
-// Nộp bài
+
+// ✅ FIX: Route submit với xử lý đáp án đúng
 router.post('/submit', async (req, res) => {
   try {
     const { id, name, className, dob, answers, examId, violations, email } = req.body;
+
+    console.log('📨 Nhận bài nộp:', { name, className, examId, violations });
 
     let score = null;
     let questions = [];
@@ -121,33 +159,51 @@ router.post('/submit', async (req, res) => {
 
         if (fs.existsSync(examJsonPath)) {
           examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
+          console.log('✅ Đã load đề thi từ local');
         } else {
+          console.log('⚠️ Không tìm thấy đề local, thử load từ Drive...');
           try {
             const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
             if (fs.existsSync(metaPath)) {
               const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
               if (meta.driveFileId) {
                 examData = await downloadFromDrive(meta.driveFileId);
-                if (examData) fs.writeFileSync(examJsonPath, JSON.stringify(examData, null, 2), 'utf8');
+                if (examData) {
+                  fs.writeFileSync(examJsonPath, JSON.stringify(examData, null, 2), 'utf8');
+                  console.log('✅ Đã load đề từ Drive');
+                }
               }
             }
           } catch (err) {
-            console.error('Không tải được đề từ Drive:', err?.response?.data || err.message);
+            console.error('❌ Không tải được đề từ Drive:', err?.response?.data || err.message);
           }
         }
 
         if (examData) {
           questions = examData.questions || [];
-
-          // ✅ Fallback lấy đáp án từ correctAnswer nếu examData.answers rỗng
-          const correctAnswers = examData.answers && Object.keys(examData.answers).length > 0
-            ? examData.answers
-            : Object.fromEntries((examData.questions || []).map(q => [String(q.id), q.correctAnswer]));
-
+          
+          // ✅ FIX: Ưu tiên lấy từ examData.answers, nếu rỗng thì lấy từ q.correctAnswer
+          let correctAnswers = {};
+          
+          if (examData.answers && Object.keys(examData.answers).length > 0) {
+            correctAnswers = examData.answers;
+            console.log('✅ Dùng đáp án từ examData.answers');
+          } else {
+            // Fallback: lấy từ correctAnswer của từng câu
+            correctAnswers = {};
+            (examData.questions || []).forEach(q => {
+              if (q.correctAnswer !== undefined) {
+                correctAnswers[String(q.id)] = q.correctAnswer;
+              }
+            });
+            console.log('⚠️ Fallback: Dùng đáp án từ q.correctAnswer');
+          }
+          
+          console.log('📋 Đáp án đúng:', correctAnswers);
           score = calculateScore(answers || {}, correctAnswers, questions);
         }
       } catch (e) {
-        console.error('Error calculating score:', e);
+        console.error('❌ Error calculating score:', e);
       }
     }
 
@@ -215,7 +271,7 @@ router.post('/submit', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-// Danh sách bài nộp
+
 router.get('/submissions', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'submissions');
@@ -245,7 +301,7 @@ router.get('/submissions', (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-// Gửi báo cáo lớp qua email
+
 router.post('/send-class-report', async (req, res) => {
   try {
     const { className, examId } = req.body;
