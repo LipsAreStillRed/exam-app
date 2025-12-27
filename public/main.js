@@ -41,10 +41,14 @@ function setupViolationDetection() {
 
 function handleVisibilityChange() {
   if (!visibilityCheckEnabled || !document.hidden) return;
+
   violations++;
   console.warn(`⚠️ Vi phạm #${violations}: Chuyển tab`);
   showViolationWarning();
-  if (violations >= 2) {
+
+  if (violations === 1) {
+    alert('⚠️ Bạn đã vi phạm lần 1. Nếu tiếp tục sẽ bị thu bài.');
+  } else if (violations >= 2) {
     alert('⛔ Vi phạm 2 lần! Tự động nộp bài.');
     submitExam(true);
   }
@@ -52,14 +56,22 @@ function handleVisibilityChange() {
 
 function handleWindowBlur() {
   if (!visibilityCheckEnabled) return;
-  violations++;
-  console.warn(`⚠️ Vi phạm #${violations}: Rời cửa sổ`);
-  showViolationWarning();
-  if (violations >= 2) {
-    alert('⛔ Vi phạm 2 lần! Tự động nộp bài.');
-    submitExam(true);
+
+  // Chỉ tăng nếu chưa tăng ở visibilitychange
+  if (!document.hidden) {
+    violations++;
+    console.warn(`⚠️ Vi phạm #${violations}: Rời cửa sổ`);
+    showViolationWarning();
+
+    if (violations === 1) {
+      alert('⚠️ Bạn đã vi phạm lần 1. Nếu tiếp tục sẽ bị thu bài.');
+    } else if (violations >= 2) {
+      alert('⛔ Vi phạm 2 lần! Tự động nộp bài.');
+      submitExam(true);
+    }
   }
 }
+
 
 function showViolationWarning() {
   const warningEl = document.getElementById('warningMessage');
