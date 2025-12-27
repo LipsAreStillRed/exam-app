@@ -1,4 +1,4 @@
-// routes/exam.js
+// routes/exam.js - COMPLETE VERSION
 import express from 'express';
 import multer from 'multer';
 import mammoth from 'mammoth';
@@ -19,16 +19,31 @@ function ensureDir() {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
-function examPath(id) { return path.join(ensureDir(), `${id}.json`); }
-function readExam(id) { try { return JSON.parse(fs.readFileSync(examPath(id), 'utf8')); } catch { return null; } }
-function writeExam(exam) { fs.writeFileSync(examPath(exam.id), JSON.stringify(exam, null, 2), 'utf8'); }
+
+function examPath(id) { 
+  return path.join(ensureDir(), `${id}.json`); 
+}
+
+function readExam(id) { 
+  try { 
+    return JSON.parse(fs.readFileSync(examPath(id), 'utf8')); 
+  } catch { 
+    return null; 
+  } 
+}
+
+function writeExam(exam) { 
+  fs.writeFileSync(examPath(exam.id), JSON.stringify(exam, null, 2), 'utf8'); 
+}
 
 function convertOmmlToMathml(xml) {
   try {
     const doc = new DOMParser().parseFromString(xml, 'text/xml');
     const mmlNode = omml2mathml(doc);
     return mmlNode?.toString ? mmlNode.toString() : String(mmlNode);
-  } catch { return null; }
+  } catch { 
+    return null; 
+  }
 }
 
 function shuffle(arr) {
@@ -112,6 +127,8 @@ function makeRuntimeVariant(baseExam) {
     questions
   };
 }
+
+// ✅ UPLOAD
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
@@ -153,19 +170,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       timeMinutes,
       password: req.body.password || null,
       sections,
-      questions: baseQuestions, // ✅ Đảm bảo lưu questions
+      questions: baseQuestions,
       answers: {},
       variants: [],
       shuffleConfig: cfg
     };
 
     console.log(`💾 Saving exam ${examId} with ${baseQuestions.length} questions`);
-    
-    writeExam(examData); // ✅ Ghi local trước
-    
+    writeExam(examData);
     console.log('✅ Exam saved to local file:', examPath(examId));
 
-    // Upload to Drive (nếu bật)
     let driveResult = null;
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
       try {
@@ -173,7 +187,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         if (driveResult) {
           examData.driveFileId = driveResult.id;
           examData.driveLink = driveResult.webViewLink || driveResult.webContentLink;
-          writeExam(examData); // ✅ Ghi lại với driveFileId
+          writeExam(examData);
           console.log('✅ Uploaded exam to Drive:', driveResult.webViewLink);
         }
       } catch (err) {
@@ -182,7 +196,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     fs.unlinkSync(req.file.path);
-    
     console.log(`✅ Upload complete: ${baseQuestions.length} questions, ${cfg.variantCount} variants`);
     
     res.json({ 
@@ -199,10 +212,62 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// Trả đề variant cho học sinh
+// ✅ SAVE CORRECT ANSWERS
+router.post('/:id/correct-answers', async (req, res) => {
+  try {
+    const baseId = String(req.params.id);
+    if (baseId.includes('_v') || baseId.includes('_r')) {
+      return res.status(400).json({ ok: false, error: 'Chỉ được lưu đáp án trên đề gốc' });
+    }
+    const exam = readExam(baseId);
+    if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+
+    const incomingAnswers = Object.fromEntries(
+      Object.entries(req.body.answers || {}).map(([k, v]) => [String(k), v])
+    );
+    exam.answers = incomingAnswers;
+
+    exam.questions = (exam.questions || []).map(q => {
+      const ans = incomingAnswers[String(q.id)];
+      if (ans !== undefined) return { ...q, correctAnswer: ans };
+      return q;
+    });
+
+    writeExam(exam);
+    console.log('✅ Đã lưu đáp án vào file local');
+
+    if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
+      try {
+        if (exam.driveFileId) {
+          await deleteFromDrive(exam.driveFileId);
+          console.log('🗑️  Đã xóa file cũ trên Drive');
+        }
+        const driveResult = await uploadToDrive(examPath(baseId), `exam_${baseId}.json`, 'application/json');
+        if (driveResult) {
+          exam.driveFileId = driveResult.id;
+          exam.driveLink = driveResult.webViewLink || driveResult.webContentLink;
+          writeExam(exam);
+          console.log('✅ Đã đồng bộ đáp án lên Drive:', driveResult.webViewLink);
+        }
+      } catch (err) {
+        console.error('❌ Drive sync error:', err?.response?.data || err.message);
+      }
+    }
+
+    res.json({ ok: true, message: 'Đã lưu đáp án thành công' });
+  } catch (e) {
+    console.error('❌ Error saving answers:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// ✅ GET LATEST VARIANT
 router.get('/latest-variant', (req, res) => {
   const dir = ensureDir();
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
+  const files = fs.readdirSync(dir).filter(f => {
+    return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
+  });
+  
   if (!files.length) return res.json({ ok: true, exam: null });
 
   const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
@@ -219,7 +284,8 @@ router.get('/latest-variant', (req, res) => {
   };
   res.json({ ok: true, exam: examForStudent });
 });
-// Fallback lấy đề từ Drive nếu local mất
+
+// ✅ GET EXAM BY ID
 router.get('/:id', async (req, res) => {
   const baseId = String(req.params.id);
   let exam = readExam(baseId);
@@ -246,7 +312,7 @@ router.get('/:id', async (req, res) => {
   res.json({ ok: true, exam });
 });
 
-// Xác thực mật khẩu đề
+// ✅ VERIFY PASSWORD
 router.post('/verify-password', (req, res) => {
   const { examId, password } = req.body;
   const baseId = String(examId).split('_r')[0].split('_v')[0];
@@ -256,11 +322,13 @@ router.post('/verify-password', (req, res) => {
   res.json({ ok: verified });
 });
 
-// ✅ FIXED: GET /exam/list - Thêm logging và đảm bảo trả đúng dữ liệu
+// ✅ LIST EXAMS - FIXED
 router.get('/list', (req, res) => {
   try {
     const dir = ensureDir();
-    const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
+    const files = fs.readdirSync(dir).filter(f => {
+      return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
+    });
     
     console.log(`📁 Found ${files.length} exam files:`, files);
     
@@ -270,11 +338,10 @@ router.get('/list', (req, res) => {
     
     const exams = files.map(f => {
       try {
-        const exam = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
+        const examPath = path.join(dir, f);
+        const exam = JSON.parse(fs.readFileSync(examPath, 'utf8'));
         
-        // ✅ Đảm bảo có questionCount
         const questionCount = exam.questions?.length || 0;
-        
         console.log(`📝 Exam ${exam.id}: ${questionCount} questions`);
         
         return {
@@ -282,7 +349,7 @@ router.get('/list', (req, res) => {
           originalName: exam.originalName || exam.name || 'Đề không tên',
           createdAt: exam.createdAt || Date.now(),
           timeMinutes: exam.timeMinutes || 45,
-          questionCount, // ✅ Trả về questionCount
+          questionCount,
           hasAnswers: exam.answers && Object.keys(exam.answers).length > 0,
           variants: exam.variants || [],
           driveLink: exam.driveLink || null
@@ -291,7 +358,7 @@ router.get('/list', (req, res) => {
         console.error(`❌ Error parsing ${f}:`, err.message);
         return null;
       }
-    }).filter(Boolean); // Loại bỏ các exam bị lỗi
+    }).filter(Boolean);
     
     console.log(`✅ Returning ${exams.length} exams`);
     res.json({ ok: true, exams });
@@ -301,16 +368,21 @@ router.get('/list', (req, res) => {
   }
 });
 
-// Đề gốc mới nhất
+// ✅ GET LATEST EXAM
 router.get('/latest', (req, res) => {
   const dir = ensureDir();
-  const files = fs.readdirSync(dir).filter(f => f.endsWith('.json') && !f.includes('_v') && !f.includes('_r'));
+  const files = fs.readdirSync(dir).filter(f => {
+    return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
+  });
+  
   if (!files.length) return res.json({ ok: true, exam: null });
+  
   const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
                       .sort((a, b) => b.createdAt - a.createdAt)[0];
   res.json({ ok: true, exam: latest });
 });
-// Xóa đề
+
+// ✅ DELETE EXAM
 router.delete('/:id', async (req, res) => {
   try {
     const exam = readExam(req.params.id);
@@ -323,7 +395,11 @@ router.delete('/:id', async (req, res) => {
     if (fs.existsSync(imgDir)) fs.rmSync(imgDir, { recursive: true, force: true });
 
     if (exam.driveFileId) {
-      try { await deleteFromDrive(exam.driveFileId); } catch (e) { console.error('Delete from Drive error:', e.message); }
+      try { 
+        await deleteFromDrive(exam.driveFileId); 
+      } catch (e) { 
+        console.error('Delete from Drive error:', e.message); 
+      }
     }
 
     res.json({ ok: true, message: 'Đã xóa đề' });
@@ -332,7 +408,7 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// Lấy danh sách đề phụ theo examId
+// ✅ GET VARIANTS
 router.get('/:id/variants', (req, res) => {
   const exam = readExam(req.params.id);
   if (!exam) {
