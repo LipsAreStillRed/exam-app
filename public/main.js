@@ -30,7 +30,7 @@ function showMessage(elementId, message, isError = false) {
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-// ====================== ADVANCED VIOLATION DETECTION ======================
+// ====================== VIOLATION DETECTION (ĐÃ FIX - ÍT NHẠY HƠN) ======================
 
 let lastActivityTime = Date.now();
 let inactivityCheckInterval = null;
@@ -40,23 +40,21 @@ function setupViolationDetection() {
   visibilityCheckEnabled = true;
   violations = 0;
 
-  // ✅ FIX: Đợi 3 giây sau khi vào trang mới bật giám sát
+  // ✅ Đợi 5 giây sau khi vào trang mới bật giám sát
   setTimeout(() => {
     // 1. Phát hiện chuyển tab (trong cùng trình duyệt)
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // 2. Phát hiện mất focus cửa sổ
+    // 2. Phát hiện mất focus cửa sổ (click ra ngoài browser)
     window.addEventListener('blur', handleWindowBlur);
     
-    // 3. Phát hiện không hoạt động > 30s (nghi tra đáp án ở nơi khác)
-    startInactivityCheck();
-    
-    // 4. Track hoạt động chuột/bàn phím
+    // 3. Track hoạt động (để tính inactivity)
     document.addEventListener('mousemove', updateActivity);
     document.addEventListener('keypress', updateActivity);
+    document.addEventListener('click', updateActivity);
     
-    console.log('✅ Bật phát hiện vi phạm nâng cao');
-  }, 3000);
+    console.log('✅ Bật phát hiện vi phạm (chỉ tab/blur)');
+  }, 5000); // Tăng từ 3s lên 5s
 }
 
 function handleVisibilityChange() {
@@ -66,28 +64,14 @@ function handleVisibilityChange() {
 
 function handleWindowBlur() {
   if (!visibilityCheckEnabled) return;
-  // Chỉ tăng nếu không phải do visibility
+  // Chỉ tăng nếu không phải do visibility change
   if (!document.hidden) {
-    recordViolation('Rời cửa sổ');
+    recordViolation('Click ra ngoài trình duyệt');
   }
 }
 
 function updateActivity() {
   lastActivityTime = Date.now();
-}
-
-function startInactivityCheck() {
-  inactivityCheckInterval = setInterval(() => {
-    if (!visibilityCheckEnabled) return;
-    
-    const inactiveTime = (Date.now() - lastActivityTime) / 1000;
-    
-    // Nếu không hoạt động > 30s và trang vẫn visible
-    if (inactiveTime > 30 && !document.hidden) {
-      recordViolation('Không hoạt động quá 30s');
-      lastActivityTime = Date.now(); // Reset để không spam
-    }
-  }, 5000); // Check mỗi 5s
 }
 
 function recordViolation(reason) {
@@ -96,9 +80,11 @@ function recordViolation(reason) {
   showViolationWarning();
 
   if (violations === 1) {
-    alert(`⚠️ Vi phạm lần 1 (${reason})! Nếu tiếp tục sẽ bị thu bài.`);
-  } else if (violations >= 2) {
-    alert(`⛔ Vi phạm 2 lần! Tự động nộp bài.`);
+    alert(`⚠️ Vi phạm lần 1 (${reason})! Còn 2 lần nữa sẽ bị thu bài.`);
+  } else if (violations === 2) {
+    alert(`⚠️ Vi phạm lần 2 (${reason})! Còn 1 lần nữa sẽ bị thu bài.`);
+  } else if (violations >= 3) {
+    alert(`⛔ Vi phạm 3 lần! Tự động nộp bài.`);
     submitExam(true);
   }
 }
@@ -106,7 +92,7 @@ function recordViolation(reason) {
 function showViolationWarning() {
   const warningEl = document.getElementById('warningMessage');
   if (warningEl) {
-    warningEl.textContent = `⚠️ Cảnh báo: ${violations}/2 lần vi phạm`;
+    warningEl.textContent = `⚠️ Cảnh báo: ${violations}/3 lần vi phạm`;
     warningEl.style.display = 'block';
     warningEl.style.animation = 'blink 0.5s ease-in-out 3';
   }
@@ -118,6 +104,7 @@ function disableViolationDetection() {
   window.removeEventListener('blur', handleWindowBlur);
   document.removeEventListener('mousemove', updateActivity);
   document.removeEventListener('keypress', updateActivity);
+  document.removeEventListener('click', updateActivity);
   
   if (inactivityCheckInterval) {
     clearInterval(inactivityCheckInterval);
@@ -127,32 +114,6 @@ function disableViolationDetection() {
   console.log('🔒 Tắt phát hiện vi phạm');
 }
 
-// ====================== BONUS: Phát hiện copy/paste ======================
-document.addEventListener('paste', (e) => {
-  if (!visibilityCheckEnabled) return;
-  e.preventDefault();
-  recordViolation('Copy/Paste');
-});
-
-// ====================== BONUS: Phát hiện DevTools ======================
-let devtoolsOpen = false;
-const threshold = 160;
-
-setInterval(() => {
-  if (!visibilityCheckEnabled) return;
-  
-  const widthThreshold = window.outerWidth - window.innerWidth > threshold;
-  const heightThreshold = window.outerHeight - window.innerHeight > threshold;
-  
-  if (widthThreshold || heightThreshold) {
-    if (!devtoolsOpen) {
-      devtoolsOpen = true;
-      recordViolation('Mở DevTools');
-    }
-  } else {
-    devtoolsOpen = false;
-  }
-}, 1000);
 // ====================== AUTH ======================
 async function handleLogin(password) {
   console.log('🔑 Attempting login...');
@@ -458,91 +419,8 @@ async function attachImage(examId, qid) {
     alert('❌ Lỗi: ' + err.message);
   }
 }
+
 // ====================== MODAL ACTIONS ======================
-function setupModalButtons(examId) {
-  document.getElementById('saveAnswers').onclick = async () => {
-    try {
-      const answers = {};
-      document.querySelectorAll("[name^='ans_']").forEach(input => {
-        const name = input.name;
-        const value = input.value.trim();
-        if (input.type === 'radio' && !input.checked) return;
-        
-        const matchSub = name.match(/^ans_(\d+)_(\w+)$/);
-        if (matchSub && input.type === 'radio') {
-          const qid = matchSub[1];
-          const subKey = matchSub[2];
-          if (!answers[qid]) answers[qid] = {};
-          answers[qid][subKey] = value;
-          return;
-        }
-        
-        const matchShort = name.match(/^ans_(\d+)_(\d)$/);
-        if (matchShort && input.type !== 'radio') {
-          const qid = matchShort[1];
-          const idx = parseInt(matchShort[2]) - 1;
-          if (!answers[qid]) answers[qid] = ['', '', '', ''];
-          if (Array.isArray(answers[qid])) answers[qid][idx] = value;
-          return;
-        }
-        
-        const matchMain = name.match(/^ans_(\d+)$/);
-        if (matchMain && input.type === 'radio') {
-          answers[matchMain[1]] = value;
-        }
-      });
-      
-      console.log('📤 Gửi đáp án:', answers);
-      if (Object.keys(answers).length === 0) {
-        alert('⚠️ Chưa chọn đáp án nào!');
-        return;
-      }
-      
-      const res = await fetch(`/exam/${examId}/correct-answers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers })
-      });
-      const result = await res.json();
-      console.log('📥 Kết quả:', result);
-      alert(result.ok ? '✅ Đã lưu đáp án!' : '❌ Lỗi: ' + (result.error || 'Unknown'));
-    } catch (err) {
-      console.error('❌ Lỗi lưu:', err);
-      alert('Lỗi: ' + err.message);
-    }
-  };
-
-  document.getElementById('sendReport').onclick = async () => {
-    try {
-      const className = prompt('Nhập tên lớp:');
-      if (!className) return;
-      const res = await fetch('/student/send-class-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ className, examId })
-      });
-      const result = await res.json();
-      alert(result.message || (result.ok ? '✅ Đã gửi' : '❌ Lỗi'));
-    } catch (err) {
-      alert('Lỗi: ' + err.message);
-    }
-  };
-
-  document.getElementById('deleteExam').onclick = async () => {
-    try {
-      if (!confirm('Xóa đề này?')) return;
-      const res = await fetch(`/exam/${examId}`, { method: 'DELETE' });
-      const result = await res.json();
-      alert(result.message || (result.ok ? '✅ Đã xóa' : '❌ Lỗi'));
-      if (result.ok) {
-        closeExamDetail();
-        await loadExamList();
-      }
-    } catch (err) {
-      alert('Lỗi: ' + err.message);
-    }
-  };
-}// ====================== MODAL ACTIONS ======================
 function setupModalButtons(examId) {
   document.getElementById('saveAnswers').onclick = async () => {
     try {
@@ -663,7 +541,7 @@ function startExamTimer(timeMinutes) {
   }, 1000);
 }
 
-// ✅ FIX: renderExam - LƯU MAPPING ĐỂ CONVERT KEY KHI SUBMIT
+// ✅ FIX CHẤM ĐIỂM: Lưu mapping displayIndex → originalQuestionId
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
@@ -674,18 +552,17 @@ function renderExam(exam) {
   
   (exam.questions || []).forEach((q, index) => {
     const displayIndex = index + 1;
-    questionKeyMapping[displayIndex] = q.id; // ✅ Lưu mapping: displayIndex → originalQuestionId
+    questionKeyMapping[displayIndex] = String(q.id); // ✅ Lưu mapping
     
-    console.log(`Render câu ${displayIndex}: ID=${q.id}`, q);
+    console.log(`Render câu ${displayIndex}: originalID=${q.id}`, q);
     
     const qDiv = document.createElement('div');
     qDiv.className = 'question-item';
     let optionsHtml = '';
     
-    // ✅ Multiple choice - SỬ DỤNG displayIndex THAY VÌ q.id
+    // ✅ SỬ DỤNG displayIndex cho input name (KHÔNG dùng q.id)
     if (q.type === 'multiple_choice') {
       const options = q.options || [];
-      
       console.log(`Câu ${displayIndex} options:`, options);
       
       optionsHtml = `
@@ -699,7 +576,6 @@ function renderExam(exam) {
         </div>
       `;
     }
-    // True/False nhiều ý
     else if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
       optionsHtml = `
         <div class="truefalse-block">
@@ -713,7 +589,6 @@ function renderExam(exam) {
         </div>
       `;
     }
-    // True/False đơn
     else if (q.type === 'true_false') {
       optionsHtml = `
         <div class="truefalse-block">
@@ -722,7 +597,6 @@ function renderExam(exam) {
         </div>
       `;
     }
-    // Short answer
     else if (q.type === 'short_answer') {
       optionsHtml = `
         <div class="short-form">
@@ -742,9 +616,10 @@ function renderExam(exam) {
     container.appendChild(qDiv);
   });
   
-  console.log('✅ Exam rendered with mapping:', questionKeyMapping);
+  console.log('✅ Exam rendered. Mapping:', questionKeyMapping);
 }
 
+// ✅ FIX CHẤM ĐIỂM: Convert displayIndex → originalQuestionId khi submit
 async function submitExam(autoSubmit = false) {
   if (!autoSubmit && !confirm('Nộp bài?')) return;
   disableViolationDetection();
@@ -752,38 +627,49 @@ async function submitExam(autoSubmit = false) {
 
   const answers = {};
   document.querySelectorAll('[name^="q_"]').forEach(input => {
-    if ((input.type === 'radio' && input.checked) || input.tagName === 'INPUT') {
-      const nm = input.name;
-      const val = input.value.trim();
-      
-      // ✅ Parse displayIndex từ input name
-      const matchMain = nm.match(/^q_(\d+)$/);
-      const matchSub = nm.match(/^q_(\d+)_(\w+)$/);
-      const matchShort = nm.match(/^q_(\d+)_(\d)$/);
-      
-      let displayIndex;
-      if (matchMain) displayIndex = matchMain[1];
-      else if (matchSub) displayIndex = matchSub[1];
-      else if (matchShort) displayIndex = matchShort[1];
-      
-      // ✅ QUAN TRỌNG: Convert displayIndex → originalQuestionId
-      const qid = questionKeyMapping[displayIndex] || displayIndex;
-      
-      if (matchSub) {
-        const subKey = matchSub[2];
-        answers[qid] = answers[qid] || {};
-        answers[qid][subKey] = val;
-      } else if (matchShort) {
-        const idx = matchShort[2];
-        answers[qid] = answers[qid] || [];
-        answers[qid][idx - 1] = val;
-      } else {
-        answers[qid] = val;
-      }
+    // Chỉ lấy radio đã checked HOẶC input text có giá trị
+    const isValid = (input.type === 'radio' && input.checked) || 
+                    (input.type === 'text' && input.value.trim());
+    
+    if (!isValid) return;
+    
+    const nm = input.name;
+    const val = input.value.trim();
+    
+    // Parse displayIndex từ input name
+    const matchMain = nm.match(/^q_(\d+)$/);
+    const matchSub = nm.match(/^q_(\d+)_(\w+)$/);
+    const matchShort = nm.match(/^q_(\d+)_(\d)$/);
+    
+    let displayIndex;
+    if (matchMain) displayIndex = matchMain[1];
+    else if (matchSub) displayIndex = matchSub[1];
+    else if (matchShort) displayIndex = matchShort[1];
+    
+    // ✅ QUAN TRỌNG: Convert displayIndex → originalQuestionId
+    const originalQid = questionKeyMapping[displayIndex] || displayIndex;
+    
+    console.log(`Input: ${nm} = "${val}" → displayIdx=${displayIndex} → originalQid=${originalQid}`);
+    
+    if (matchSub) {
+      const subKey = matchSub[2];
+      answers[originalQid] = answers[originalQid] || {};
+      answers[originalQid][subKey] = val;
+    } else if (matchShort) {
+      const idx = matchShort[2];
+      answers[originalQid] = answers[originalQid] || ['', '', '', ''];
+      answers[originalQid][parseInt(idx) - 1] = val;
+    } else {
+      answers[originalQid] = val;
     }
   });
 
-  console.log('📤 Nộp bài:', { examId: currentExamId, answers, violations, mapping: questionKeyMapping });
+  console.log('📤 Nộp bài với mapping:', { 
+    examId: currentExamId, 
+    answers, 
+    violations,
+    mapping: questionKeyMapping 
+  });
 
   try {
     const res = await fetch('/student/submit', {
@@ -863,6 +749,13 @@ function setupEventHandlers() {
           currentClassName = result.className;
           showPage('studentInfoPage');
           document.getElementById('studentClass').value = result.className || '';
+          
+          // ✅ Ghi nhớ: Tự động điền thông tin đã lưu
+          const savedName = localStorage.getItem('studentName');
+          const savedDOB = localStorage.getItem('studentDOB');
+          if (savedName) document.getElementById('studentName').value = savedName;
+          if (savedDOB) document.getElementById('studentDOB').value = savedDOB;
+          
           const exam = await loadLatestExamVariant();
           currentExamId = exam.id;
           const pwdGroup = document.getElementById('examPasswordGroup');
@@ -910,6 +803,11 @@ function setupEventHandlers() {
         studentInfoError.classList.add('show');
         return;
       }
+      
+      // ✅ Ghi nhớ: Lưu thông tin học sinh
+      localStorage.setItem('studentName', name);
+      localStorage.setItem('studentDOB', dob);
+      
       currentStudentInfo = { name, dob };
       try {
         const exam = await loadLatestExamVariant();
