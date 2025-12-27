@@ -5,6 +5,7 @@ let currentStudentInfo = null;
 let examTimer = null;
 let violations = 0;
 let visibilityCheckEnabled = false;
+let questionKeyMapping = {}; // { displayIndex: originalQuestionId }
 
 // ====================== HELPERS ======================
 function showPage(id) {
@@ -39,20 +40,23 @@ function setupViolationDetection() {
   visibilityCheckEnabled = true;
   violations = 0;
 
+  // ✅ Đợi 3 giây sau khi vào trang mới bật giám sát
+  setTimeout(() => {
   // 1. Phát hiện chuyển tab (trong cùng trình duyệt)
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  
-  // 2. Phát hiện mất focus cửa sổ
-  window.addEventListener('blur', handleWindowBlur);
-  
-  // 3. Phát hiện không hoạt động > 30s (nghi tra đáp án ở nơi khác)
-  startInactivityCheck();
-  
-  // 4. Track hoạt động chuột/bàn phím
-  document.addEventListener('mousemove', updateActivity);
-  document.addEventListener('keypress', updateActivity);
-  
-  console.log('✅ Bật phát hiện vi phạm nâng cao');
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // 2. Phát hiện mất focus cửa sổ
+    window.addEventListener('blur', handleWindowBlur);
+    
+    // 3. Phát hiện không hoạt động > 30s (nghi tra đáp án ở nơi khác)
+    startInactivityCheck();
+    
+    // 4. Track hoạt động chuột/bàn phím
+    document.addEventListener('mousemove', updateActivity);
+    document.addEventListener('keypress', updateActivity);
+    
+    console.log('✅ Bật phát hiện vi phạm nâng cao');
+  }, 3000);
 }
 
 function handleVisibilityChange() {
@@ -150,7 +154,6 @@ setInterval(() => {
   }
 }, 1000);
 
-
 // ====================== AUTH ======================
 async function handleLogin(password) {
   console.log('🔑 Attempting login...');
@@ -163,134 +166,6 @@ async function handleLogin(password) {
   console.log('📥 Login response:', data);
   if (!res.ok || !data.ok) throw new Error(data.error || 'Đăng nhập thất bại');
   return data;
-}
-
-// ====================== TEACHER FUNCTIONS ======================
-async function loadExamList() {
-  const listDiv = document.getElementById('examList');
-  if (!listDiv) {
-    console.error('❌ examList element not found');
-    return;
-  }
-  
-  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
-  console.log('🔄 Fetching /exam/list...');
-
-  try {
-    const res = await fetch('/exam/list');
-    console.log('📡 Response status:', res.status, res.statusText);
-    
-    const data = await res.json();
-    console.log('📥 /exam/list response:', data);
-
-    if (!data.ok) {
-      console.error('❌ API returned ok: false');
-      listDiv.innerHTML = '<p class="empty-state">Lỗi tải danh sách đề</p>';
-      return;
-    }
-
-    if (!data.exams || !Array.isArray(data.exams)) {
-      console.error('❌ Invalid exams data:', data.exams);
-      listDiv.innerHTML = '<p class="empty-state">Dữ liệu không hợp lệ</p>';
-      return;
-    }
-
-    if (data.exams.length === 0) {
-      console.log('ℹ️ No exams found');
-      listDiv.innerHTML = '<p class="empty-state">Chưa có đề thi nào</p>';
-      return;
-    }
-
-    console.log(`✅ Found ${data.exams.length} exams`);
-    listDiv.innerHTML = '';
-    
-    data.exams.forEach((exam, idx) => {
-      console.log(`📝 Exam ${idx + 1}:`, exam);
-      
-      const count = exam.questionCount || 0;
-      const examGroup = document.createElement('div');
-      examGroup.style.marginBottom = '20px';
-      
-      const mainItem = document.createElement('div');
-      mainItem.className = 'exam-item';
-      mainItem.style.borderLeft = '4px solid var(--primary)';
-      mainItem.innerHTML = `
-        <span><strong>📚 ${exam.originalName || 'Đề không tên'}</strong> (${count} câu)</span>
-        <button type="button" class="btn btn-primary">Chi tiết</button>
-      `;
-      mainItem.querySelector('button').onclick = () => {
-        console.log('🖱️ Opening exam:', exam.id);
-        openExamDetail(exam.id);
-      };
-      examGroup.appendChild(mainItem);
-      
-      if (Array.isArray(exam.variants) && exam.variants.length > 0) {
-        console.log(`🔀 ${exam.variants.length} variants found`);
-        const variantsList = document.createElement('div');
-        variantsList.className = 'variants-list';
-        variantsList.style.marginLeft = '30px';
-        variantsList.style.marginTop = '8px';
-        
-        exam.variants.forEach((variant, vidx) => {
-          if (!variant?.id) return;
-          const variantItem = document.createElement('div');
-          variantItem.className = 'exam-item variant-item';
-          variantItem.style.borderLeft = '4px solid var(--success)';
-          variantItem.style.background = '#f8f9fa';
-          variantItem.innerHTML = `
-            <span>🔀 Mã đề ${vidx + 1}</span>
-            <button type="button" class="btn btn-secondary">Chi tiết</button>
-          `;
-          variantItem.querySelector('button').onclick = () => openExamDetail(exam.id);
-          variantsList.appendChild(variantItem);
-        });
-        examGroup.appendChild(variantsList);
-      }
-      
-      listDiv.appendChild(examGroup);
-    });
-    
-    console.log('✅ Exam list rendered successfully');
-  } catch (err) {
-    console.error('❌ loadExamList error:', err);
-    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
-  }
-}
-
-async function loadSubmissions() {
-  const listDiv = document.getElementById('submissionsList');
-  if (!listDiv) return;
-  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
-  console.log('🔄 Fetching /student/submissions...');
-
-  try {
-    const res = await fetch('/student/submissions');
-    const data = await res.json();
-    console.log('📥 Submissions response:', data);
-
-    if (!data.ok || !data.submissions?.length) {
-      listDiv.innerHTML = '<p class="empty-state">Chưa có bài nộp nào</p>';
-      return;
-    }
-
-    listDiv.innerHTML = '';
-    data.submissions.slice(0, 10).forEach(sub => {
-      const item = document.createElement('div');
-      item.className = 'submission-item';
-      item.innerHTML = `
-        <strong>${sub.name}</strong>
-        <div>${sub.className} • ${sub.date}</div>
-        ${sub.score !== 'Chưa chấm'
-          ? `<span class="submission-score">${sub.score} điểm</span>`
-          : '<span style="color:var(--warning)">Chưa chấm</span>'}
-      `;
-      listDiv.appendChild(item);
-    });
-    console.log('✅ Submissions loaded');
-  } catch (err) {
-    console.error('❌ loadSubmissions error:', err);
-    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
-  }
 }
 
 // ====================== MODAL CHI TIẾT ĐỀ ======================
@@ -306,7 +181,7 @@ async function openExamDetail(examId) {
       return;
     }
 
-    const exam = data.exam;
+     const exam = data.exam;
     if (!exam) {
       alert('❌ Không có dữ liệu đề thi');
       return;
@@ -458,6 +333,7 @@ async function attachImage(examId, qid) {
   }
 }
 
+
 // ====================== MODAL ACTIONS ======================
 function setupModalButtons(examId) {
   document.getElementById('saveAnswers').onclick = async () => {
@@ -542,6 +418,133 @@ function setupModalButtons(examId) {
       alert('Lỗi: ' + err.message);
     }
   };
+}
+// ====================== TEACHER FUNCTIONS ======================
+async function loadExamList() {
+  const listDiv = document.getElementById('examList');
+  if (!listDiv) {
+    console.error('❌ examList element not found');
+    return;
+  }
+  
+  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
+  console.log('🔄 Fetching /exam/list...');
+
+  try {
+    const res = await fetch('/exam/list');
+    console.log('📡 Response status:', res.status, res.statusText);
+    
+    const data = await res.json();
+    console.log('📥 /exam/list response:', data);
+
+    if (!data.ok) {
+      console.error('❌ API returned ok: false');
+      listDiv.innerHTML = '<p class="empty-state">Lỗi tải danh sách đề</p>';
+      return;
+    }
+
+    if (!data.exams || !Array.isArray(data.exams)) {
+      console.error('❌ Invalid exams data:', data.exams);
+      listDiv.innerHTML = '<p class="empty-state">Dữ liệu không hợp lệ</p>';
+      return;
+    }
+
+    if (data.exams.length === 0) {
+      console.log('ℹ️ No exams found');
+      listDiv.innerHTML = '<p class="empty-state">Chưa có đề thi nào</p>';
+      return;
+    }
+
+    console.log(`✅ Found ${data.exams.length} exams`);
+    listDiv.innerHTML = '';
+    
+    data.exams.forEach((exam, idx) => {
+      console.log(`📝 Exam ${idx + 1}:`, exam);
+      
+      const count = exam.questionCount || 0;
+      const examGroup = document.createElement('div');
+      examGroup.style.marginBottom = '20px';
+      
+      const mainItem = document.createElement('div');
+      mainItem.className = 'exam-item';
+      mainItem.style.borderLeft = '4px solid var(--primary)';
+      mainItem.innerHTML = `
+        <span><strong>📚 ${exam.originalName || 'Đề không tên'}</strong> (${count} câu)</span>
+        <button type="button" class="btn btn-primary">Chi tiết</button>
+      `;
+      mainItem.querySelector('button').onclick = () => {
+        console.log('🖱️ Opening exam:', exam.id);
+        openExamDetail(exam.id);
+      };
+      examGroup.appendChild(mainItem);
+      
+      if (Array.isArray(exam.variants) && exam.variants.length > 0) {
+        console.log(`🔀 ${exam.variants.length} variants found`);
+        const variantsList = document.createElement('div');
+        variantsList.className = 'variants-list';
+        variantsList.style.marginLeft = '30px';
+        variantsList.style.marginTop = '8px';
+        
+        exam.variants.forEach((variant, vidx) => {
+          if (!variant?.id) return;
+          const variantItem = document.createElement('div');
+          variantItem.className = 'exam-item variant-item';
+          variantItem.style.borderLeft = '4px solid var(--success)';
+          variantItem.style.background = '#f8f9fa';
+          variantItem.innerHTML = `
+            <span>🔀 Mã đề ${vidx + 1}</span>
+            <button type="button" class="btn btn-secondary">Chi tiết</button>
+          `;
+          variantItem.querySelector('button').onclick = () => openExamDetail(exam.id);
+          variantsList.appendChild(variantItem);
+        });
+        examGroup.appendChild(variantsList);
+      }
+      
+      listDiv.appendChild(examGroup);
+    });
+    
+    console.log('✅ Exam list rendered successfully');
+  } catch (err) {
+    console.error('❌ loadExamList error:', err);
+    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
+  }
+}
+
+async function loadSubmissions() {
+  const listDiv = document.getElementById('submissionsList');
+  if (!listDiv) return;
+  listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
+  console.log('🔄 Fetching /student/submissions...');
+
+  try {
+    const res = await fetch('/student/submissions');
+    const data = await res.json();
+    console.log('📥 Submissions response:', data);
+
+    if (!data.ok || !data.submissions?.length) {
+      listDiv.innerHTML = '<p class="empty-state">Chưa có bài nộp nào</p>';
+      return;
+    }
+
+    listDiv.innerHTML = '';
+    data.submissions.slice(0, 10).forEach(sub => {
+      const item = document.createElement('div');
+      item.className = 'submission-item';
+      item.innerHTML = `
+        <strong>${sub.name}</strong>
+        <div>${sub.className} • ${sub.date}</div>
+        ${sub.score !== 'Chưa chấm'
+          ? `<span class="submission-score">${sub.score} điểm</span>`
+          : '<span style="color:var(--warning)">Chưa chấm</span>'}
+      `;
+      listDiv.appendChild(item);
+    });
+    console.log('✅ Submissions loaded');
+  } catch (err) {
+    console.error('❌ loadSubmissions error:', err);
+    listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
+  }
 }
 
 // ====================== STUDENT FUNCTIONS ======================
