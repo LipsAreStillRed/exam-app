@@ -501,20 +501,27 @@ function startExamTimer(timeMinutes) {
   }, 1000);
 }
 
+// ✅ FIX: renderExam - GIỮ NGUYÊN KEY TỪ BACKEND
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
+  
+  console.log('📝 Rendering exam:', exam.id);
+  console.log('📋 Questions:', exam.questions);
+  
   (exam.questions || []).forEach((q, index) => {
+    console.log(`Render câu ${index + 1}:`, q);
+    
     const qDiv = document.createElement('div');
     qDiv.className = 'question-item';
     let optionsHtml = '';
     
+    // ✅ Multiple choice - GIỮ NGUYÊN KEY TỪ BACKEND
     if (q.type === 'multiple_choice') {
-      const letters = ['A','B','C','D','E','F'];
-      const options = (q.options || []).map((opt, idx) => ({
-        key: letters[idx],
-        text: opt.text
-      }));
+      const options = q.options || [];
+      
+      console.log(`Câu ${q.id} options:`, options);
+      
       optionsHtml = `
         <div class="option-block">
           ${options.map(opt => `
@@ -526,6 +533,7 @@ function renderExam(exam) {
         </div>
       `;
     }
+    // True/False nhiều ý
     else if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
       optionsHtml = `
         <div class="truefalse-block">
@@ -539,6 +547,7 @@ function renderExam(exam) {
         </div>
       `;
     }
+    // True/False đơn
     else if (q.type === 'true_false') {
       optionsHtml = `
         <div class="truefalse-block">
@@ -547,6 +556,7 @@ function renderExam(exam) {
         </div>
       `;
     }
+    // Short answer
     else if (q.type === 'short_answer') {
       optionsHtml = `
         <div class="short-form">
@@ -557,9 +567,16 @@ function renderExam(exam) {
         </div>
       `;
     }
-    qDiv.innerHTML = `<strong>Câu ${index+1}:</strong><p>${q.question || q.text}</p>${optionsHtml}`;
+    
+    qDiv.innerHTML = `
+      <strong>Câu ${index+1}:</strong>
+      <p>${q.question || q.text}</p>
+      ${optionsHtml}
+    `;
     container.appendChild(qDiv);
   });
+  
+  console.log('✅ Exam rendered');
 }
 
 async function submitExam(autoSubmit = false) {
