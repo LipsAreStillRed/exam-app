@@ -627,7 +627,14 @@ async function submitExam(autoSubmit = false) {
   const answers = {};
   
   console.log('📤 Bắt đầu thu thập đáp án...');
-  
+  // ✅ DEBUG: In ra console để kiểm tra
+  console.log('🔍 DEBUG INFO:');
+  console.log('  - questionKeyMapping:', questionKeyMapping);
+  console.log('  - currentExamData.questions:', window.currentExamData?.questions?.map(q => ({
+      id: q.id,
+      displayIndex: q.displayIndex,
+      options: q.options?.map(o => `${o.key}:${o.text.substring(0,15)}`)
+  })));
   document.querySelectorAll('[name^="q_"]').forEach(input => {
     // Chỉ lấy radio đã checked HOẶC input text có giá trị
     const isValid = (input.type === 'radio' && input.checked) || 
