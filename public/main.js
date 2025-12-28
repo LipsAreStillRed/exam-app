@@ -30,10 +30,11 @@ function showMessage(elementId, message, isError = false) {
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-// ====================== VIOLATION DETECTION (ĐÃ FIX - ÍT NHẠY HƠN) ======================
+// ====================== VIOLATION DETECTION (ĐÃ FIX - TRÁNH DOUBLE TRIGGER) ======================
 
 let lastActivityTime = Date.now();
-let inactivityCheckInterval = null;
+let lastViolationTime = 0; // ✅ Thêm biến chống spam
+const VIOLATION_COOLDOWN = 2000; // 2 giây cooldown giữa các vi phạm
 
 function setupViolationDetection() {
   if (visibilityCheckEnabled) return;
@@ -42,32 +43,30 @@ function setupViolationDetection() {
 
   // ✅ Đợi 5 giây sau khi vào trang mới bật giám sát
   setTimeout(() => {
-    // 1. Phát hiện chuyển tab (trong cùng trình duyệt)
+    // 1. Phát hiện chuyển tab
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // 2. Phát hiện mất focus cửa sổ (click ra ngoài browser)
-    window.addEventListener('blur', handleWindowBlur);
-    
-    // 3. Track hoạt động (để tính inactivity)
+    // 2. Track hoạt động
     document.addEventListener('mousemove', updateActivity);
     document.addEventListener('keypress', updateActivity);
     document.addEventListener('click', updateActivity);
     
-    console.log('✅ Bật phát hiện vi phạm (chỉ tab/blur)');
-  }, 5000); // Tăng từ 3s lên 5s
+    console.log('✅ Bật phát hiện vi phạm (chỉ tab/visibility)');
+  }, 5000);
 }
 
 function handleVisibilityChange() {
   if (!visibilityCheckEnabled || !document.hidden) return;
-  recordViolation('Chuyển tab');
-}
-
-function handleWindowBlur() {
-  if (!visibilityCheckEnabled) return;
-  // Chỉ tăng nếu không phải do visibility change
-  if (!document.hidden) {
-    recordViolation('Click ra ngoài trình duyệt');
+  
+  // ✅ Chống spam: chỉ ghi nhận 1 lần mỗi 2 giây
+  const now = Date.now();
+  if (now - lastViolationTime < VIOLATION_COOLDOWN) {
+    console.log('⏳ Vi phạm bị bỏ qua (cooldown)');
+    return;
   }
+  
+  lastViolationTime = now;
+  recordViolation('Chuyển tab');
 }
 
 function updateActivity() {
@@ -84,7 +83,7 @@ function recordViolation(reason) {
   } else if (violations === 2) {
     alert(`⚠️ Vi phạm lần 2 (${reason})! Còn 1 lần nữa sẽ bị thu bài.`);
   } else if (violations >= 3) {
-    alert(`⛔ Vi phạm 3 lần! Tự động nộp bài.`);
+    alert(`⛔ Vi phạm 3 lần! Tự động nộp bài với điểm 0.`);
     submitExam(true);
   }
 }
@@ -101,15 +100,9 @@ function showViolationWarning() {
 function disableViolationDetection() {
   visibilityCheckEnabled = false;
   document.removeEventListener('visibilitychange', handleVisibilityChange);
-  window.removeEventListener('blur', handleWindowBlur);
   document.removeEventListener('mousemove', updateActivity);
   document.removeEventListener('keypress', updateActivity);
   document.removeEventListener('click', updateActivity);
-  
-  if (inactivityCheckInterval) {
-    clearInterval(inactivityCheckInterval);
-    inactivityCheckInterval = null;
-  }
   
   console.log('🔒 Tắt phát hiện vi phạm');
 }
@@ -554,7 +547,7 @@ function renderExam(exam) {
     const displayIndex = index + 1;
     questionKeyMapping[displayIndex] = String(q.id); // ✅ Lưu mapping
     
-    console.log(`Render câu ${displayIndex}: originalID=${q.id}`, q);
+    console.log(`📍 Câu ${displayIndex}: originalID="${q.id}"`);
     
     const qDiv = document.createElement('div');
     qDiv.className = 'question-item';
@@ -563,7 +556,7 @@ function renderExam(exam) {
     // ✅ SỬ DỤNG displayIndex cho input name (KHÔNG dùng q.id)
     if (q.type === 'multiple_choice') {
       const options = q.options || [];
-      console.log(`Câu ${displayIndex} options:`, options);
+      console.log(`  └─ Options:`, options.map(o => `${o.key}. ${o.text.substring(0,20)}...`));
       
       optionsHtml = `
         <div class="option-block">
@@ -616,7 +609,7 @@ function renderExam(exam) {
     container.appendChild(qDiv);
   });
   
-  console.log('✅ Exam rendered. Mapping:', questionKeyMapping);
+  console.log('✅ Mapping:', questionKeyMapping);
 }
 
 // ✅ FIX CHẤM ĐIỂM: Convert displayIndex → originalQuestionId khi submit
@@ -626,6 +619,9 @@ async function submitExam(autoSubmit = false) {
   if (examTimer) clearInterval(examTimer);
 
   const answers = {};
+  
+  console.log('📤 Bắt đầu thu thập đáp án...');
+  
   document.querySelectorAll('[name^="q_"]').forEach(input => {
     // Chỉ lấy radio đã checked HOẶC input text có giá trị
     const isValid = (input.type === 'radio' && input.checked) || 
@@ -649,7 +645,7 @@ async function submitExam(autoSubmit = false) {
     // ✅ QUAN TRỌNG: Convert displayIndex → originalQuestionId
     const originalQid = questionKeyMapping[displayIndex] || displayIndex;
     
-    console.log(`Input: ${nm} = "${val}" → displayIdx=${displayIndex} → originalQid=${originalQid}`);
+    console.log(`  ✓ Input name="${nm}" value="${val}" → displayIdx=${displayIndex} → qid="${originalQid}"`);
     
     if (matchSub) {
       const subKey = matchSub[2];
@@ -664,12 +660,7 @@ async function submitExam(autoSubmit = false) {
     }
   });
 
-  console.log('📤 Nộp bài với mapping:', { 
-    examId: currentExamId, 
-    answers, 
-    violations,
-    mapping: questionKeyMapping 
-  });
+  console.log('📦 Đáp án cuối cùng:', answers);
 
   try {
     const res = await fetch('/student/submit', {
@@ -685,7 +676,7 @@ async function submitExam(autoSubmit = false) {
       })
     });
     const data = await res.json();
-    console.log('📥 Kết quả:', data);
+    console.log('📥 Kết quả từ server:', data);
     
     if (data.ok) {
       showPage('resultPage');
@@ -895,9 +886,12 @@ function setupEventHandlers() {
     if (event.target === modal) closeExamDetail();
   };
 }
-
+// ====================== INITIALIZATION ======================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 App initialized');
+  console.log('🚀 App initialized - FIXED VERSION');
+  console.log('✅ Vi phạm: 3 lần (có cooldown 2s)');
+  console.log('✅ Chấm điểm: Mapping displayIndex → originalQid');
+  console.log('✅ Ghi nhớ: localStorage tên + ngày sinh');
   showPage('loginPage');
   setupEventHandlers();
 });
