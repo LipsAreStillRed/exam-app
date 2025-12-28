@@ -612,7 +612,8 @@ function renderExam(exam) {
   console.log('✅ Mapping:', questionKeyMapping);
 }
 
-// ✅ FIX CHẤM ĐIỂM: Convert displayIndex → originalQuestionId khi submit
+// ✅ THAY THẾ HÀM submitExam TRONG Part 3
+
 async function submitExam(autoSubmit = false) {
   if (!autoSubmit && !confirm('Nộp bài?')) return;
   disableViolationDetection();
@@ -662,6 +663,22 @@ async function submitExam(autoSubmit = false) {
 
   console.log('📦 Đáp án cuối cùng:', answers);
 
+  // ✅ LẤY THÔNG TIN ĐỀ ĐÃ TRỘN (từ biến toàn cục)
+  let examDataToSend = null;
+  if (window.currentExamData && window.currentExamData.questions) {
+    examDataToSend = {
+      id: window.currentExamData.id,
+      questions: window.currentExamData.questions.map(q => ({
+        id: q.id,
+        displayIndex: q.displayIndex,
+        type: q.type,
+        question: q.question || q.text,
+        options: q.options || []
+      }))
+    };
+    console.log('📄 Gửi kèm thông tin đề đã trộn');
+  }
+
   try {
     const res = await fetch('/student/submit', {
       method: 'POST',
@@ -672,7 +689,8 @@ async function submitExam(autoSubmit = false) {
         dob: currentStudentInfo.dob,
         answers,
         examId: currentExamId,
-        violations
+        violations,
+        examData: examDataToSend // ✅ GỬI THÊM THÔNG TIN ĐỀ
       })
     });
     const data = await res.json();
