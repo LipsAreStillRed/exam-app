@@ -141,10 +141,10 @@ function updateCSV(className, submissionData) {
   return { filename, totalSubmissions: stt };
 }
 
-// ✅ FIX: Route submit với xử lý đáp án đúng
+// ✅ FIX: Route submit - LƯU CẢ ĐỀ VÀO XML
 router.post('/submit', async (req, res) => {
   try {
-    const { id, name, className, dob, answers, examId, violations, email } = req.body;
+    const { id, name, className, dob, answers, examId, violations, email, examData } = req.body;
 
     console.log('📨 Nhận bài nộp:', { name, className, examId, violations });
 
@@ -155,10 +155,10 @@ router.post('/submit', async (req, res) => {
       try {
         const baseId = String(examId).split('_r')[0].split('_v')[0];
         const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
-        let examData = null;
+        let examDataFromServer = null;
 
         if (fs.existsSync(examJsonPath)) {
-          examData = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
+          examDataFromServer = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
           console.log('✅ Đã load đề thi từ local');
         } else {
           console.log('⚠️ Không tìm thấy đề local, thử load từ Drive...');
@@ -167,9 +167,9 @@ router.post('/submit', async (req, res) => {
             if (fs.existsSync(metaPath)) {
               const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
               if (meta.driveFileId) {
-                examData = await downloadFromDrive(meta.driveFileId);
-                if (examData) {
-                  fs.writeFileSync(examJsonPath, JSON.stringify(examData, null, 2), 'utf8');
+                examDataFromServer = await downloadFromDrive(meta.driveFileId);
+                if (examDataFromServer) {
+                  fs.writeFileSync(examJsonPath, JSON.stringify(examDataFromServer, null, 2), 'utf8');
                   console.log('✅ Đã load đề từ Drive');
                 }
               }
@@ -179,19 +179,19 @@ router.post('/submit', async (req, res) => {
           }
         }
 
-        if (examData) {
-          questions = examData.questions || [];
+        if (examDataFromServer) {
+          questions = examDataFromServer.questions || [];
           
-          // ✅ FIX: Ưu tiên lấy từ examData.answers, nếu rỗng thì lấy từ q.correctAnswer
+          // ✅ Lấy đáp án từ examData.answers
           let correctAnswers = {};
           
-          if (examData.answers && Object.keys(examData.answers).length > 0) {
-            correctAnswers = examData.answers;
+          if (examDataFromServer.answers && Object.keys(examDataFromServer.answers).length > 0) {
+            correctAnswers = examDataFromServer.answers;
             console.log('✅ Dùng đáp án từ examData.answers');
           } else {
             // Fallback: lấy từ correctAnswer của từng câu
             correctAnswers = {};
-            (examData.questions || []).forEach(q => {
+            (examDataFromServer.questions || []).forEach(q => {
               if (q.correctAnswer !== undefined) {
                 correctAnswers[String(q.id)] = q.correctAnswer;
               }
@@ -218,6 +218,7 @@ router.post('/submit', async (req, res) => {
       answers: JSON.stringify(answers || {})
     });
 
+    // ✅ LƯU CẢ ĐỀ VÀO XML (nếu có examData từ frontend)
     const doc = create({ version: '1.0' })
       .ele('ketqua')
         .ele('hoten').txt(name || '').up()
@@ -226,8 +227,32 @@ router.post('/submit', async (req, res) => {
         .ele('examId').txt(examId || '').up()
         .ele('diem').txt(score !== null ? String(score) : 'Chưa chấm').up()
         .ele('violations').txt(String(violations || 0)).up()
-        .ele('traloi').txt(JSON.stringify(answers || {})).up()
-      .up();
+        .ele('traloi').txt(JSON.stringify(answers || {})).up();
+    
+    // ✅ Thêm thông tin đề bài đã trộn (nếu frontend gửi lên)
+    if (examData && examData.questions) {
+      const questionsXml = doc.ele('questions');
+      examData.questions.forEach(q => {
+        const qNode = questionsXml.ele('question')
+          .ele('id').txt(String(q.id)).up()
+          .ele('displayIndex').txt(String(q.displayIndex || '')).up()
+          .ele('type').txt(q.type || '').up()
+          .ele('text').txt(q.question || q.text || '').up();
+        
+        if (q.type === 'multiple_choice' && Array.isArray(q.options)) {
+          const optsNode = qNode.ele('options');
+          q.options.forEach(opt => {
+            optsNode.ele('option')
+              .ele('key').txt(opt.key).up()
+              .ele('text').txt(opt.text || '').up()
+            .up();
+          });
+        }
+        
+        qNode.up();
+      });
+    }
+    
     const xml = doc.end({ prettyPrint: true });
 
     const xmlDir = path.join(process.cwd(), 'data', 'submissions');
