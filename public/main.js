@@ -534,11 +534,15 @@ function startExamTimer(timeMinutes) {
   }, 1000);
 }
 
-// ✅ FIX CHẤM ĐIỂM: Lưu mapping displayIndex → originalQuestionId
+// ✅ THAY THẾ HÀM renderExam TRONG Part 3
+
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
   questionKeyMapping = {}; // Reset mapping
+  
+  // ✅ LƯU ĐỀ VÀO BIẾN GLOBAL để submit sau
+  window.currentExamData = exam;
   
   console.log('📝 Rendering exam:', exam.id);
   console.log('📋 Questions:', exam.questions);
@@ -610,6 +614,7 @@ function renderExam(exam) {
   });
   
   console.log('✅ Mapping:', questionKeyMapping);
+  console.log('✅ Đã lưu đề vào window.currentExamData');
 }
 
 // ✅ THAY THẾ HÀM submitExam TRONG Part 3
