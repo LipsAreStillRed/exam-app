@@ -1,4 +1,4 @@
-// routes/student.js - FIXED VERSION
+// routes/student.js - FINAL FIX VERSION
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -12,23 +12,16 @@ function normalizeStr(x) {
   return String(x ?? '').trim().toUpperCase().replace(/\s/g, '');
 }
 
-// ✅ FIX: Hàm chấm điểm với xử lý đề trộn
+// ✅ FIX: Hàm chấm điểm SO SÁNH THEO NỘI DUNG, KHÔNG PHẢI KEY
 function calculateScore(studentAnswers, correctAnswers, questions, examData = null) {
   console.log('🔍 calculateScore called');
   console.log('📝 Student answers:', studentAnswers);
-  console.log('✅ Correct answers:', correctAnswers);
-  
-  // ✅ NẾU CÓ examData (đề đã trộn): Log để debug
-  if (examData?.questions) {
-    console.log('📋 ExamData questions (shuffled):');
-    examData.questions.forEach(q => {
-      console.log(`  - DisplayIndex ${q.displayIndex} → Original ID "${q.id}"`);
-    });
-  }
+  console.log('✅ Correct answers from server:', correctAnswers);
   
   const studentAns = Object.fromEntries(
     Object.entries(studentAnswers || {}).map(([k, v]) => [String(k), v])
   );
+  
   const correctAns = Object.fromEntries(
     Object.entries(correctAnswers || {}).map(([k, v]) => [String(k), v])
   );
@@ -41,10 +34,27 @@ function calculateScore(studentAnswers, correctAnswers, questions, examData = nu
   let correct = 0;
   let total = 0;
 
+  // ✅ TẠO MAP NỘI DUNG ĐÁP ÁN ĐÚNG (từ đề gốc)
+  const correctContentMap = {};
+  (questions || []).forEach(q => {
+    const qid = String(q.id);
+    const ca = correctAns[qid];
+    
+    if (q.type === 'multiple_choice' && Array.isArray(q.options) && ca) {
+      const correctOption = q.options.find(opt => opt.key === ca);
+      if (correctOption) {
+        correctContentMap[qid] = normalizeStr(correctOption.text);
+        console.log(`📋 Câu ${qid}: Đáp án đúng = key "${ca}" → nội dung "${correctOption.text.substring(0, 30)}..."`);
+      }
+    }
+  });
+
+  console.log('\n🔍 Bắt đầu so sánh đáp án:\n');
+
   (questions || []).forEach(q => {
     const qid = String(q.id);
 
-    // True/False nhiều ý
+    // ✅ TRUE/FALSE NHIỀU Ý
     if (q.type === 'true_false' && Array.isArray(q.subQuestions)) {
       q.subQuestions.forEach(sub => {
         total++;
@@ -54,45 +64,103 @@ function calculateScore(studentAnswers, correctAnswers, questions, examData = nu
         
         console.log(`Câu ${qid}${key}: HS="${sa}" vs ĐA="${ca}"`);
         
-        if (!ca || !sa) {
-          console.log(`  → Không có đáp án`);
-          return;
-        }
+        if (!ca || !sa) return;
         if (normalizeStr(sa) === normalizeStr(ca)) {
           correct++;
-          console.log(`✅ Đúng`);
+          console.log(`  ✅ Đúng\n`);
         } else {
-          console.log(`❌ Sai`);
+          console.log(`  ❌ Sai\n`);
         }
       });
       return;
     }
 
-    // Câu đơn (multiple_choice, true_false đơn, short_answer)
-    total++;
-    const ca = correctAns[qid];
-    const sa = studentAns[qid];
-    
-    console.log(`Câu ${qid}: HS="${JSON.stringify(sa)}" vs ĐA="${JSON.stringify(ca)}"`);
-
-    if (!ca || !sa) {
-      console.log(`  → Không có đáp án`);
+    // ✅ MULTIPLE CHOICE - SO SÁNH THEO NỘI DUNG
+    if (q.type === 'multiple_choice') {
+      total++;
+      const studentKey = studentAns[qid];
+      const correctContent = correctContentMap[qid];
+      
+      console.log(`Câu ${qid}:`);
+      console.log(`  - HS chọn key: "${studentKey}"`);
+      
+      if (!studentKey) {
+        console.log(`  ❌ Không trả lời\n`);
+        return;
+      }
+      
+      // ✅ LẤY NỘI DUNG từ examData (đề đã trộn học sinh nhìn thấy)
+      let studentContent = null;
+      if (examData?.questions) {
+        const shuffledQ = examData.questions.find(eq => String(eq.id) === qid);
+        if (shuffledQ?.options) {
+          const studentOption = shuffledQ.options.find(opt => opt.key === studentKey);
+          if (studentOption) {
+            studentContent = normalizeStr(studentOption.text);
+            console.log(`  - Nội dung HS chọn: "${studentOption.text.substring(0, 30)}..."`);
+          }
+        }
+      }
+      
+      // Fallback: nếu không có examData, lấy từ questions gốc
+      if (!studentContent) {
+        const originalOption = q.options?.find(opt => opt.key === studentKey);
+        if (originalOption) {
+          studentContent = normalizeStr(originalOption.text);
+          console.log(`  - Nội dung HS chọn (fallback): "${originalOption.text.substring(0, 30)}..."`);
+        }
+      }
+      
+      console.log(`  - Nội dung đáp án đúng: "${correctContent}"`);
+      
+      if (studentContent === correctContent) {
+        correct++;
+        console.log(`  ✅ ĐÚNG - Nội dung khớp!\n`);
+      } else {
+        console.log(`  ❌ SAI - Nội dung khác!\n`);
+      }
       return;
     }
 
-    let saStr = sa;
-    let caStr = ca;
-    
-    // Xử lý short_answer (array)
-    if (Array.isArray(sa)) saStr = sa.filter(Boolean).join('');
-    else if (typeof sa === 'object' && sa?.boxes) saStr = sa.boxes.filter(Boolean).join('');
-    if (Array.isArray(ca)) caStr = ca.filter(Boolean).join('');
+    // ✅ TRUE/FALSE ĐƠN
+    if (q.type === 'true_false') {
+      total++;
+      const ca = correctAns[qid];
+      const sa = studentAns[qid];
+      
+      console.log(`Câu ${qid}: HS="${sa}" vs ĐA="${ca}"`);
+      
+      if (!ca || !sa) return;
+      if (normalizeStr(sa) === normalizeStr(ca)) {
+        correct++;
+        console.log(`  ✅ Đúng\n`);
+      } else {
+        console.log(`  ❌ Sai\n`);
+      }
+      return;
+    }
 
-    if (normalizeStr(saStr) === normalizeStr(caStr)) {
-      correct++;
-      console.log(`✅ Đúng`);
-    } else {
-      console.log(`❌ Sai (normalized: "${normalizeStr(saStr)}" vs "${normalizeStr(caStr)}")`);
+    // ✅ SHORT ANSWER
+    if (q.type === 'short_answer') {
+      total++;
+      const ca = correctAns[qid];
+      const sa = studentAns[qid];
+      
+      let saStr = sa;
+      let caStr = ca;
+      
+      if (Array.isArray(sa)) saStr = sa.filter(Boolean).join('');
+      else if (typeof sa === 'object' && sa?.boxes) saStr = sa.boxes.filter(Boolean).join('');
+      if (Array.isArray(ca)) caStr = ca.filter(Boolean).join('');
+      
+      console.log(`Câu ${qid}: HS="${saStr}" vs ĐA="${caStr}"`);
+      
+      if (normalizeStr(saStr) === normalizeStr(caStr)) {
+        correct++;
+        console.log(`  ✅ Đúng\n`);
+      } else {
+        console.log(`  ❌ Sai\n`);
+      }
     }
   });
 
@@ -102,7 +170,7 @@ function calculateScore(studentAnswers, correctAnswers, questions, examData = nu
   }
   
   const score = Math.round((correct / total) * 10 * 10) / 10;
-  console.log(`📊 Kết quả: ${correct}/${total} = ${score}/10`);
+  console.log(`\n📊 KẾT QUẢ CUỐI: ${correct}/${total} = ${score}/10\n`);
   
   return score;
 }
@@ -158,28 +226,33 @@ function updateCSV(className, submissionData) {
   return { filename, totalSubmissions: stt };
 }
 
-// ✅ ROUTE SUBMIT - ĐÃ FIX XỬ LÝ ĐỀ TRỘN
+// ✅ ROUTE SUBMIT
 router.post('/submit', async (req, res) => {
   try {
     const { id, name, className, dob, answers, examId, violations, email, examData } = req.body;
 
-    console.log('📨 Nhận bài nộp:', { name, className, examId, violations });
-    console.log('📦 Đáp án học sinh (đã map về ID gốc):', answers);
-    console.log('📋 ExamData từ frontend:', examData ? 'Có (' + examData.questions?.length + ' câu)' : 'Không');
+    console.log('\n' + '='.repeat(80));
+    console.log('📨 NHẬN BÀI NỘP MỚI');
+    console.log('='.repeat(80));
+    console.log(`Tên: ${name}`);
+    console.log(`Lớp: ${className}`);
+    console.log(`ExamID: ${examId}`);
+    console.log(`Vi phạm: ${violations}`);
+    console.log(`Có examData: ${examData ? 'Có (' + examData.questions?.length + ' câu)' : 'Không'}`);
+    console.log('='.repeat(80) + '\n');
 
     let score = null;
     let questions = [];
 
     if (examId) {
       try {
-        // ✅ Lấy đề gốc từ server
         const baseId = String(examId).split('_r')[0].split('_v')[0];
         const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
         let examDataFromServer = null;
 
         if (fs.existsSync(examJsonPath)) {
           examDataFromServer = JSON.parse(fs.readFileSync(examJsonPath, 'utf8'));
-          console.log('✅ Đã load đề thi từ local');
+          console.log('✅ Đã load đề thi gốc từ local');
         } else {
           console.log('⚠️ Không tìm thấy đề local, thử load từ Drive...');
           try {
@@ -202,14 +275,12 @@ router.post('/submit', async (req, res) => {
         if (examDataFromServer) {
           questions = examDataFromServer.questions || [];
           
-          // ✅ Lấy đáp án từ examData.answers (ưu tiên)
           let correctAnswers = {};
           
           if (examDataFromServer.answers && Object.keys(examDataFromServer.answers).length > 0) {
             correctAnswers = examDataFromServer.answers;
             console.log('✅ Dùng đáp án từ examData.answers');
           } else {
-            // Fallback: lấy từ correctAnswer của từng câu
             correctAnswers = {};
             (examDataFromServer.questions || []).forEach(q => {
               if (q.correctAnswer !== undefined) {
@@ -219,9 +290,17 @@ router.post('/submit', async (req, res) => {
             console.log('⚠️ Fallback: Dùng đáp án từ q.correctAnswer');
           }
           
-          console.log('📋 Đáp án đúng (từ server):', correctAnswers);
+          console.log('\n📋 Đáp án đúng (từ server - đề gốc):');
+          Object.entries(correctAnswers).forEach(([k, v]) => {
+            console.log(`  Câu ${k}: ${JSON.stringify(v)}`);
+          });
           
-          // ✅ CHẤM ĐIỂM - Truyền examData để xử lý mapping (nếu cần)
+          console.log('\n📦 Đáp án học sinh (đã map về ID gốc):');
+          Object.entries(answers || {}).forEach(([k, v]) => {
+            console.log(`  Câu ${k}: ${JSON.stringify(v)}`);
+          });
+          
+          // ✅ CHẤM ĐIỂM - TRUYỀN examData để so sánh nội dung
           score = calculateScore(answers || {}, correctAnswers, questions, examData);
         }
       } catch (e) {
@@ -229,7 +308,6 @@ router.post('/submit', async (req, res) => {
       }
     }
 
-    // ✅ Lưu kết quả vào result.json
     updateResultJson(className || 'unknown', {
       id: id || name || `stu_${Date.now()}`,
       name: name || '',
@@ -241,7 +319,6 @@ router.post('/submit', async (req, res) => {
       answers: JSON.stringify(answers || {})
     });
 
-    // ✅ Tạo XML submission
     const doc = create({ version: '1.0' })
       .ele('ketqua')
         .ele('hoten').txt(name || '').up()
@@ -252,7 +329,6 @@ router.post('/submit', async (req, res) => {
         .ele('violations').txt(String(violations || 0)).up()
         .ele('traloi').txt(JSON.stringify(answers || {})).up();
     
-    // ✅ Thêm thông tin đề bài đã trộn (nếu frontend gửi lên)
     if (examData && examData.questions) {
       const questionsXml = doc.ele('questions');
       examData.questions.forEach(q => {
@@ -278,7 +354,6 @@ router.post('/submit', async (req, res) => {
     
     const xml = doc.end({ prettyPrint: true });
 
-    // ✅ Lưu XML
     const xmlDir = path.join(process.cwd(), 'data', 'submissions');
     if (!fs.existsSync(xmlDir)) fs.mkdirSync(xmlDir, { recursive: true });
 
@@ -286,10 +361,8 @@ router.post('/submit', async (req, res) => {
     const xmlFilename = path.join(xmlDir, `${timestamp}_${(name || 'unknown').replace(/\s+/g, '_')}.xml`);
     fs.writeFileSync(xmlFilename, xml, 'utf8');
 
-    // ✅ Cập nhật CSV
     const csvResult = updateCSV(className || 'unknown', { name, dob, score, violations, answers });
 
-    // ✅ Response ngay cho học sinh
     res.json({
       ok: true,
       file: path.basename(xmlFilename),
@@ -298,10 +371,8 @@ router.post('/submit', async (req, res) => {
       driveLink: null
     });
 
-    // ✅ Upload Drive + Email bất đồng bộ
     queueMicrotask(async () => {
       try {
-        // Upload lên Drive
         if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
           const driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
           if (driveResult) {
@@ -309,7 +380,6 @@ router.post('/submit', async (req, res) => {
           }
         }
 
-        // Gửi email
         if (process.env.MAIL_USER && process.env.MAIL_PASS) {
           await sendEmail({
             to: process.env.EMAIL_TO || process.env.MAIL_USER,
@@ -336,7 +406,6 @@ router.post('/submit', async (req, res) => {
   }
 });
 
-// ✅ GET SUBMISSIONS LIST
 router.get('/submissions', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'submissions');
@@ -367,7 +436,6 @@ router.get('/submissions', (req, res) => {
   }
 });
 
-// ✅ SEND CLASS REPORT
 router.post('/send-class-report', async (req, res) => {
   try {
     const { className, examId } = req.body;
