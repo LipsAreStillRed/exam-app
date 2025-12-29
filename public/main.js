@@ -617,7 +617,7 @@ function renderExam(exam) {
   console.log('✅ Đã lưu đề vào window.currentExamData');
 }
 
-// ✅ THAY THẾ HÀM submitExam TRONG Part 3
+// ✅ THAY THẾ HÀM submitExam() TRONG main.js
 
 async function submitExam(autoSubmit = false) {
   if (!autoSubmit && !confirm('Nộp bài?')) return;
@@ -627,7 +627,6 @@ async function submitExam(autoSubmit = false) {
   const answers = {};
   
   console.log('📤 Bắt đầu thu thập đáp án...');
-  // ✅ DEBUG: In ra console để kiểm tra
   console.log('🔍 DEBUG INFO:');
   console.log('  - questionKeyMapping:', questionKeyMapping);
   console.log('  - currentExamData.questions:', window.currentExamData?.questions?.map(q => ({
@@ -635,8 +634,9 @@ async function submitExam(autoSubmit = false) {
       displayIndex: q.displayIndex,
       options: q.options?.map(o => `${o.key}:${o.text.substring(0,15)}`)
   })));
+
+  // ✅ THU THẬP ĐÁP ÁN VÀ MAP VỀ ORIGINAL ID
   document.querySelectorAll('[name^="q_"]').forEach(input => {
-    // Chỉ lấy radio đã checked HOẶC input text có giá trị
     const isValid = (input.type === 'radio' && input.checked) || 
                     (input.type === 'text' && input.value.trim());
     
@@ -673,9 +673,21 @@ async function submitExam(autoSubmit = false) {
     }
   });
 
-  console.log('📦 Đáp án cuối cùng:', answers);
+  console.log('📦 Đáp án cuối cùng (mapped về ID gốc):', answers);
 
-  // ✅ LẤY THÔNG TIN ĐỀ ĐÃ TRỘN (từ biến toàn cục)
+  // ✅ THÊM: Verify mapping trước khi gửi
+  const verifyMapping = {};
+  if (window.currentExamData?.questions) {
+    window.currentExamData.questions.forEach(q => {
+      const studentAnswer = answers[q.id];
+      if (studentAnswer !== undefined) {
+        verifyMapping[`${q.displayIndex} (ID=${q.id})`] = studentAnswer;
+      }
+    });
+    console.log('🔍 Verify mapping:', verifyMapping);
+  }
+
+  // ✅ GỬI KÈM THÔNG TIN ĐỀ ĐÃ TRỘN
   let examDataToSend = null;
   if (window.currentExamData && window.currentExamData.questions) {
     examDataToSend = {
@@ -699,10 +711,10 @@ async function submitExam(autoSubmit = false) {
         name: currentStudentInfo.name,
         className: currentClassName,
         dob: currentStudentInfo.dob,
-        answers,
+        answers,  // ✅ Đã map về ID gốc
         examId: currentExamId,
         violations,
-        examData: examDataToSend // ✅ GỬI THÊM THÔNG TIN ĐỀ
+        examData: examDataToSend
       })
     });
     const data = await res.json();
