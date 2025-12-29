@@ -229,7 +229,7 @@ function updateCSV(className, submissionData) {
 // ✅ ROUTE SUBMIT
 router.post('/submit', async (req, res) => {
   try {
-    const { id, name, className, dob, answers, examId, violations, email, examData } = req.body;
+    const { id, name, className, dob, answers, examId, violations, email, examData, startTime, endTime } = req.body;
 
     console.log('\n' + '='.repeat(80));
     console.log('📨 NHẬN BÀI NỘP MỚI');
@@ -238,6 +238,8 @@ router.post('/submit', async (req, res) => {
     console.log(`Lớp: ${className}`);
     console.log(`ExamID: ${examId}`);
     console.log(`Vi phạm: ${violations}`);
+    console.log(`Thời gian bắt đầu: ${startTime ? new Date(startTime).toLocaleString('vi-VN') : 'N/A'}`);
+    console.log(`Thời gian kết thúc: ${endTime ? new Date(endTime).toLocaleString('vi-VN') : 'N/A'}`);
     console.log(`Có examData: ${examData ? 'Có (' + examData.questions?.length + ' câu)' : 'Không'}`);
     console.log('='.repeat(80) + '\n');
 
@@ -308,6 +310,27 @@ router.post('/submit', async (req, res) => {
       }
     }
 
+    // ✅ TÍNH THỜI GIAN LÀM BÀI
+    let duration = null;
+    let startTimeFormatted = 'N/A';
+    let endTimeFormatted = 'N/A';
+    
+    if (startTime && endTime) {
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      const durationMs = end - start;
+      
+      // Chuyển sang phút:giây
+      const minutes = Math.floor(durationMs / 60000);
+      const seconds = Math.floor((durationMs % 60000) / 1000);
+      duration = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      
+      startTimeFormatted = start.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      endTimeFormatted = end.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      
+      console.log(`⏱️ Thời gian làm bài: ${duration} (${minutes} phút ${seconds} giây)\n`);
+    }
+
     updateResultJson(className || 'unknown', {
       id: id || name || `stu_${Date.now()}`,
       name: name || '',
@@ -327,6 +350,9 @@ router.post('/submit', async (req, res) => {
         .ele('examId').txt(examId || '').up()
         .ele('diem').txt(score !== null ? String(score) : 'Chưa chấm').up()
         .ele('violations').txt(String(violations || 0)).up()
+        .ele('thoigianbatdau').txt(startTimeFormatted).up()
+        .ele('thoigianketthuc').txt(endTimeFormatted).up()
+        .ele('thoigianlambaiphutgiay').txt(duration || 'N/A').up()
         .ele('traloi').txt(JSON.stringify(answers || {})).up();
     
     if (examData && examData.questions) {
