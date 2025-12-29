@@ -1,4 +1,4 @@
-// routes/student.js - FIXED
+// routes/student.js - FIXED VERSION
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
@@ -12,14 +12,22 @@ function normalizeStr(x) {
   return String(x ?? '').trim().toUpperCase().replace(/\s/g, '');
 }
 
-// ✅ FIX: Hàm chấm điểm với logging chi tiết
-function calculateScore(answers, correctAnswers, questions) {
+// ✅ FIX: Hàm chấm điểm với xử lý đề trộn
+function calculateScore(studentAnswers, correctAnswers, questions, examData = null) {
   console.log('🔍 calculateScore called');
-  console.log('📝 Student answers:', answers);
+  console.log('📝 Student answers:', studentAnswers);
   console.log('✅ Correct answers:', correctAnswers);
   
+  // ✅ NẾU CÓ examData (đề đã trộn): Log để debug
+  if (examData?.questions) {
+    console.log('📋 ExamData questions (shuffled):');
+    examData.questions.forEach(q => {
+      console.log(`  - DisplayIndex ${q.displayIndex} → Original ID "${q.id}"`);
+    });
+  }
+  
   const studentAns = Object.fromEntries(
-    Object.entries(answers || {}).map(([k, v]) => [String(k), v])
+    Object.entries(studentAnswers || {}).map(([k, v]) => [String(k), v])
   );
   const correctAns = Object.fromEntries(
     Object.entries(correctAnswers || {}).map(([k, v]) => [String(k), v])
@@ -46,7 +54,10 @@ function calculateScore(answers, correctAnswers, questions) {
         
         console.log(`Câu ${qid}${key}: HS="${sa}" vs ĐA="${ca}"`);
         
-        if (!ca || !sa) return;
+        if (!ca || !sa) {
+          console.log(`  → Không có đáp án`);
+          return;
+        }
         if (normalizeStr(sa) === normalizeStr(ca)) {
           correct++;
           console.log(`✅ Đúng`);
@@ -62,9 +73,12 @@ function calculateScore(answers, correctAnswers, questions) {
     const ca = correctAns[qid];
     const sa = studentAns[qid];
     
-    console.log(`Câu ${qid}: HS="${sa}" vs ĐA="${ca}"`);
+    console.log(`Câu ${qid}: HS="${JSON.stringify(sa)}" vs ĐA="${JSON.stringify(ca)}"`);
 
-    if (!ca || !sa) return;
+    if (!ca || !sa) {
+      console.log(`  → Không có đáp án`);
+      return;
+    }
 
     let saStr = sa;
     let caStr = ca;
@@ -78,11 +92,14 @@ function calculateScore(answers, correctAnswers, questions) {
       correct++;
       console.log(`✅ Đúng`);
     } else {
-      console.log(`❌ Sai`);
+      console.log(`❌ Sai (normalized: "${normalizeStr(saStr)}" vs "${normalizeStr(caStr)}")`);
     }
   });
 
-  if (total === 0) return null;
+  if (total === 0) {
+    console.warn('⚠️ Không có câu hỏi nào để chấm');
+    return null;
+  }
   
   const score = Math.round((correct / total) * 10 * 10) / 10;
   console.log(`📊 Kết quả: ${correct}/${total} = ${score}/10`);
@@ -141,18 +158,21 @@ function updateCSV(className, submissionData) {
   return { filename, totalSubmissions: stt };
 }
 
-// ✅ FIX: Route submit - LƯU CẢ ĐỀ VÀO XML
+// ✅ ROUTE SUBMIT - ĐÃ FIX XỬ LÝ ĐỀ TRỘN
 router.post('/submit', async (req, res) => {
   try {
     const { id, name, className, dob, answers, examId, violations, email, examData } = req.body;
 
     console.log('📨 Nhận bài nộp:', { name, className, examId, violations });
+    console.log('📦 Đáp án học sinh (đã map về ID gốc):', answers);
+    console.log('📋 ExamData từ frontend:', examData ? 'Có (' + examData.questions?.length + ' câu)' : 'Không');
 
     let score = null;
     let questions = [];
 
     if (examId) {
       try {
+        // ✅ Lấy đề gốc từ server
         const baseId = String(examId).split('_r')[0].split('_v')[0];
         const examJsonPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
         let examDataFromServer = null;
@@ -182,7 +202,7 @@ router.post('/submit', async (req, res) => {
         if (examDataFromServer) {
           questions = examDataFromServer.questions || [];
           
-          // ✅ Lấy đáp án từ examData.answers
+          // ✅ Lấy đáp án từ examData.answers (ưu tiên)
           let correctAnswers = {};
           
           if (examDataFromServer.answers && Object.keys(examDataFromServer.answers).length > 0) {
@@ -199,14 +219,17 @@ router.post('/submit', async (req, res) => {
             console.log('⚠️ Fallback: Dùng đáp án từ q.correctAnswer');
           }
           
-          console.log('📋 Đáp án đúng:', correctAnswers);
-          score = calculateScore(answers || {}, correctAnswers, questions);
+          console.log('📋 Đáp án đúng (từ server):', correctAnswers);
+          
+          // ✅ CHẤM ĐIỂM - Truyền examData để xử lý mapping (nếu cần)
+          score = calculateScore(answers || {}, correctAnswers, questions, examData);
         }
       } catch (e) {
         console.error('❌ Error calculating score:', e);
       }
     }
 
+    // ✅ Lưu kết quả vào result.json
     updateResultJson(className || 'unknown', {
       id: id || name || `stu_${Date.now()}`,
       name: name || '',
@@ -218,7 +241,7 @@ router.post('/submit', async (req, res) => {
       answers: JSON.stringify(answers || {})
     });
 
-    // ✅ LƯU CẢ ĐỀ VÀO XML (nếu có examData từ frontend)
+    // ✅ Tạo XML submission
     const doc = create({ version: '1.0' })
       .ele('ketqua')
         .ele('hoten').txt(name || '').up()
@@ -255,15 +278,18 @@ router.post('/submit', async (req, res) => {
     
     const xml = doc.end({ prettyPrint: true });
 
+    // ✅ Lưu XML
     const xmlDir = path.join(process.cwd(), 'data', 'submissions');
     if (!fs.existsSync(xmlDir)) fs.mkdirSync(xmlDir, { recursive: true });
 
     const timestamp = Date.now();
-    const xmlFilename = path.join(xmlDir, `${timestamp}_${(className || 'unknown')}.xml`);
+    const xmlFilename = path.join(xmlDir, `${timestamp}_${(name || 'unknown').replace(/\s+/g, '_')}.xml`);
     fs.writeFileSync(xmlFilename, xml, 'utf8');
 
+    // ✅ Cập nhật CSV
     const csvResult = updateCSV(className || 'unknown', { name, dob, score, violations, answers });
 
+    // ✅ Response ngay cho học sinh
     res.json({
       ok: true,
       file: path.basename(xmlFilename),
@@ -272,31 +298,45 @@ router.post('/submit', async (req, res) => {
       driveLink: null
     });
 
+    // ✅ Upload Drive + Email bất đồng bộ
     queueMicrotask(async () => {
       try {
+        // Upload lên Drive
         if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
           const driveResult = await uploadToDrive(xmlFilename, path.basename(xmlFilename), 'application/xml');
-          if (driveResult) console.log(`✅ Uploaded submission to Drive: ${driveResult.webViewLink || driveResult.webContentLink}`);
+          if (driveResult) {
+            console.log(`✅ Uploaded submission to Drive: ${driveResult.webViewLink || driveResult.webContentLink}`);
+          }
         }
 
+        // Gửi email
         if (process.env.MAIL_USER && process.env.MAIL_PASS) {
           await sendEmail({
             to: process.env.EMAIL_TO || process.env.MAIL_USER,
             subject: `Bài nộp: ${name || '(không tên)'} - ${className || '(không lớp)'}${score !== null ? ` - ${score} điểm` : ''}`,
-            html: `Học sinh ${name || ''} (${className || ''}) đã nộp bài.<br>Số lần vi phạm: ${violations || 0}${score !== null ? `<br>Điểm: ${score}/10` : ''}`,
+            html: `
+              <h3>Bài nộp mới</h3>
+              <p><strong>Học sinh:</strong> ${name || '(không tên)'}</p>
+              <p><strong>Lớp:</strong> ${className || '(không lớp)'}</p>
+              <p><strong>Điểm:</strong> ${score !== null ? score + '/10' : 'Chưa chấm'}</p>
+              <p><strong>Số lần vi phạm:</strong> ${violations || 0}</p>
+              <p><strong>Thời gian:</strong> ${new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}</p>
+            `,
             attachments: [{ filename: path.basename(xmlFilename), path: xmlFilename }]
           });
+          console.log('✅ Email sent');
         }
       } catch (error) {
         console.error('Post-submit tasks error:', error.message);
       }
     });
   } catch (e) {
-    console.error(e);
+    console.error('❌ Submit error:', e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
 
+// ✅ GET SUBMISSIONS LIST
 router.get('/submissions', (req, res) => {
   try {
     const dir = path.join(process.cwd(), 'data', 'submissions');
@@ -322,24 +362,25 @@ router.get('/submissions', (req, res) => {
 
     res.json({ ok: true, submissions });
   } catch (e) {
-    console.error(e);
+    console.error('❌ Get submissions error:', e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
 
+// ✅ SEND CLASS REPORT
 router.post('/send-class-report', async (req, res) => {
   try {
     const { className, examId } = req.body;
     const csvPath = path.join(process.cwd(), 'data', 'csv', `${className}.csv`);
 
     if (!fs.existsSync(csvPath)) {
-      return res.status(404).json({ ok: false, error: 'Chưa có bài nộp' });
+      return res.status(404).json({ ok: false, error: 'Chưa có bài nộp nào của lớp này' });
     }
 
     await sendClassEmail(className, csvPath, examId);
-    res.json({ ok: true, message: 'Đã gửi email' });
+    res.json({ ok: true, message: 'Đã gửi email báo cáo lớp thành công' });
   } catch (e) {
-    console.error(e);
+    console.error('❌ Send class report error:', e);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
