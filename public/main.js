@@ -6,6 +6,7 @@ let examTimer = null;
 let violations = 0;
 let visibilityCheckEnabled = false;
 let questionKeyMapping = {}; // { displayIndex: originalQuestionId }
+let examStartTime = null; // ✅ THÊM: Thời gian bắt đầu làm bài
 
 // ====================== HELPERS ======================
 function showPage(id) {
@@ -30,10 +31,10 @@ function showMessage(elementId, message, isError = false) {
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-// ====================== VIOLATION DETECTION (ĐÃ FIX - TRÁNH DOUBLE TRIGGER) ======================
+// ====================== VIOLATION DETECTION ======================
 
 let lastActivityTime = Date.now();
-let lastViolationTime = 0; // ✅ Thêm biến chống spam
+let lastViolationTime = 0;
 const VIOLATION_COOLDOWN = 2000; // 2 giây cooldown giữa các vi phạm
 
 function setupViolationDetection() {
@@ -43,14 +44,10 @@ function setupViolationDetection() {
 
   // ✅ Đợi 5 giây sau khi vào trang mới bật giám sát
   setTimeout(() => {
-    // 1. Phát hiện chuyển tab
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // 2. Track hoạt động
     document.addEventListener('mousemove', updateActivity);
     document.addEventListener('keypress', updateActivity);
     document.addEventListener('click', updateActivity);
-    
     console.log('✅ Bật phát hiện vi phạm (chỉ tab/visibility)');
   }, 5000);
 }
@@ -103,7 +100,6 @@ function disableViolationDetection() {
   document.removeEventListener('mousemove', updateActivity);
   document.removeEventListener('keypress', updateActivity);
   document.removeEventListener('click', updateActivity);
-  
   console.log('🔒 Tắt phát hiện vi phạm');
 }
 
@@ -120,8 +116,8 @@ async function handleLogin(password) {
   if (!res.ok || !data.ok) throw new Error(data.error || 'Đăng nhập thất bại');
   return data;
 }
-
 // ====================== TEACHER FUNCTIONS ======================
+
 async function loadExamList() {
   const listDiv = document.getElementById('examList');
   if (!listDiv) {
@@ -219,6 +215,7 @@ async function loadSubmissions() {
   listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
   console.log('🔄 Fetching /student/submissions...');
 
+  
   try {
     const res = await fetch('/student/submissions');
     const data = await res.json();
@@ -248,7 +245,8 @@ async function loadSubmissions() {
     listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
   }
 }
-// ====================== MODAL CHI TIẾT ĐỀ ======================
+// ====================== MODAL EXAM DETAIL ======================
+
 async function openExamDetail(examId) {
   try {
     console.log('📖 Loading exam:', examId);
@@ -412,8 +410,8 @@ async function attachImage(examId, qid) {
     alert('❌ Lỗi: ' + err.message);
   }
 }
-
 // ====================== MODAL ACTIONS ======================
+
 function setupModalButtons(examId) {
   document.getElementById('saveAnswers').onclick = async () => {
     try {
@@ -499,6 +497,7 @@ function setupModalButtons(examId) {
   };
 }
 // ====================== STUDENT FUNCTIONS ======================
+
 async function loadLatestExamVariant() {
   const res = await fetch('/exam/latest-variant');
   const data = await res.json();
@@ -517,6 +516,10 @@ async function verifyExamPassword(examId, password) {
 }
 
 function startExamTimer(timeMinutes) {
+  // ✅ GHI NHẬN THỜI GIAN BẮT ĐẦU
+  examStartTime = Date.now();
+  console.log('⏱️ Bắt đầu làm bài:', new Date(examStartTime).toLocaleString('vi-VN'));
+  
   let timeLimit = timeMinutes * 60;
   let startTime = Date.now();
   examTimer = setInterval(() => {
@@ -533,8 +536,6 @@ function startExamTimer(timeMinutes) {
       `${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
   }, 1000);
 }
-
-// ✅ THAY THẾ HÀM renderExam TRONG Part 3
 
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
@@ -616,11 +617,15 @@ function renderExam(exam) {
   console.log('✅ Mapping:', questionKeyMapping);
   console.log('✅ Đã lưu đề vào window.currentExamData');
 }
-
-// ✅ THAY THẾ HÀM submitExam() TRONG main.js
+// ====================== SUBMIT EXAM (CÓ TRACKING THỜI GIAN) ======================
 
 async function submitExam(autoSubmit = false) {
   if (!autoSubmit && !confirm('Nộp bài?')) return;
+  
+  // ✅ GHI NHẬN THỜI GIAN KẾT THÚC
+  const examEndTime = Date.now();
+  console.log('⏱️ Kết thúc làm bài:', new Date(examEndTime).toLocaleString('vi-VN'));
+  
   disableViolationDetection();
   if (examTimer) clearInterval(examTimer);
 
@@ -711,10 +716,12 @@ async function submitExam(autoSubmit = false) {
         name: currentStudentInfo.name,
         className: currentClassName,
         dob: currentStudentInfo.dob,
-        answers,  // ✅ Đã map về ID gốc
+        answers,
         examId: currentExamId,
         violations,
-        examData: examDataToSend
+        examData: examDataToSend,
+        startTime: examStartTime, // ✅ GỬI THỜI GIAN BẮT ĐẦU
+        endTime: examEndTime      // ✅ GỬI THỜI GIAN KẾT THÚC
       })
     });
     const data = await res.json();
@@ -752,7 +759,8 @@ async function submitExam(autoSubmit = false) {
     alert('Lỗi: ' + err.message);
   }
 }
-// ====================== EVENT HANDLERS ======================
+// ====================== EVENT HANDLERS & INITIALIZATION ======================
+
 function setupEventHandlers() {
   const loginForm = document.getElementById('loginForm');
   const loginError = document.getElementById('loginError');
@@ -928,11 +936,13 @@ function setupEventHandlers() {
     if (event.target === modal) closeExamDetail();
   };
 }
+
 // ====================== INITIALIZATION ======================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 App initialized - FIXED VERSION');
+  console.log('🚀 App initialized - FINAL VERSION WITH TIME TRACKING');
   console.log('✅ Vi phạm: 3 lần (có cooldown 2s)');
-  console.log('✅ Chấm điểm: Mapping displayIndex → originalQid');
+  console.log('✅ Chấm điểm: So sánh nội dung đáp án (không phải key)');
+  console.log('✅ Tracking: Thời gian bắt đầu + kết thúc + thời gian làm bài');
   console.log('✅ Ghi nhớ: localStorage tên + ngày sinh');
   showPage('loginPage');
   setupEventHandlers();
