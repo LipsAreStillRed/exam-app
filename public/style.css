@@ -371,14 +371,28 @@ body {
 
 .modal-content {
   background: var(--card-bg);
-  padding: 30px;
+  padding: 30px 30px 0 30px;
   border-radius: 16px;
   width: 100%;
   max-width: 800px;
   max-height: 85vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   position: relative;
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+.modal-content h2 {
+  margin-bottom: 20px;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+#examDetailContent {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 10px;
+  margin-bottom: 20px;
 }
 
 .modal-content h2 {
@@ -415,12 +429,14 @@ body {
   position: sticky;
   bottom: 0;
   background: white;
-  padding-top: 20px;
+  padding: 20px 30px;
+  margin: 0 -30px;
   border-top: 2px solid var(--border);
-  margin-top: 20px;
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
+  box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05);
 }
 
 .modal-actions .btn {
@@ -453,6 +469,8 @@ body {
   height: auto;
   border-radius: 8px;
   margin: 12px 0;
+  display: block;
+  box-shadow: var(--shadow);
 }
 
 /* OPTIONS */
