@@ -178,6 +178,7 @@ async function handleLogin(password) {
   if (!res.ok || !data.ok) throw new Error(data.error || 'Đăng nhập thất bại');
   return data;
 }
+
 // ====================== TEACHER FUNCTIONS ======================
 async function loadExamList() {
   const listDiv = document.getElementById('examList');
@@ -306,7 +307,7 @@ async function loadSubmissions() {
   }
 }
 
-// ====================== MODAL CHI TIẾT ĐỀ ======================
+// ====================== MODAL CHI TIẾT ĐỀ - ✅ FIXED UPLOAD ẢNH ======================
 async function openExamDetail(examId) {
   try {
     console.log('📖 Loading exam:', examId);
@@ -344,7 +345,7 @@ async function openExamDetail(examId) {
       div.innerHTML = `
         <h4>Câu ${q.displayIndex || q.id || (index + 1)}</h4>
         <p>${q.question || q.text || '(Không có nội dung)'}</p>
-        ${q.image ? `<img src="${q.image}" style="max-width:100%;border-radius:8px;"/>` : ''}
+        ${q.image ? `<img src="${q.image}" style="max-width:100%;border-radius:8px;margin:12px 0;"/>` : ''}
       `;
 
       const optsDiv = document.createElement('div');
@@ -419,13 +420,41 @@ async function openExamDetail(examId) {
 
       div.appendChild(optsDiv);
       
+      // ✅ FIXED: Nút upload ảnh đơn giản hơn
       const uploadDiv = document.createElement('div');
       uploadDiv.style.marginTop = '12px';
       uploadDiv.innerHTML = `
-        <input type="file" id="img_${q.id}" accept="image/*" style="font-size:12px;">
-        <button class="btn btn-secondary" style="margin-left:8px;padding:4px 12px;font-size:13px;">📎 Ảnh</button>
+        <input type="file" id="img_${q.id}" accept="image/*" style="display:none;">
+        <button class="btn btn-secondary" style="padding:6px 14px;font-size:13px;">
+          📷 ${q.image ? 'Thay ảnh' : 'Thêm ảnh'}
+        </button>
       `;
-      uploadDiv.querySelector('button').onclick = () => attachImage(examId, q.id);
+      
+      const fileInput = uploadDiv.querySelector(`#img_${q.id}`);
+      const uploadBtn = uploadDiv.querySelector('button');
+      
+      // Click nút -> mở file picker -> tự động upload
+      uploadBtn.onclick = () => fileInput.click();
+      fileInput.onchange = async () => {
+        if (!fileInput.files[0]) return;
+        
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = '⏳ Đang tải...';
+        
+        try {
+          await attachImage(examId, q.id, fileInput);
+          uploadBtn.textContent = '✅ Đã cập nhật';
+          setTimeout(() => {
+            uploadBtn.textContent = '📷 Thay ảnh';
+            uploadBtn.disabled = false;
+          }, 2000);
+        } catch (err) {
+          uploadBtn.textContent = '❌ Lỗi';
+          uploadBtn.disabled = false;
+          alert('Lỗi upload: ' + err.message);
+        }
+      };
+      
       div.appendChild(uploadDiv);
       content.appendChild(div);
     });
@@ -444,31 +473,31 @@ function closeExamDetail() {
   if (modal) modal.style.display = 'none';
 }
 
-async function attachImage(examId, qid) {
-  const input = document.getElementById(`img_${qid}`);
-  if (!input?.files[0]) return alert('Chọn ảnh');
+// ✅ FIXED: Upload ảnh tự động
+async function attachImage(examId, qid, fileInput) {
+  if (!fileInput?.files[0]) throw new Error('Chưa chọn ảnh');
+  
   const fd = new FormData();
-  fd.append('image', input.files[0]);
-  try {
-    const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, { method: 'POST', body: fd });
-    const result = await res.json();
-    if (result.ok) {
-      alert('✅ Đã cập nhật ảnh');
-      const block = input.parentNode.parentNode;
-      const existingImg = block.querySelector('img');
-      if (existingImg) existingImg.remove();
-      const imgTag = document.createElement('img');
-      imgTag.src = result.url;
-      imgTag.style.maxWidth = '100%';
-      imgTag.style.borderRadius = '8px';
-      imgTag.style.marginTop = '8px';
-      block.insertBefore(imgTag, block.querySelector('.options'));
-    } else {
-      alert('❌ Lỗi: ' + (result.error || 'Không cập nhật được'));
-    }
-  } catch (err) {
-    alert('❌ Lỗi: ' + err.message);
+  fd.append('image', fileInput.files[0]);
+  
+  const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, { 
+    method: 'POST', 
+    body: fd 
+  });
+  
+  const result = await res.json();
+  
+  if (!result.ok) {
+    throw new Error(result.error || 'Không cập nhật được');
   }
+  
+  console.log('✅ Ảnh đã upload:', result.url);
+  
+  // Reload lại modal để hiển thị ảnh mới
+  closeExamDetail();
+  await openExamDetail(examId);
+  
+  return result;
 }
 
 // ====================== MODAL ACTIONS ======================
@@ -556,6 +585,7 @@ function setupModalButtons(examId) {
     }
   };
 }
+
 // ====================== STUDENT FUNCTIONS ======================
 async function loadLatestExamVariant() {
   const res = await fetch('/exam/latest-variant');
@@ -595,6 +625,7 @@ function startExamTimer(timeMinutes) {
   }, 1000);
 }
 
+// ✅ FIXED: Hiển thị ảnh cho học sinh
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
@@ -612,6 +643,13 @@ function renderExam(exam) {
     
     const qDiv = document.createElement('div');
     qDiv.className = 'question-item';
+    
+    // ✅ Hiển thị ảnh nếu có
+    let imageHtml = '';
+    if (q.image) {
+      imageHtml = `<img src="${q.image}" style="max-width:100%;border-radius:8px;margin:12px 0;" alt="Hình minh họa câu ${displayIndex}"/>`;
+    }
+    
     let optionsHtml = '';
     
     if (q.type === 'multiple_choice') {
@@ -664,6 +702,7 @@ function renderExam(exam) {
     qDiv.innerHTML = `
       <strong>Câu ${displayIndex}:</strong>
       <p>${q.question || q.text}</p>
+      ${imageHtml}
       ${optionsHtml}
     `;
     container.appendChild(qDiv);
@@ -808,6 +847,7 @@ async function submitExam(autoSubmit = false) {
     alert('Lỗi: ' + err.message);
   }
 }
+
 // ====================== EVENT HANDLERS ======================
 function setupEventHandlers() {
   const loginForm = document.getElementById('loginForm');
@@ -844,7 +884,7 @@ function setupEventHandlers() {
           if (savedName) document.getElementById('studentName').value = savedName;
           if (savedDOB) document.getElementById('studentDOB').value = savedDOB;
           
-          setupCustomDateInput(); // ✅ Setup custom date input
+          setupCustomDateInput();
           
           const exam = await loadLatestExamVariant();
           currentExamId = exam.id;
@@ -895,7 +935,6 @@ function setupEventHandlers() {
         return;
       }
       
-      // ✅ Validate format dd/mm/yyyy
       const dobMatch = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
       if (!dobMatch) {
         studentInfoError.textContent = 'Định dạng ngày sinh không đúng (dd/mm/yyyy)';
@@ -903,7 +942,6 @@ function setupEventHandlers() {
         return;
       }
       
-      // ✅ Convert dd/mm/yyyy → yyyy-mm-dd để gửi server
       const dobISO = `${dobMatch[3]}-${dobMatch[2]}-${dobMatch[1]}`;
       
       localStorage.setItem('studentName', name);
@@ -1000,12 +1038,10 @@ function setupEventHandlers() {
 
 // ====================== INITIALIZATION ======================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 App initialized - FINAL VERSION WITH CUSTOM DATE INPUT');
-  console.log('✅ Custom date input: dd/mm/yyyy (numeric keyboard on mobile)');
-  console.log('✅ Chấm điểm: So sánh nội dung đáp án');
-  console.log('✅ Tracking: Start/End/Duration');
-  console.log('✅ Violations: 3 lần, cooldown 2s');
-  console.log('✅ Ghi nhớ: localStorage tên + ngày sinh');
+  console.log('🚀 App initialized - IMPROVED VERSION');
+  console.log('✅ Upload ảnh: Click 1 lần tự động upload');
+  console.log('✅ Học sinh: Nhận và hiển thị ảnh từ đề');
+  console.log('✅ Modal: 3 nút cố định ở cuối');
   showPage('loginPage');
   setupEventHandlers();
 });
