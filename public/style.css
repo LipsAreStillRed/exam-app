@@ -20,6 +20,7 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
+/* ✅ FIX: Layout với flexbox để footer luôn ở dưới */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   background: var(--bg);
@@ -36,15 +37,20 @@ body {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
+
 /* PAGE SYSTEM */
 .page {
   display: none;
   animation: fadeIn 0.3s ease-in;
+  flex: 1;
 }
 
 .page.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes fadeIn {
@@ -52,19 +58,22 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* LOGIN PAGE */
+/* ✅ FIX: LOGIN PAGE - Căn giữa màn hình */
 #loginPage {
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  background: var(--bg);
+  min-height: calc(100vh - 80px); /* Trừ đi chiều cao footer */
+  padding: 20px 0;
+}
+
+#loginPage.active {
+  display: flex;
 }
 
 .login-box {
   max-width: 420px;
   width: 92%;
-  margin: 24px auto;
   background: var(--card-bg);
   padding: 40px;
   border-radius: 16px;
@@ -100,6 +109,7 @@ body {
   margin-bottom: 30px;
   font-size: 15px;
 }
+
 /* INPUT GROUP */
 .input-group {
   position: relative;
@@ -197,6 +207,7 @@ body {
 .btn-danger:hover {
   background: #dc2626;
 }
+
 /* ERROR MESSAGE */
 .error-message {
   color: var(--danger);
@@ -250,6 +261,7 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  flex: 1;
 }
 
 /* CARD */
@@ -269,6 +281,7 @@ body {
   align-items: center;
   gap: 8px;
 }
+
 /* FORM */
 .form-group {
   margin-bottom: 20px;
@@ -322,6 +335,7 @@ body {
   grid-template-columns: 1fr 1fr;
   gap: 16px;
 }
+
 /* MODAL */
 .modal {
   display: none;
@@ -400,6 +414,7 @@ body {
   flex: 1;
   min-width: 150px;
 }
+
 /* QUESTION BLOCK */
 .question-block {
   background: var(--bg);
@@ -513,6 +528,7 @@ body {
 .cell-1 { background: #fffbe6; }
 .cell-2, .cell-3 { background: #e6f7ff; }
 .cell-4 { background: #f0fff0; }
+
 /* EXAM LIST */
 .exams-list {
   display: flex;
@@ -616,6 +632,7 @@ body {
   font-size: 15px;
   font-style: italic;
 }
+
 /* STUDENT INFO PAGE */
 .student-form-container {
   max-width: 500px;
@@ -745,6 +762,7 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
   background: #dbeafe;
 }
+
 /* RESULT PAGE */
 .result-container {
   max-width: 500px;
@@ -798,18 +816,39 @@ body {
   color: #991b1b;
 }
 
-/* FOOTER */
+/* ✅ FIX: FOOTER - Luôn ở dưới cùng */
 .footer {
   text-align: center;
-  padding: 20px;
+  padding: 16px 20px;
   color: var(--text-light);
-  font-size: 14px;
+  font-size: 13px;
   border-top: 1px solid var(--border);
   background: var(--card-bg);
   margin-top: auto;
+  flex-shrink: 0;
 }
 
-/* RESPONSIVE */
+/* VIOLATION WARNING */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.warning-message {
+  color: var(--danger);
+  font-weight: 600;
+  margin-top: 8px;
+  min-height: 24px;
+  font-size: 14px;
+  display: none;
+}
+
+.warning-message[style*="display: block"] {
+  display: block !important;
+  animation: blink 0.5s ease-in-out 3;
+}
+
+/* ✅ RESPONSIVE - Tối ưu mobile */
 @media (max-width: 880px) {
   .dashboard { 
     grid-template-columns: 1fr; 
@@ -825,7 +864,6 @@ body {
   }
   
   .login-box {
-    margin: 20px auto;
     padding: 30px 24px;
   }
   
@@ -887,6 +925,13 @@ body {
   
   .result-container {
     margin: 20px auto;
+    padding: 30px 20px;
+  }
+  
+  /* ✅ FIX: Footer trên mobile */
+  .footer {
+    padding: 12px 16px;
+    font-size: 12px;
   }
 }
 
@@ -930,23 +975,4 @@ body {
   .option {
     padding: 10px;
   }
-}
-/* ====================== VIOLATION WARNING ====================== */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.warning-message {
-  color: var(--danger);
-  font-weight: 600;
-  margin-top: 8px;
-  min-height: 24px;
-  font-size: 14px;
-  display: none;
-}
-
-.warning-message[style*="display: block"] {
-  display: block !important;
-  animation: blink 0.5s ease-in-out 3;
 }
