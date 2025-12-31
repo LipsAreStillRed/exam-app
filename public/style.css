@@ -20,11 +20,12 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
-/* ✅ FIX: Body layout - sử dụng flexbox để footer luôn ở dưới */
+/* ✅ FIX: Body layout - loại bỏ scroll không cần thiết */
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
 }
 
 body {
@@ -35,17 +36,19 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  max-width: 100vw;
 }
 
-/* ✅ FIX: Container - chiếm toàn bộ không gian còn lại */
+/* ✅ FIX: Container - vừa màn hình */
 .container {
   flex: 1;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 /* PAGE SYSTEM */
@@ -66,13 +69,14 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ✅ FIX: LOGIN PAGE - Căn giữa hoàn toàn */
+/* ✅ FIX: LOGIN PAGE - Vừa màn hình, không cần scroll */
 #loginPage {
   display: none;
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 20px;
+  padding: 20px 16px;
+  min-height: 0;
 }
 
 #loginPage.active {
@@ -80,10 +84,10 @@ body {
 }
 
 .login-box {
-  max-width: 420px;
+  max-width: 400px;
   width: 100%;
   background: var(--card-bg);
-  padding: 40px;
+  padding: 32px 28px;
   border-radius: 16px;
   box-shadow: var(--shadow-lg);
   text-align: center;
@@ -91,9 +95,9 @@ body {
 }
 
 .logo {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 20px;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
   background: linear-gradient(135deg, var(--primary), var(--primary-dark));
   border-radius: 50%;
   display: flex;
@@ -103,34 +107,34 @@ body {
 }
 
 .logo svg {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
 }
 
 .login-box h1 {
-  font-size: 28px;
-  margin-bottom: 8px;
+  font-size: 26px;
+  margin-bottom: 6px;
   color: var(--text);
 }
 
 .subtitle {
   color: var(--text-light);
-  margin-bottom: 30px;
-  font-size: 15px;
+  margin-bottom: 24px;
+  font-size: 14px;
 }
 
 /* INPUT GROUP */
 .input-group {
   position: relative;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .input-group input {
   width: 100%;
-  padding: 12px 40px 12px 12px;
+  padding: 11px 38px 11px 12px;
   border: 2px solid var(--border);
   border-radius: 8px;
-  font-size: 16px;
+  font-size: 15px;
   transition: all 0.3s;
 }
 
@@ -234,16 +238,16 @@ body {
 
 /* INFO TEXT */
 .info-text {
-  margin-top: 30px;
-  padding-top: 20px;
+  margin-top: 20px;
+  padding-top: 16px;
   border-top: 1px solid var(--border);
   text-align: left;
 }
 
 .info-text p {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-light);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -830,15 +834,14 @@ body {
   color: #991b1b;
 }
 
-/* ✅ FIX: FOOTER - Luôn ở dưới cùng, không bị đẩy xuống */
+/* ✅ FIX: FOOTER - Nhỏ gọn và luôn hiển thị */
 .footer {
   text-align: center;
-  padding: 16px 20px;
+  padding: 12px 16px;
   color: var(--text-light);
-  font-size: 13px;
+  font-size: 12px;
   border-top: 1px solid var(--border);
   background: var(--card-bg);
-  margin-top: auto;
   flex-shrink: 0;
   width: 100%;
 }
@@ -879,7 +882,37 @@ body {
   }
   
   .login-box {
-    padding: 30px 24px;
+    padding: 24px 20px;
+    max-width: 380px;
+  }
+  
+  .logo {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 12px;
+  }
+  
+  .logo svg {
+    width: 26px;
+    height: 26px;
+  }
+  
+  .login-box h1 {
+    font-size: 23px;
+  }
+  
+  .subtitle {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  
+  .info-text {
+    margin-top: 16px;
+    padding-top: 12px;
+  }
+  
+  .info-text p {
+    font-size: 12px;
   }
   
   .header {
@@ -936,7 +969,7 @@ body {
   
   .student-form-container {
     margin: 0;
-    padding: 20px 0;
+    padding: 16px 0;
   }
   
   .result-container {
@@ -945,23 +978,45 @@ body {
   }
   
   .footer {
-    padding: 12px 16px;
-    font-size: 12px;
+    padding: 10px 12px;
+    font-size: 11px;
   }
 }
 
 @media (max-width: 480px) {
+  .container {
+    padding: 10px;
+  }
+  
   .login-box {
     width: 100%;
-    padding: 24px 20px;
+    padding: 20px 18px;
+    max-width: 100%;
+  }
+  
+  .logo {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 10px;
+  }
+  
+  .logo svg {
+    width: 24px;
+    height: 24px;
   }
   
   .login-box h1 {
-    font-size: 24px;
+    font-size: 21px;
+    margin-bottom: 4px;
   }
   
   .subtitle {
-    font-size: 14px;
+    font-size: 13px;
+    margin-bottom: 18px;
+  }
+  
+  .input-group {
+    margin-bottom: 14px;
   }
   
   .input-group input {
@@ -971,16 +1026,21 @@ body {
   
   .btn {
     font-size: 15px;
-    padding: 10px 12px;
+    padding: 11px 16px;
   }
   
-  .logo {
-    width: 56px;
-    height: 56px;
+  .info-text {
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+  
+  .info-text p {
+    font-size: 11.5px;
+    margin-bottom: 5px;
   }
   
   .card {
-    padding: 20px;
+    padding: 18px;
   }
   
   .exam-content {
@@ -988,6 +1048,11 @@ body {
   }
   
   .option {
-    padding: 10px;
+    padding: 9px;
+  }
+  
+  .footer {
+    padding: 9px 12px;
+    font-size: 10.5px;
   }
 }
