@@ -5,8 +5,8 @@ let currentStudentInfo = null;
 let examTimer = null;
 let violations = 0;
 let visibilityCheckEnabled = false;
-let questionKeyMapping = {}; // { displayIndex: originalQuestionId }
-let examStartTime = null; // ✅ THÊM: Thời gian bắt đầu làm bài
+let questionKeyMapping = {};
+let examStartTime = null;
 
 // ====================== HELPERS ======================
 function showPage(id) {
@@ -31,31 +31,93 @@ function showMessage(elementId, message, isError = false) {
   setTimeout(() => { el.style.display = 'none'; }, 5000);
 }
 
-// ====================== VIOLATION DETECTION ======================
+// ====================== CUSTOM DATE INPUT (dd/mm/yyyy) ======================
+function setupCustomDateInput() {
+  const dobInput = document.getElementById('studentDOB');
+  if (!dobInput) return;
 
+  dobInput.type = 'text';
+  dobInput.placeholder = 'dd/mm/yyyy';
+  dobInput.maxLength = 10;
+  dobInput.inputMode = 'numeric';
+
+  dobInput.addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    let formattedValue = '';
+
+    if (value.length > 0) {
+      formattedValue = value.substring(0, 2);
+    }
+    if (value.length >= 3) {
+      formattedValue += '/' + value.substring(2, 4);
+    }
+    if (value.length >= 5) {
+      formattedValue += '/' + value.substring(4, 8);
+    }
+
+    e.target.value = formattedValue;
+    e.target.setCustomValidity('');
+  });
+
+  dobInput.addEventListener('blur', function(e) {
+    const value = e.target.value;
+    if (!value) return;
+
+    const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) {
+      e.target.setCustomValidity('Định dạng không đúng. Nhập: dd/mm/yyyy');
+      return;
+    }
+
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10);
+    const year = parseInt(match[3], 10);
+
+    if (day < 1 || day > 31) {
+      e.target.setCustomValidity('Ngày không hợp lệ (1-31)');
+      return;
+    }
+    if (month < 1 || month > 12) {
+      e.target.setCustomValidity('Tháng không hợp lệ (1-12)');
+      return;
+    }
+    if (year < 1900 || year > new Date().getFullYear()) {
+      e.target.setCustomValidity(`Năm không hợp lệ (1900-${new Date().getFullYear()})`);
+      return;
+    }
+
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day > daysInMonth) {
+      e.target.setCustomValidity(`Tháng ${month}/${year} chỉ có ${daysInMonth} ngày`);
+      return;
+    }
+
+    e.target.setCustomValidity('');
+  });
+}
+
+// ====================== VIOLATION DETECTION ======================
 let lastActivityTime = Date.now();
 let lastViolationTime = 0;
-const VIOLATION_COOLDOWN = 2000; // 2 giây cooldown giữa các vi phạm
+const VIOLATION_COOLDOWN = 2000;
 
 function setupViolationDetection() {
   if (visibilityCheckEnabled) return;
   visibilityCheckEnabled = true;
   violations = 0;
 
-  // ✅ Đợi 5 giây sau khi vào trang mới bật giám sát
   setTimeout(() => {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('mousemove', updateActivity);
     document.addEventListener('keypress', updateActivity);
     document.addEventListener('click', updateActivity);
-    console.log('✅ Bật phát hiện vi phạm (chỉ tab/visibility)');
+    console.log('✅ Bật phát hiện vi phạm');
   }, 5000);
 }
 
 function handleVisibilityChange() {
   if (!visibilityCheckEnabled || !document.hidden) return;
   
-  // ✅ Chống spam: chỉ ghi nhận 1 lần mỗi 2 giây
   const now = Date.now();
   if (now - lastViolationTime < VIOLATION_COOLDOWN) {
     console.log('⏳ Vi phạm bị bỏ qua (cooldown)');
@@ -117,7 +179,6 @@ async function handleLogin(password) {
   return data;
 }
 // ====================== TEACHER FUNCTIONS ======================
-
 async function loadExamList() {
   const listDiv = document.getElementById('examList');
   if (!listDiv) {
@@ -215,7 +276,6 @@ async function loadSubmissions() {
   listDiv.innerHTML = '<p class="empty-state">Đang tải...</p>';
   console.log('🔄 Fetching /student/submissions...');
 
-  
   try {
     const res = await fetch('/student/submissions');
     const data = await res.json();
@@ -245,8 +305,8 @@ async function loadSubmissions() {
     listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
   }
 }
-// ====================== MODAL EXAM DETAIL ======================
 
+// ====================== MODAL CHI TIẾT ĐỀ ======================
 async function openExamDetail(examId) {
   try {
     console.log('📖 Loading exam:', examId);
@@ -410,8 +470,8 @@ async function attachImage(examId, qid) {
     alert('❌ Lỗi: ' + err.message);
   }
 }
-// ====================== MODAL ACTIONS ======================
 
+// ====================== MODAL ACTIONS ======================
 function setupModalButtons(examId) {
   document.getElementById('saveAnswers').onclick = async () => {
     try {
@@ -497,7 +557,6 @@ function setupModalButtons(examId) {
   };
 }
 // ====================== STUDENT FUNCTIONS ======================
-
 async function loadLatestExamVariant() {
   const res = await fetch('/exam/latest-variant');
   const data = await res.json();
@@ -516,7 +575,6 @@ async function verifyExamPassword(examId, password) {
 }
 
 function startExamTimer(timeMinutes) {
-  // ✅ GHI NHẬN THỜI GIAN BẮT ĐẦU
   examStartTime = Date.now();
   console.log('⏱️ Bắt đầu làm bài:', new Date(examStartTime).toLocaleString('vi-VN'));
   
@@ -540,9 +598,7 @@ function startExamTimer(timeMinutes) {
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
-  questionKeyMapping = {}; // Reset mapping
-  
-  // ✅ LƯU ĐỀ VÀO BIẾN GLOBAL để submit sau
+  questionKeyMapping = {};
   window.currentExamData = exam;
   
   console.log('📝 Rendering exam:', exam.id);
@@ -550,7 +606,7 @@ function renderExam(exam) {
   
   (exam.questions || []).forEach((q, index) => {
     const displayIndex = index + 1;
-    questionKeyMapping[displayIndex] = String(q.id); // ✅ Lưu mapping
+    questionKeyMapping[displayIndex] = String(q.id);
     
     console.log(`📍 Câu ${displayIndex}: originalID="${q.id}"`);
     
@@ -558,7 +614,6 @@ function renderExam(exam) {
     qDiv.className = 'question-item';
     let optionsHtml = '';
     
-    // ✅ SỬ DỤNG displayIndex cho input name (KHÔNG dùng q.id)
     if (q.type === 'multiple_choice') {
       const options = q.options || [];
       console.log(`  └─ Options:`, options.map(o => `${o.key}. ${o.text.substring(0,20)}...`));
@@ -617,12 +672,11 @@ function renderExam(exam) {
   console.log('✅ Mapping:', questionKeyMapping);
   console.log('✅ Đã lưu đề vào window.currentExamData');
 }
-// ====================== SUBMIT EXAM (CÓ TRACKING THỜI GIAN) ======================
 
+// ====================== SUBMIT EXAM ======================
 async function submitExam(autoSubmit = false) {
   if (!autoSubmit && !confirm('Nộp bài?')) return;
   
-  // ✅ GHI NHẬN THỜI GIAN KẾT THÚC
   const examEndTime = Date.now();
   console.log('⏱️ Kết thúc làm bài:', new Date(examEndTime).toLocaleString('vi-VN'));
   
@@ -640,7 +694,6 @@ async function submitExam(autoSubmit = false) {
       options: q.options?.map(o => `${o.key}:${o.text.substring(0,15)}`)
   })));
 
-  // ✅ THU THẬP ĐÁP ÁN VÀ MAP VỀ ORIGINAL ID
   document.querySelectorAll('[name^="q_"]').forEach(input => {
     const isValid = (input.type === 'radio' && input.checked) || 
                     (input.type === 'text' && input.value.trim());
@@ -650,7 +703,6 @@ async function submitExam(autoSubmit = false) {
     const nm = input.name;
     const val = input.value.trim();
     
-    // Parse displayIndex từ input name
     const matchMain = nm.match(/^q_(\d+)$/);
     const matchSub = nm.match(/^q_(\d+)_(\w+)$/);
     const matchShort = nm.match(/^q_(\d+)_(\d)$/);
@@ -660,7 +712,6 @@ async function submitExam(autoSubmit = false) {
     else if (matchSub) displayIndex = matchSub[1];
     else if (matchShort) displayIndex = matchShort[1];
     
-    // ✅ QUAN TRỌNG: Convert displayIndex → originalQuestionId
     const originalQid = questionKeyMapping[displayIndex] || displayIndex;
     
     console.log(`  ✓ Input name="${nm}" value="${val}" → displayIdx=${displayIndex} → qid="${originalQid}"`);
@@ -680,7 +731,6 @@ async function submitExam(autoSubmit = false) {
 
   console.log('📦 Đáp án cuối cùng (mapped về ID gốc):', answers);
 
-  // ✅ THÊM: Verify mapping trước khi gửi
   const verifyMapping = {};
   if (window.currentExamData?.questions) {
     window.currentExamData.questions.forEach(q => {
@@ -692,7 +742,6 @@ async function submitExam(autoSubmit = false) {
     console.log('🔍 Verify mapping:', verifyMapping);
   }
 
-  // ✅ GỬI KÈM THÔNG TIN ĐỀ ĐÃ TRỘN
   let examDataToSend = null;
   if (window.currentExamData && window.currentExamData.questions) {
     examDataToSend = {
@@ -720,8 +769,8 @@ async function submitExam(autoSubmit = false) {
         examId: currentExamId,
         violations,
         examData: examDataToSend,
-        startTime: examStartTime, // ✅ GỬI THỜI GIAN BẮT ĐẦU
-        endTime: examEndTime      // ✅ GỬI THỜI GIAN KẾT THÚC
+        startTime: examStartTime,
+        endTime: examEndTime
       })
     });
     const data = await res.json();
@@ -759,8 +808,7 @@ async function submitExam(autoSubmit = false) {
     alert('Lỗi: ' + err.message);
   }
 }
-// ====================== EVENT HANDLERS & INITIALIZATION ======================
-
+// ====================== EVENT HANDLERS ======================
 function setupEventHandlers() {
   const loginForm = document.getElementById('loginForm');
   const loginError = document.getElementById('loginError');
@@ -791,11 +839,12 @@ function setupEventHandlers() {
           showPage('studentInfoPage');
           document.getElementById('studentClass').value = result.className || '';
           
-          // ✅ Ghi nhớ: Tự động điền thông tin đã lưu
           const savedName = localStorage.getItem('studentName');
           const savedDOB = localStorage.getItem('studentDOB');
           if (savedName) document.getElementById('studentName').value = savedName;
           if (savedDOB) document.getElementById('studentDOB').value = savedDOB;
+          
+          setupCustomDateInput(); // ✅ Setup custom date input
           
           const exam = await loadLatestExamVariant();
           currentExamId = exam.id;
@@ -839,17 +888,29 @@ function setupEventHandlers() {
       studentInfoError.classList.remove('show');
       const name = document.getElementById('studentName').value.trim();
       const dob = document.getElementById('studentDOB').value;
+      
       if (!name || !dob) {
         studentInfoError.textContent = 'Điền đầy đủ thông tin';
         studentInfoError.classList.add('show');
         return;
       }
       
-      // ✅ Ghi nhớ: Lưu thông tin học sinh
+      // ✅ Validate format dd/mm/yyyy
+      const dobMatch = dob.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!dobMatch) {
+        studentInfoError.textContent = 'Định dạng ngày sinh không đúng (dd/mm/yyyy)';
+        studentInfoError.classList.add('show');
+        return;
+      }
+      
+      // ✅ Convert dd/mm/yyyy → yyyy-mm-dd để gửi server
+      const dobISO = `${dobMatch[3]}-${dobMatch[2]}-${dobMatch[1]}`;
+      
       localStorage.setItem('studentName', name);
       localStorage.setItem('studentDOB', dob);
       
-      currentStudentInfo = { name, dob };
+      currentStudentInfo = { name, dob: dobISO };
+      
       try {
         const exam = await loadLatestExamVariant();
         currentExamId = exam.id;
@@ -939,10 +1000,11 @@ function setupEventHandlers() {
 
 // ====================== INITIALIZATION ======================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 App initialized - FINAL VERSION WITH TIME TRACKING');
-  console.log('✅ Vi phạm: 3 lần (có cooldown 2s)');
-  console.log('✅ Chấm điểm: So sánh nội dung đáp án (không phải key)');
-  console.log('✅ Tracking: Thời gian bắt đầu + kết thúc + thời gian làm bài');
+  console.log('🚀 App initialized - FINAL VERSION WITH CUSTOM DATE INPUT');
+  console.log('✅ Custom date input: dd/mm/yyyy (numeric keyboard on mobile)');
+  console.log('✅ Chấm điểm: So sánh nội dung đáp án');
+  console.log('✅ Tracking: Start/End/Duration');
+  console.log('✅ Violations: 3 lần, cooldown 2s');
   console.log('✅ Ghi nhớ: localStorage tên + ngày sinh');
   showPage('loginPage');
   setupEventHandlers();
