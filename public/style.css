@@ -900,37 +900,51 @@ body {
   }
   
   .login-box {
-    padding: 24px 20px;
-    max-width: 380px;
+    padding: 28px 24px;
+    max-width: 90%;
   }
   
   .logo {
-    width: 52px;
-    height: 52px;
-    margin-bottom: 12px;
+    width: 60px;
+    height: 60px;
+    margin-bottom: 16px;
   }
   
   .logo svg {
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
   }
   
   .login-box h1 {
-    font-size: 23px;
+    font-size: 26px;
   }
   
   .subtitle {
-    font-size: 13px;
-    margin-bottom: 20px;
+    font-size: 14px;
+    margin-bottom: 22px;
+  }
+  
+  .input-group {
+    margin-bottom: 16px;
+  }
+  
+  .input-group input {
+    padding: 12px 38px 12px 12px;
+    font-size: 15px;
+  }
+  
+  .btn {
+    padding: 12px 20px;
+    font-size: 15px;
   }
   
   .info-text {
-    margin-top: 16px;
-    padding-top: 12px;
+    margin-top: 18px;
+    padding-top: 14px;
   }
   
   .info-text p {
-    font-size: 12px;
+    font-size: 13px;
   }
   
   .header {
@@ -962,12 +976,14 @@ body {
   }
   
   .modal-content {
-    padding: 20px;
+    padding: 20px 20px 0 20px;
     max-height: 90vh;
   }
   
   .modal-actions {
     flex-direction: column;
+    padding: 16px 20px;
+    margin: 0 -20px;
   }
   
   .modal-actions .btn {
