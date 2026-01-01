@@ -508,6 +508,11 @@ async function openExamDetail(examId) {
     modal.style.display = 'block';
     setupModalButtons(examId);
     console.log('✅ Modal opened');
+    
+    // ✅ Render công thức MathJax
+    setTimeout(() => {
+      if (window.renderMath) window.renderMath();
+    }, 100);
   } catch (err) {
     console.error('❌ openExamDetail error:', err);
     alert('Lỗi tải chi tiết: ' + err.message);
@@ -767,6 +772,11 @@ function renderExam(exam) {
   
   console.log('✅ Mapping:', questionKeyMapping);
   console.log('✅ Đã lưu đề vào window.currentExamData');
+  
+  // ✅ Render công thức MathJax
+  setTimeout(() => {
+    if (window.renderMath) window.renderMath();
+  }, 100);
 }
 
 // ====================== SUBMIT EXAM ======================
