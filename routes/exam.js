@@ -1,4 +1,3 @@
-// routes/exam.js - FIXED ROUTE ORDER
 import express from 'express';
 import multer from 'multer';
 import mammoth from 'mammoth';
@@ -6,10 +5,10 @@ import fs from 'fs';
 import path from 'path';
 import JSZip from 'jszip';
 import { DOMParser } from '@xmldom/xmldom';
-import omml2mathml from 'omml2mathml';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadToDrive, deleteFromDrive, downloadFromDrive } from '../utils/driveHelper.js';
 import { parseExamContent, flattenSections } from '../utils/parseExamContent.js';
+import { wrapMathInHTML } from '../utils/mathParser.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
@@ -118,15 +117,53 @@ function makeRuntimeVariant(baseExam) {
   };
 }
 
-// ==================== ROUTES - ĐÚNG THỨ TỰ ====================
-
-// ✅ 1. UPLOAD (POST /exam/upload)
+// ✅ UPLOAD với parse công thức từ Word
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
 
+    console.log('📄 Processing Word file:', req.file.originalname);
+
+    // Đọc file Word dưới dạng ZIP để truy cập XML
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const zip = await JSZip.loadAsync(fileBuffer);
+    
+    // Đọc document.xml để lấy công thức OMML
+    const docXml = await zip.file('word/document.xml').async('string');
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(docXml, 'text/xml');
+    
+    // Parse text với mammoth (để lấy plain text)
     const raw = await mammoth.extractRawText({ path: req.file.path });
-    const text = raw.value || '';
+    let text = raw.value || '';
+    
+    // ✅ Tìm và thay thế công thức OMML bằng LaTeX
+    const mathNodes = doc.getElementsByTagNameNS('http://schemas.openxmlformats.org/officeDocument/2006/math', 'oMath');
+    console.log(`📐 Found ${mathNodes.length} math equations`);
+    
+    if (mathNodes.length > 0) {
+      // Import omml2mathml để convert
+      const omml2mathml = (await import('omml2mathml')).default;
+      
+      for (let i = 0; i < mathNodes.length; i++) {
+        try {
+          const ommlString = new XMLSerializer().serializeToString(mathNodes[i]);
+          const mathml = omml2mathml(ommlString);
+          
+          // Chuyển MathML sang LaTeX đơn giản (hoặc dùng thư viện chuyên dụng)
+          const latex = mathMLToLatex(mathml);
+          
+          if (latex) {
+            // Thêm delimiter LaTeX
+            text = text.replace('[EQUATION]', `$${latex}$`);
+            console.log(`✅ Converted equation ${i + 1}: ${latex}`);
+          }
+        } catch (err) {
+          console.error(`⚠️ Error converting equation ${i + 1}:`, err.message);
+        }
+      }
+    }
+    
     const sections = parseExamContent(text);
     
     if (!sections.length) {
@@ -143,6 +180,23 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       let id = q.id != null ? String(q.id) : String(nextId++);
       while (seen.has(id)) id = String(nextId++);
       seen.add(id);
+      
+      // ✅ Wrap công thức trong HTML để hiển thị
+      if (q.question) q.question = wrapMathInHTML(q.question);
+      if (q.text) q.text = wrapMathInHTML(q.text);
+      if (q.options) {
+        q.options = q.options.map(opt => ({
+          ...opt,
+          text: wrapMathInHTML(opt.text)
+        }));
+      }
+      if (q.subQuestions) {
+        q.subQuestions = q.subQuestions.map(sub => ({
+          ...sub,
+          text: wrapMathInHTML(sub.text)
+        }));
+      }
+      
       return { ...q, id };
     });
 
@@ -195,7 +249,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       examId, 
       count: baseQuestions.length, 
       variantCount: cfg.variantCount, 
-      savedToDrive: !!driveResult 
+      savedToDrive: !!driveResult,
+      mathCount: mathNodes.length
     });
   } catch (e) {
     console.error('❌ Upload error:', e);
@@ -203,6 +258,38 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
+// Helper: Convert MathML sang LaTeX đơn giản
+function mathMLToLatex(mathml) {
+  if (!mathml) return '';
+  
+  try {
+    // Xử lý cơ bản - có thể dùng thư viện chuyên dụng như mathml-to-latex
+    let latex = mathml
+      .replace(/<mfrac>/g, '\\frac{')
+      .replace(/<\/mfrac>/g, '}')
+      .replace(/<msup>/g, '^{')
+      .replace(/<\/msup>/g, '}')
+      .replace(/<msub>/g, '_{')
+      .replace(/<\/msub>/g, '}')
+      .replace(/<msqrt>/g, '\\sqrt{')
+      .replace(/<\/msqrt>/g, '}')
+      .replace(/<mi>(.*?)<\/mi>/g, '$1')
+      .replace(/<mn>(.*?)<\/mn>/g, '$1')
+      .replace(/<mo>(.*?)<\/mo>/g, '$1')
+      .replace(/<mrow>/g, '{')
+      .replace(/<\/mrow>/g, '}')
+      .replace(/<math[^>]*>/g, '')
+      .replace(/<\/math>/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    return latex;
+  } catch (err) {
+    console.error('MathML to LaTeX error:', err);
+    return '';
+  }
+}
 
 // ✅ 2. LIST - PHẢI ĐẶT TRƯỚC /:id
 router.get('/list', (req, res) => {
