@@ -138,9 +138,9 @@ function recordViolation(reason) {
   showViolationWarning();
 
   if (violations === 1) {
-    alert(`⚠️ Vi phạm lần 1 (${reason})! Còn 2 lần nữa sẽ bị thu bài.`);
+    alert(`⚠️ Vi phạm lần 1 (${reason})! Lo mà làm đàng hoàng đi, còn 2 lần nữa sẽ bị thu bài.`);
   } else if (violations === 2) {
-    alert(`⚠️ Vi phạm lần 2 (${reason})! Còn 1 lần nữa sẽ bị thu bài.`);
+    alert(`⚠️ Vi phạm lần 2 (${reason})! Đã nói rồi còn vi phạm, 1 lần nữa sẽ bị thu bài.`);
   } else if (violations >= 3) {
     alert(`⛔ Vi phạm 3 lần! Tự động nộp bài với điểm 0.`);
     submitExam(true);
