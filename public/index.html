@@ -57,8 +57,8 @@
         </form>
         <div id="loginError" class="error-message"></div>
         <div class="info-text">
-          <p>💡 <strong>Giáo viên:</strong> Chắc chắn biết mật khẩu rồi</p>
-          <p>📚 <strong>Học sinh:</strong> Kiếm mật khẩu nhập vào lẹ lên</p>
+          <p>💡 <strong>Giáo viên:</strong> Sử dụng mật khẩu giáo viên</p>
+          <p>📚 <strong>Học sinh:</strong> Sử dụng mật khẩu lớp học</p>
         </div>
       </div>
     </div>
@@ -168,7 +168,7 @@
           <form id="studentInfoForm">
             <div class="form-group">
               <label>Họ và tên *</label>
-              <input type="text" id="studentName" placeholder="Ghi đầy đủ họ và tên" required />
+              <input type="text" id="studentName" placeholder="Nguyễn Văn A" required />
             </div>
             <div class="form-group">
               <label>Ngày sinh *</label>
@@ -221,7 +221,12 @@
 
   <!-- FOOTER -->
   <footer class="footer">
-    <p> NMT – Dùng AI code ra web này đó </p>
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+      <p style="margin: 0;">NMT – Dùng AI code ra web này đó</p>
+      <button id="helpBtn" style="background: none; border: none; color: var(--text-light); font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;">
+        Wanna Help? 🆘
+      </button>
+    </div>
   </footer>
 
   <script src="main.js?v=20251218"></script>
@@ -240,6 +245,103 @@
     // Auto-render sau 500ms (đợi content load xong)
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => window.renderMath(), 500);
+    });
+    
+    // ✅ Troll "Wanna Help" button
+    document.getElementById('helpBtn')?.addEventListener('click', () => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0,0,0,0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        animation: fadeIn 0.3s ease;
+      `;
+      
+      const box = document.createElement('div');
+      box.style.cssText = `
+        background: white;
+        padding: 50px 40px;
+        border-radius: 20px;
+        text-align: center;
+        max-width: 600px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: bounceIn 0.5s ease;
+      `;
+      
+      box.innerHTML = `
+        <div style="font-size: 64px; margin-bottom: 20px;">🤣</div>
+        <h2 style="font-size: 32px; color: #ef4444; margin-bottom: 20px; font-weight: bold;">
+          BẠN THẬT SỰ CẦN GIÚP ĐỠ?
+        </h2>
+        <p style="font-size: 24px; color: #1e293b; line-height: 1.6; margin-bottom: 30px;">
+          Thì <strong style="color: #2563eb;">LA LÀNG LÊN</strong> vì tôi đang <strong style="color: #10b981;">TRƯỚC MẶT</strong> bạn 😂😂😂
+        </p>
+        <button id="closeHelp" style="
+          background: linear-gradient(135deg, #ef4444, #dc2626);
+          color: white;
+          border: none;
+          padding: 15px 40px;
+          font-size: 18px;
+          font-weight: bold;
+          border-radius: 50px;
+          cursor: pointer;
+          box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+          transition: all 0.3s;
+        ">
+          OK OK TÔI HIỂU RỒI 🙈
+        </button>
+      `;
+      
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      
+      // Thêm CSS animations
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes bounceIn {
+          0% { transform: scale(0.3); opacity: 0; }
+          50% { transform: scale(1.05); }
+          70% { transform: scale(0.9); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        #closeHelp:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5) !important;
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // Close khi click button hoặc overlay
+      document.getElementById('closeHelp').onclick = () => {
+        overlay.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => overlay.remove(), 300);
+      };
+      
+      overlay.onclick = (e) => {
+        if (e.target === overlay) {
+          overlay.style.animation = 'fadeOut 0.3s ease';
+          setTimeout(() => overlay.remove(), 300);
+        }
+      };
+      
+      // Thêm fadeOut animation
+      style.textContent += `
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+      `;
     });
   </script>
 </body>
