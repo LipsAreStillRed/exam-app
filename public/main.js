@@ -420,40 +420,86 @@ async function openExamDetail(examId) {
 
       div.appendChild(optsDiv);
       
-      // ✅ FIXED: Nút upload ảnh đơn giản hơn
+      // ✅ FIXED: Nút upload/xóa ảnh
       const uploadDiv = document.createElement('div');
       uploadDiv.style.marginTop = '12px';
-      uploadDiv.innerHTML = `
-        <input type="file" id="img_${q.id}" accept="image/*" style="display:none;">
-        <button class="btn btn-secondary" style="padding:6px 14px;font-size:13px;">
-          📷 ${q.image ? 'Thay ảnh' : 'Thêm ảnh'}
-        </button>
-      `;
+      uploadDiv.style.display = 'flex';
+      uploadDiv.style.gap = '8px';
+      uploadDiv.style.alignItems = 'center';
+      
+      if (q.image) {
+        // Có ảnh rồi -> hiển thị nút "Thay ảnh" và "Xóa ảnh"
+        uploadDiv.innerHTML = `
+          <input type="file" id="img_${q.id}" accept="image/*" style="display:none;">
+          <button class="btn btn-secondary" id="change_${q.id}" style="padding:6px 14px;font-size:13px;">
+            📷 Thay ảnh
+          </button>
+          <button class="btn btn-danger" id="delete_${q.id}" style="padding:6px 14px;font-size:13px;">
+            🗑️ Xóa ảnh
+          </button>
+        `;
+      } else {
+        // Chưa có ảnh -> chỉ hiển thị nút "Thêm ảnh"
+        uploadDiv.innerHTML = `
+          <input type="file" id="img_${q.id}" accept="image/*" style="display:none;">
+          <button class="btn btn-secondary" id="add_${q.id}" style="padding:6px 14px;font-size:13px;">
+            📷 Thêm ảnh
+          </button>
+        `;
+      }
       
       const fileInput = uploadDiv.querySelector(`#img_${q.id}`);
-      const uploadBtn = uploadDiv.querySelector('button');
+      const changeBtn = uploadDiv.querySelector(`#change_${q.id}`);
+      const deleteBtn = uploadDiv.querySelector(`#delete_${q.id}`);
+      const addBtn = uploadDiv.querySelector(`#add_${q.id}`);
       
-      // Click nút -> mở file picker -> tự động upload
-      uploadBtn.onclick = () => fileInput.click();
-      fileInput.onchange = async () => {
-        if (!fileInput.files[0]) return;
-        
-        uploadBtn.disabled = true;
-        uploadBtn.textContent = '⏳ Đang tải...';
-        
-        try {
-          await attachImage(examId, q.id, fileInput);
-          uploadBtn.textContent = '✅ Đã cập nhật';
-          setTimeout(() => {
-            uploadBtn.textContent = '📷 Thay ảnh';
+      // Upload ảnh mới
+      if (changeBtn || addBtn) {
+        const uploadBtn = changeBtn || addBtn;
+        uploadBtn.onclick = () => fileInput.click();
+        fileInput.onchange = async () => {
+          if (!fileInput.files[0]) return;
+          
+          uploadBtn.disabled = true;
+          uploadBtn.textContent = '⏳ Đang tải...';
+          
+          try {
+            await attachImage(examId, q.id, fileInput);
+            uploadBtn.textContent = '✅ Đã cập nhật';
+            setTimeout(() => {
+              closeExamDetail();
+              openExamDetail(examId);
+            }, 1000);
+          } catch (err) {
+            uploadBtn.textContent = '❌ Lỗi';
             uploadBtn.disabled = false;
-          }, 2000);
-        } catch (err) {
-          uploadBtn.textContent = '❌ Lỗi';
-          uploadBtn.disabled = false;
-          alert('Lỗi upload: ' + err.message);
-        }
-      };
+            alert('Lỗi upload: ' + err.message);
+          }
+        };
+      }
+      
+      // Xóa ảnh
+      if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+          if (!confirm('Xóa ảnh này?')) return;
+          
+          deleteBtn.disabled = true;
+          deleteBtn.textContent = '⏳ Đang xóa...';
+          
+          try {
+            await deleteImage(examId, q.id);
+            deleteBtn.textContent = '✅ Đã xóa';
+            setTimeout(() => {
+              closeExamDetail();
+              openExamDetail(examId);
+            }, 1000);
+          } catch (err) {
+            deleteBtn.textContent = '❌ Lỗi';
+            deleteBtn.disabled = false;
+            alert('Lỗi xóa ảnh: ' + err.message);
+          }
+        };
+      }
       
       div.appendChild(uploadDiv);
       content.appendChild(div);
@@ -492,11 +538,22 @@ async function attachImage(examId, qid, fileInput) {
   }
   
   console.log('✅ Ảnh đã upload:', result.url);
+  return result;
+}
+
+// ✅ NEW: Xóa ảnh
+async function deleteImage(examId, qid) {
+  const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, {
+    method: 'DELETE'
+  });
   
-  // Reload lại modal để hiển thị ảnh mới
-  closeExamDetail();
-  await openExamDetail(examId);
+  const result = await res.json();
   
+  if (!result.ok) {
+    throw new Error(result.error || 'Không xóa được');
+  }
+  
+  console.log('✅ Ảnh đã xóa');
   return result;
 }
 
@@ -1051,3 +1108,4 @@ window.closeExamDetail = closeExamDetail;
 window.loadExamList = loadExamList;
 window.loadSubmissions = loadSubmissions;
 window.attachImage = attachImage;
+window.deleteImage = deleteImage;
