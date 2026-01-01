@@ -3,12 +3,9 @@ import multer from 'multer';
 import mammoth from 'mammoth';
 import fs from 'fs';
 import path from 'path';
-import JSZip from 'jszip';
-import { DOMParser } from '@xmldom/xmldom';
 import { v4 as uuidv4 } from 'uuid';
 import { uploadToDrive, deleteFromDrive, downloadFromDrive } from '../utils/driveHelper.js';
 import { parseExamContent, flattenSections } from '../utils/parseExamContent.js';
-import { wrapMathInHTML } from '../utils/mathParser.js';
 
 const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
@@ -117,52 +114,22 @@ function makeRuntimeVariant(baseExam) {
   };
 }
 
-// ✅ UPLOAD với parse công thức từ Word
+// ✅ UPLOAD - Đơn giản hơn, chỉ cần preserve $...$ từ Word
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
 
     console.log('📄 Processing Word file:', req.file.originalname);
 
-    // Đọc file Word dưới dạng ZIP để truy cập XML
-    const fileBuffer = fs.readFileSync(req.file.path);
-    const zip = await JSZip.loadAsync(fileBuffer);
-    
-    // Đọc document.xml để lấy công thức OMML
-    const docXml = await zip.file('word/document.xml').async('string');
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(docXml, 'text/xml');
-    
-    // Parse text với mammoth (để lấy plain text)
+    // Parse text với mammoth - giữ nguyên các ký tự đặc biệt
     const raw = await mammoth.extractRawText({ path: req.file.path });
     let text = raw.value || '';
     
-    // ✅ Tìm và thay thế công thức OMML bằng LaTeX
-    const mathNodes = doc.getElementsByTagNameNS('http://schemas.openxmlformats.org/officeDocument/2006/math', 'oMath');
-    console.log(`📐 Found ${mathNodes.length} math equations`);
+    console.log('📝 Extracted text length:', text.length);
     
-    if (mathNodes.length > 0) {
-      // Import omml2mathml để convert
-      const omml2mathml = (await import('omml2mathml')).default;
-      
-      for (let i = 0; i < mathNodes.length; i++) {
-        try {
-          const ommlString = new XMLSerializer().serializeToString(mathNodes[i]);
-          const mathml = omml2mathml(ommlString);
-          
-          // Chuyển MathML sang LaTeX đơn giản (hoặc dùng thư viện chuyên dụng)
-          const latex = mathMLToLatex(mathml);
-          
-          if (latex) {
-            // Thêm delimiter LaTeX
-            text = text.replace('[EQUATION]', `$${latex}$`);
-            console.log(`✅ Converted equation ${i + 1}: ${latex}`);
-          }
-        } catch (err) {
-          console.error(`⚠️ Error converting equation ${i + 1}:`, err.message);
-        }
-      }
-    }
+    // Đếm số công thức (đếm cặp $...$)
+    const mathCount = (text.match(/\$[^$]+\$/g) || []).length;
+    console.log(`📐 Found ${mathCount} math expressions`);
     
     const sections = parseExamContent(text);
     
@@ -180,23 +147,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       let id = q.id != null ? String(q.id) : String(nextId++);
       while (seen.has(id)) id = String(nextId++);
       seen.add(id);
-      
-      // ✅ Wrap công thức trong HTML để hiển thị
-      if (q.question) q.question = wrapMathInHTML(q.question);
-      if (q.text) q.text = wrapMathInHTML(q.text);
-      if (q.options) {
-        q.options = q.options.map(opt => ({
-          ...opt,
-          text: wrapMathInHTML(opt.text)
-        }));
-      }
-      if (q.subQuestions) {
-        q.subQuestions = q.subQuestions.map(sub => ({
-          ...sub,
-          text: wrapMathInHTML(sub.text)
-        }));
-      }
-      
       return { ...q, id };
     });
 
@@ -242,7 +192,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     fs.unlinkSync(req.file.path);
-    console.log(`✅ Upload complete: ${baseQuestions.length} questions, ${cfg.variantCount} variants`);
+    console.log(`✅ Upload complete: ${baseQuestions.length} questions, ${mathCount} math expressions`);
     
     res.json({ 
       ok: true, 
@@ -250,7 +200,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       count: baseQuestions.length, 
       variantCount: cfg.variantCount, 
       savedToDrive: !!driveResult,
-      mathCount: mathNodes.length
+      mathCount
     });
   } catch (e) {
     console.error('❌ Upload error:', e);
@@ -258,38 +208,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
-// Helper: Convert MathML sang LaTeX đơn giản
-function mathMLToLatex(mathml) {
-  if (!mathml) return '';
-  
-  try {
-    // Xử lý cơ bản - có thể dùng thư viện chuyên dụng như mathml-to-latex
-    let latex = mathml
-      .replace(/<mfrac>/g, '\\frac{')
-      .replace(/<\/mfrac>/g, '}')
-      .replace(/<msup>/g, '^{')
-      .replace(/<\/msup>/g, '}')
-      .replace(/<msub>/g, '_{')
-      .replace(/<\/msub>/g, '}')
-      .replace(/<msqrt>/g, '\\sqrt{')
-      .replace(/<\/msqrt>/g, '}')
-      .replace(/<mi>(.*?)<\/mi>/g, '$1')
-      .replace(/<mn>(.*?)<\/mn>/g, '$1')
-      .replace(/<mo>(.*?)<\/mo>/g, '$1')
-      .replace(/<mrow>/g, '{')
-      .replace(/<\/mrow>/g, '}')
-      .replace(/<math[^>]*>/g, '')
-      .replace(/<\/math>/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-    
-    return latex;
-  } catch (err) {
-    console.error('MathML to LaTeX error:', err);
-    return '';
-  }
-}
 
 // ✅ 2. LIST - PHẢI ĐẶT TRƯỚC /:id
 router.get('/list', (req, res) => {
@@ -337,7 +255,6 @@ router.get('/list', (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
-
 // ✅ 3. LATEST - PHẢI ĐẶT TRƯỚC /:id
 router.get('/latest', (req, res) => {
   const dir = ensureDir();
@@ -351,7 +268,6 @@ router.get('/latest', (req, res) => {
                       .sort((a, b) => b.createdAt - a.createdAt)[0];
   res.json({ ok: true, exam: latest });
 });
-
 // ✅ 4. LATEST-VARIANT - PHẢI ĐẶT TRƯỚC /:id
 router.get('/latest-variant', (req, res) => {
   const dir = ensureDir();
@@ -375,7 +291,6 @@ router.get('/latest-variant', (req, res) => {
   };
   res.json({ ok: true, exam: examForStudent });
 });
-
 // ✅ 5. VERIFY-PASSWORD - PHẢI ĐẶT TRƯỚC /:id
 router.post('/verify-password', (req, res) => {
   const { examId, password } = req.body;
@@ -385,7 +300,6 @@ router.post('/verify-password', (req, res) => {
   const verified = !exam.password || exam.password === password;
   res.json({ ok: verified });
 });
-
 // ✅ 6. CORRECT-ANSWERS
 router.post('/:id/correct-answers', async (req, res) => {
   try {
@@ -434,7 +348,6 @@ router.post('/:id/correct-answers', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 // ✅ 7. VARIANTS
 router.get('/:id/variants', (req, res) => {
   const exam = readExam(req.params.id);
@@ -443,7 +356,6 @@ router.get('/:id/variants', (req, res) => {
   }
   res.json(exam.variants || []);
 });
-
 // ✅ 8. DELETE
 router.delete('/:id', async (req, res) => {
   try {
@@ -469,7 +381,6 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
 // ✅ 9. GET BY ID - PHẢI ĐẶT CUỐI CÙNG
 router.get('/:id', async (req, res) => {
   const baseId = String(req.params.id);
