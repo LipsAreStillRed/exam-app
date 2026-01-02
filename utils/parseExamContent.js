@@ -1,4 +1,54 @@
-// utils/parseExamContent.js
+// utils/parseExamContent.js - ✅ FIXED VERSION
+// Hỗ trợ parse công thức toán học từ Word
+
+/**
+ * Chuyển đổi công thức từ Word sang LaTeX
+ * - Từ Word: T (K)=t(_(^0)C)+273 hoặc ${2,3.10}^{6}$
+ * - Ra LaTeX: $T(K) = t(°C) + 273$ hoặc $2.3 \times 10^6$
+ */
+function cleanMathFormula(text) {
+  if (!text) return text;
+  
+  let result = text;
+  
+  // ✅ Fix 1: Chuyển _(^0) thành ° (độ)
+  result = result.replace(/\(_\{\}\^\{0\}\{?([A-Z])\}?\)/g, '°$1');
+  result = result.replace(/\(_\^\{?0\}?\{?([A-Z])\}?\)/g, '°$1');
+  result = result.replace(/\^\{?0\}?\{?([A-Z])\}/g, '°$1');
+  
+  // ✅ Fix 2: Chuyển {} thành dấu nhân
+  result = result.replace(/\{([0-9,.]+)\.([0-9]+)\}\^\{([0-9]+)\}/g, '$1 \\times 10^{$3}');
+  result = result.replace(/〖([^〗]+)〗/g, '$1');
+  
+  // ✅ Fix 3: Loại bỏ các ký tự Word thừa
+  result = result.replace(/\\_\{\}/g, '_');
+  result = result.replace(/\\\$/g, '');
+  result = result.replace(/\\ +/g, ' ');
+  
+  return result;
+}
+
+/**
+ * Wrap công thức trong $...$ để MathJax render
+ */
+function wrapMathInDollar(text) {
+  if (!text) return text;
+  
+  // Nếu đã có $ thì giữ nguyên
+  if (text.includes('$')) {
+    return cleanMathFormula(text);
+  }
+  
+  // Detect công thức (có các ký tự đặc biệt)
+  const hasMath = /[_^{}\\]|\\times|\\frac|\\sqrt/i.test(text);
+  
+  if (hasMath) {
+    return `$${cleanMathFormula(text)}$`;
+  }
+  
+  return text;
+}
+
 export function parseExamContent(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const sections = [];
@@ -7,10 +57,28 @@ export function parseExamContent(text) {
 
   const pushQuestion = () => {
     if (currentQuestion && currentSection) {
+      // ✅ Clean công thức trước khi lưu
+      if (currentQuestion.question) {
+        currentQuestion.question = wrapMathInDollar(currentQuestion.question);
+      }
+      if (currentQuestion.options) {
+        currentQuestion.options = currentQuestion.options.map(opt => ({
+          ...opt,
+          text: wrapMathInDollar(opt.text)
+        }));
+      }
+      if (currentQuestion.subQuestions) {
+        currentQuestion.subQuestions = currentQuestion.subQuestions.map(sub => ({
+          ...sub,
+          text: wrapMathInDollar(sub.text)
+        }));
+      }
+      
       currentSection.questions.push(currentQuestion);
       currentQuestion = null;
     }
   };
+  
   const pushSection = () => {
     if (currentSection) {
       pushQuestion();
@@ -63,7 +131,6 @@ export function parseExamContent(text) {
 }
 
 export function flattenSections(sections) {
-  // gắn part index để render “Câu 1, Câu 2…” theo thứ tự hiển thị sau trộn
   let idx = 0;
   return sections.flatMap(sec => {
     return sec.questions.map(q => ({
