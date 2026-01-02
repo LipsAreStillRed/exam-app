@@ -114,22 +114,63 @@ function makeRuntimeVariant(baseExam) {
   };
 }
 
-// ✅ UPLOAD - Đơn giản hơn, chỉ cần preserve $...$ từ Word
+// ✅ HELPER: Clean text từ Word
+function cleanWordText(text) {
+  if (!text) return text;
+  
+  let cleaned = text;
+  
+  // ✅ Fix 1: Chuyển ^0^C → °C
+  cleaned = cleaned.replace(/\^0\^([A-Z])/g, '°$1');
+  
+  // ✅ Fix 2: Chuyển {2,3.10}^{6} → 2.3×10⁶
+  cleaned = cleaned.replace(/\{([0-9,]+)\.([0-9]+)\}\^\{([0-9]+)\}/g, (match, p1, p2, p3) => {
+    return `${p1}.${p2}×10^${p3}`;
+  });
+  
+  // ✅ Fix 3: Loại bỏ 〖...〗
+  cleaned = cleaned.replace(/〖([^〗]+)〗/g, '$1');
+  
+  // ✅ Fix 4: Wrap công thức trong $...$
+  // Pattern: Nếu có ký tự đặc biệt mà chưa có $
+  if (!cleaned.includes('$') && /[×·°^_{}\\]/.test(cleaned)) {
+    cleaned = `$${cleaned}$`;
+  }
+  
+  // ✅ Fix 5: Clean $...$ bị lỗi
+  cleaned = cleaned.replace(/\$([^$]+)\$/g, (match, inner) => {
+    let fixed = inner
+      .replace(/\\ +/g, ' ')                           // Loại bỏ \ thừa
+      .replace(/_\{\}\^\{0\}\{([A-Z])\}/g, '°$1')     // _(^0){C} → °C
+      .replace(/\(_\{\}\^\{0\}\{([A-Z])\)/g, '°$1')   // (_(^0){C) → °C
+      .replace(/\{([A-Z])\}/g, '$1')                   // {C} → C
+      .replace(/\\ /g, ' ')
+      .trim();
+    return `$${fixed}$`;
+  });
+  
+  // ✅ Fix 6: Normalize spaces
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+  return cleaned;
+}
+
+// ✅ UPLOAD ROUTE - Apply cleanWordText
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
 
     console.log('📄 Processing Word file:', req.file.originalname);
 
-    // Parse text với mammoth - giữ nguyên các ký tự đặc biệt
+    // Parse text với mammoth
     const raw = await mammoth.extractRawText({ path: req.file.path });
     let text = raw.value || '';
     
     console.log('📝 Extracted text length:', text.length);
+    console.log('📝 Sample text:', text.substring(0, 500));
     
-    // Đếm số công thức (đếm cặp $...$)
-    const mathCount = (text.match(/\$[^$]+\$/g) || []).length;
-    console.log(`📐 Found ${mathCount} math expressions`);
+    // ✅ Clean text trước khi parse
+    text = cleanWordText(text);
     
     const sections = parseExamContent(text);
     
@@ -147,7 +188,21 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       let id = q.id != null ? String(q.id) : String(nextId++);
       while (seen.has(id)) id = String(nextId++);
       seen.add(id);
-      return { ...q, id };
+      
+      // ✅ Clean lại question và options
+      return { 
+        ...q, 
+        id,
+        question: cleanWordText(q.question || ''),
+        options: (q.options || []).map(opt => ({
+          ...opt,
+          text: cleanWordText(opt.text || '')
+        })),
+        subQuestions: (q.subQuestions || []).map(sub => ({
+          ...sub,
+          text: cleanWordText(sub.text || '')
+        }))
+      };
     });
 
     console.log(`✅ Parsed ${baseQuestions.length} questions from file`);
@@ -192,15 +247,14 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     fs.unlinkSync(req.file.path);
-    console.log(`✅ Upload complete: ${baseQuestions.length} questions, ${mathCount} math expressions`);
+    console.log(`✅ Upload complete: ${baseQuestions.length} questions`);
     
     res.json({ 
       ok: true, 
       examId, 
       count: baseQuestions.length, 
       variantCount: cfg.variantCount, 
-      savedToDrive: !!driveResult,
-      mathCount
+      savedToDrive: !!driveResult
     });
   } catch (e) {
     console.error('❌ Upload error:', e);
@@ -209,7 +263,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// ✅ 2. LIST - PHẢI ĐẶT TRƯỚC /:id
+// ✅ Các route khác giữ nguyên...
 router.get('/list', (req, res) => {
   try {
     console.log('📥 GET /exam/list called');
@@ -255,7 +309,7 @@ router.get('/list', (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
-// ✅ 3. LATEST - PHẢI ĐẶT TRƯỚC /:id
+
 router.get('/latest', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => {
@@ -268,7 +322,7 @@ router.get('/latest', (req, res) => {
                       .sort((a, b) => b.createdAt - a.createdAt)[0];
   res.json({ ok: true, exam: latest });
 });
-// ✅ 4. LATEST-VARIANT - PHẢI ĐẶT TRƯỚC /:id
+
 router.get('/latest-variant', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => {
@@ -291,7 +345,7 @@ router.get('/latest-variant', (req, res) => {
   };
   res.json({ ok: true, exam: examForStudent });
 });
-// ✅ 5. VERIFY-PASSWORD - PHẢI ĐẶT TRƯỚC /:id
+
 router.post('/verify-password', (req, res) => {
   const { examId, password } = req.body;
   const baseId = String(examId).split('_r')[0].split('_v')[0];
@@ -300,7 +354,7 @@ router.post('/verify-password', (req, res) => {
   const verified = !exam.password || exam.password === password;
   res.json({ ok: verified });
 });
-// ✅ 6. CORRECT-ANSWERS
+
 router.post('/:id/correct-answers', async (req, res) => {
   try {
     const baseId = String(req.params.id);
@@ -348,7 +402,7 @@ router.post('/:id/correct-answers', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-// ✅ 7. VARIANTS
+
 router.get('/:id/variants', (req, res) => {
   const exam = readExam(req.params.id);
   if (!exam) {
@@ -356,7 +410,7 @@ router.get('/:id/variants', (req, res) => {
   }
   res.json(exam.variants || []);
 });
-// ✅ 8. DELETE
+
 router.delete('/:id', async (req, res) => {
   try {
     const exam = readExam(req.params.id);
@@ -381,7 +435,7 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-// ✅ 9. GET BY ID - PHẢI ĐẶT CUỐI CÙNG
+
 router.get('/:id', async (req, res) => {
   const baseId = String(req.params.id);
   let exam = readExam(baseId);
