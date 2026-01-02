@@ -307,7 +307,7 @@ async function loadSubmissions() {
   }
 }
 
-// ====================== MODAL CHI TIẾT ĐỀ - ✅ FIXED UPLOAD ẢNH ======================
+// ✅ MODAL CHI TIẾT ĐỀ - THÊM NÚT SCROLL NHANH
 async function openExamDetail(examId) {
   try {
     console.log('📖 Loading exam:', examId);
@@ -329,6 +329,16 @@ async function openExamDetail(examId) {
     const modal = document.getElementById('examDetailModal');
     const content = document.getElementById('examDetailContent');
     content.innerHTML = `<h3>${exam.originalName || 'Đề thi'}</h3>`;
+
+    // ✅ THÊM NÚT SCROLL NHANH XUỐNG CUỐI
+    const scrollBtn = document.createElement('button');
+    scrollBtn.className = 'scroll-to-bottom';
+    scrollBtn.innerHTML = '⬇';
+    scrollBtn.title = 'Cuộn xuống cuối';
+    scrollBtn.onclick = () => {
+      content.scrollTo({ top: content.scrollHeight, behavior: 'smooth' });
+    };
+    content.appendChild(scrollBtn);
 
     const questions = exam.questions || [];
     if (questions.length === 0) {
@@ -420,7 +430,7 @@ async function openExamDetail(examId) {
 
       div.appendChild(optsDiv);
       
-      // ✅ FIXED: Nút upload/xóa ảnh
+      // Upload/Xóa ảnh
       const uploadDiv = document.createElement('div');
       uploadDiv.style.marginTop = '12px';
       uploadDiv.style.display = 'flex';
@@ -428,7 +438,6 @@ async function openExamDetail(examId) {
       uploadDiv.style.alignItems = 'center';
       
       if (q.image) {
-        // Có ảnh rồi -> hiển thị nút "Thay ảnh" và "Xóa ảnh"
         uploadDiv.innerHTML = `
           <input type="file" id="img_${q.id}" accept="image/*" style="display:none;">
           <button class="btn btn-secondary" id="change_${q.id}" style="padding:6px 14px;font-size:13px;">
@@ -439,7 +448,6 @@ async function openExamDetail(examId) {
           </button>
         `;
       } else {
-        // Chưa có ảnh -> chỉ hiển thị nút "Thêm ảnh"
         uploadDiv.innerHTML = `
           <input type="file" id="img_${q.id}" accept="image/*" style="display:none;">
           <button class="btn btn-secondary" id="add_${q.id}" style="padding:6px 14px;font-size:13px;">
@@ -453,7 +461,6 @@ async function openExamDetail(examId) {
       const deleteBtn = uploadDiv.querySelector(`#delete_${q.id}`);
       const addBtn = uploadDiv.querySelector(`#add_${q.id}`);
       
-      // Upload ảnh mới
       if (changeBtn || addBtn) {
         const uploadBtn = changeBtn || addBtn;
         uploadBtn.onclick = () => fileInput.click();
@@ -478,7 +485,6 @@ async function openExamDetail(examId) {
         };
       }
       
-      // Xóa ảnh
       if (deleteBtn) {
         deleteBtn.onclick = async () => {
           if (!confirm('Xóa ảnh này?')) return;
@@ -509,7 +515,7 @@ async function openExamDetail(examId) {
     setupModalButtons(examId);
     console.log('✅ Modal opened');
     
-    // ✅ Render công thức MathJax
+    // ✅ Render MathJax sau khi load xong
     setTimeout(() => {
       if (window.renderMath) window.renderMath();
     }, 100);
@@ -524,7 +530,6 @@ function closeExamDetail() {
   if (modal) modal.style.display = 'none';
 }
 
-// ✅ FIXED: Upload ảnh tự động
 async function attachImage(examId, qid, fileInput) {
   if (!fileInput?.files[0]) throw new Error('Chưa chọn ảnh');
   
@@ -546,7 +551,6 @@ async function attachImage(examId, qid, fileInput) {
   return result;
 }
 
-// ✅ NEW: Xóa ảnh
 async function deleteImage(examId, qid) {
   const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, {
     method: 'DELETE'
@@ -687,7 +691,7 @@ function startExamTimer(timeMinutes) {
   }, 1000);
 }
 
-// ✅ FIXED: Hiển thị ảnh cho học sinh
+// ✅ RENDER EXAM - Hiển thị công thức toán với MathJax
 function renderExam(exam) {
   const container = document.getElementById('questionsContainer');
   container.innerHTML = '';
@@ -706,7 +710,6 @@ function renderExam(exam) {
     const qDiv = document.createElement('div');
     qDiv.className = 'question-item';
     
-    // ✅ Hiển thị ảnh nếu có
     let imageHtml = '';
     if (q.image) {
       imageHtml = `<img src="${q.image}" style="max-width:100%;border-radius:8px;margin:12px 0;" alt="Hình minh họa câu ${displayIndex}"/>`;
@@ -775,7 +778,10 @@ function renderExam(exam) {
   
   // ✅ Render công thức MathJax
   setTimeout(() => {
-    if (window.renderMath) window.renderMath();
+    if (window.renderMath) {
+      window.renderMath();
+      console.log('✅ MathJax rendering triggered');
+    }
   }, 100);
 }
 
@@ -836,17 +842,6 @@ async function submitExam(autoSubmit = false) {
   });
 
   console.log('📦 Đáp án cuối cùng (mapped về ID gốc):', answers);
-
-  const verifyMapping = {};
-  if (window.currentExamData?.questions) {
-    window.currentExamData.questions.forEach(q => {
-      const studentAnswer = answers[q.id];
-      if (studentAnswer !== undefined) {
-        verifyMapping[`${q.displayIndex} (ID=${q.id})`] = studentAnswer;
-      }
-    });
-    console.log('🔍 Verify mapping:', verifyMapping);
-  }
 
   let examDataToSend = null;
   if (window.currentExamData && window.currentExamData.questions) {
@@ -1105,10 +1100,10 @@ function setupEventHandlers() {
 
 // ====================== INITIALIZATION ======================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 App initialized - IMPROVED VERSION');
-  console.log('✅ Upload ảnh: Click 1 lần tự động upload');
-  console.log('✅ Học sinh: Nhận và hiển thị ảnh từ đề');
-  console.log('✅ Modal: 3 nút cố định ở cuối');
+  console.log('🚀 App initialized - FINAL FIXED VERSION');
+  console.log('✅ Công thức toán: Hiển thị với MathJax');
+  console.log('✅ Modal: Scroll riêng + Nút scroll nhanh');
+  console.log('✅ Wanna Help: Có nút OK màu đỏ nổi bật');
   showPage('loginPage');
   setupEventHandlers();
 });
