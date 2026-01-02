@@ -1,77 +1,102 @@
-// utils/parseExamContent.js - ✅ FINAL FIX VERSION
-// Xử lý tất cả lỗi từ Word: công thức, format, missing values
+// utils/parseExamContent.js - ✅ HYBRID PARSER
+// Xử lý cả text thô VÀ equation chuẩn
 
 /**
- * ✅ Clean và fix công thức toán từ Word
+ * ✅ Detect và wrap công thức tự động
  */
-function cleanMathFormula(text) {
+function smartMathWrap(text) {
   if (!text) return text;
   
   let result = text;
   
-  // ✅ Fix 1: Xử lý ^0^C, ^0^X thành °C, °X
+  // ✅ 1. Đã có $ rồi thì giữ nguyên
+  if (result.includes('$')) {
+    return result;
+  }
+  
+  // ✅ 2. Xử lý ký hiệu độ: ^0^C → °C
   result = result.replace(/\^0\^([A-Z])/g, '°$1');
   result = result.replace(/\^\{?0\}?\^([A-Z])/g, '°$1');
   
-  // ✅ Fix 2: Xử lý _(^0) thành °
-  result = result.replace(/\(_\{\}\^\{0\}\{?([A-Z])\}?\)/g, '°$1');
-  result = result.replace(/\(_\^\{?0\}?\{?([A-Z])\}?\)/g, '°$1');
+  // ✅ 3. Xử lý số mũ: 10^{6} → 10⁶
+  const superscriptMap = {
+    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
+  };
   
-  // ✅ Fix 3: Xử lý {2,3.10}^{6} thành 2.3 × 10^6
-  result = result.replace(/\{([0-9,]+)\.([0-9]+)\}\^\{([0-9]+)\}/g, '$1.$2 \\times 10^{$3}');
-  result = result.replace(/\$?\{([0-9,]+)\.([0-9]+)\}\^\{([0-9]+)\}\$/g, '$1.$2 \\times 10^{$3}');
-  
-  // ✅ Fix 4: Xử lý 〖...〗 (Unicode brackets)
-  result = result.replace(/〖([^〗]+)〗/g, '$1');
-  
-  // ✅ Fix 5: Xử lý $...$ bị lỗi
-  // Từ: $T\ (K) = t(_{}^{0}{C) + 273}$
-  // Thành: T(K) = t(°C) + 273
-  result = result.replace(/\$([^$]+)\$/g, (match, inner) => {
-    let cleaned = inner
-      .replace(/\\_\{\}/g, '_')
-      .replace(/\\ +/g, ' ')
-      .replace(/\{([A-Z])\}/g, '$1')
-      .replace(/_\{\}\^\{0\}\{([A-Z])\}/g, '°$1')
-      .replace(/\(_\{\}\^\{0\}\{([A-Z])\) \+ ([0-9]+)\}/g, '(°$1) + $2');
-    return `$${cleaned}$`;
+  result = result.replace(/\^(\d)/g, (match, digit) => superscriptMap[digit] || match);
+  result = result.replace(/\^\{(\d+)\}/g, (match, num) => {
+    return num.split('').map(d => superscriptMap[d] || d).join('');
   });
   
-  // ✅ Fix 6: Xử lý dấu · (middle dot) thành \cdot
-  result = result.replace(/·/g, '\\cdot ');
-  result = result.replace(/\./g, '.'); // Normalize dots
+  // ✅ 4. Xử lý số dưới: _{i} → ᵢ
+  const subscriptMap = {
+    '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄',
+    '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉',
+    'i': 'ᵢ', 'j': 'ⱼ', 'n': 'ₙ', 'x': 'ₓ'
+  };
   
-  // ✅ Fix 7: Loại bỏ các ký tự thừa
-  result = result.replace(/\\\$/g, '');
-  result = result.replace(/\\ +/g, ' ');
-  result = result.trim();
+  result = result.replace(/_(\w)/g, (match, char) => subscriptMap[char] || match);
+  result = result.replace(/_\{(\w+)\}/g, (match, str) => {
+    return str.split('').map(c => subscriptMap[c] || c).join('');
+  });
+  
+  // ✅ 5. Xử lý dấu nhân: {2,3.10}^{6} → 2,3×10⁶
+  result = result.replace(/\{([0-9,]+)\.([0-9]+)\}\^\{?(\d+)\}?/g, '$1.$2×10$3');
+  result = result.replace(/\{([0-9,]+)\.([0-9]+)\}\^(\d)/g, (match, p1, p2, p3) => {
+    return `${p1}.${p2}×10${superscriptMap[p3] || p3}`;
+  });
+  
+  // ✅ 6. Loại bỏ ký tự đặc biệt thừa
+  result = result.replace(/〖([^〗]+)〗/g, '$1');
+  result = result.replace(/\\_/g, '_');
+  result = result.replace(/\\ /g, ' ');
+  
+  // ✅ 7. Detect có cần wrap $ không
+  const needsMath = /[°×÷±≈≠≤≥∞∑∫√π∆]|⁰|¹|²|³|⁴|⁵|⁶|⁷|⁸|⁹|₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/g.test(result);
+  
+  if (needsMath) {
+    // Tách thành các phần: text thường và công thức
+    const parts = [];
+    let lastIndex = 0;
+    
+    // Tìm các đoạn có ký hiệu toán
+    const mathRegex = /([A-Za-z0-9°×÷±≈≠≤≥∞∑∫√π∆⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉\(\)\[\]\{\}=\+\-\*\/\.\,]+)/g;
+    
+    let match;
+    while ((match = mathRegex.exec(result)) !== null) {
+      // Text trước công thức
+      if (match.index > lastIndex) {
+        parts.push(result.substring(lastIndex, match.index));
+      }
+      
+      // Công thức (wrap trong $)
+      const formula = match[1];
+      if (/[°×÷±≈≠≤≥∞∑∫√π∆⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉]/.test(formula)) {
+        parts.push(`$${formula}$`);
+      } else {
+        parts.push(formula);
+      }
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Text còn lại
+    if (lastIndex < result.length) {
+      parts.push(result.substring(lastIndex));
+    }
+    
+    result = parts.join('');
+  }
+  
+  // ✅ 8. Normalize spaces
+  result = result.replace(/\s+/g, ' ').trim();
   
   return result;
 }
 
 /**
- * ✅ Wrap công thức trong $...$ nếu chưa có
- */
-function wrapMathInDollar(text) {
-  if (!text) return text;
-  
-  // Đã có $ rồi thì clean thôi
-  if (text.includes('$')) {
-    return cleanMathFormula(text);
-  }
-  
-  // Detect có công thức không
-  const hasMath = /[_^{}\\×·]|\\times|\\frac|\\sqrt|\\cdot|°[A-Z]/i.test(text);
-  
-  if (hasMath) {
-    return `$${cleanMathFormula(text)}$`;
-  }
-  
-  return text;
-}
-
-/**
- * ✅ Parse từng câu hỏi từ text
+ * ✅ Parse exam content
  */
 export function parseExamContent(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
@@ -81,24 +106,24 @@ export function parseExamContent(text) {
 
   const pushQuestion = () => {
     if (currentQuestion && currentSection) {
-      // ✅ Clean công thức và content
+      // ✅ Smart wrap cho question
       if (currentQuestion.question) {
-        currentQuestion.question = wrapMathInDollar(currentQuestion.question);
+        currentQuestion.question = smartMathWrap(currentQuestion.question);
       }
       
-      // ✅ Clean options
+      // ✅ Smart wrap cho options
       if (currentQuestion.options) {
         currentQuestion.options = currentQuestion.options.map(opt => ({
           ...opt,
-          text: wrapMathInDollar(opt.text || '')
+          text: smartMathWrap(opt.text || '')
         }));
       }
       
-      // ✅ Clean subQuestions
+      // ✅ Smart wrap cho subQuestions
       if (currentQuestion.subQuestions) {
         currentQuestion.subQuestions = currentQuestion.subQuestions.map(sub => ({
           ...sub,
-          text: wrapMathInDollar(sub.text || '')
+          text: smartMathWrap(sub.text || '')
         }));
       }
       
@@ -115,8 +140,8 @@ export function parseExamContent(text) {
     }
   };
 
-  lines.forEach((line, lineIndex) => {
-    // ✅ Detect sections
+  lines.forEach(line => {
+    // Detect sections
     if (/^Phần\s*1\b/i.test(line) || /^PHẦN\s*I\b/i.test(line)) {
       pushSection();
       currentSection = { 
@@ -147,7 +172,7 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ Detect câu hỏi: "Câu 1.", "Câu 2:", etc.
+    // Detect câu hỏi
     if (/^Câu\s*\d+[:.]/i.test(line)) {
       pushQuestion();
       
@@ -178,7 +203,7 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ Detect options: A. B. C. D.
+    // Detect options: A. B. C. D.
     if (/^[A-D]\.\s+/.test(line) && currentSection?.type === 'multiple_choice') {
       const key = line[0];
       const textPart = line.replace(/^[A-D]\.\s+/, '').trim();
@@ -186,15 +211,7 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ Detect sub-questions: a) b) c) d)
-    if (/^[a-d]\)\s+/i.test(line) && currentSection?.type === 'true_false') {
-      const key = line[0].toLowerCase();
-      const textPart = line.slice(3).trim();
-      currentQuestion?.subQuestions.push({ key, text: textPart });
-      return;
-    }
-    
-    // ✅ Detect sub-questions: a\) b\) (escaped)
+    // Detect sub-questions: a) b) c) d) hoặc a\) b\)
     if (/^[a-e]\\?\)\s+/i.test(line) && currentSection?.type === 'true_false') {
       const key = line[0].toLowerCase();
       const textPart = line.replace(/^[a-e]\\?\)\s+/i, '').trim();
@@ -202,22 +219,17 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ Nếu là short_answer, append vào question
+    // Short answer: append vào question
     if (currentSection?.type === 'short_answer' && currentQuestion) {
-      // Nếu line này không phải section header hoặc câu hỏi mới
       if (!/^(Phần|PHẦN|Câu)\s/i.test(line)) {
         currentQuestion.question += ' ' + line;
       }
       return;
     }
     
-    // ✅ Nếu là continuation của question hoặc option
-    if (currentQuestion) {
-      // Nếu không phải header mới
-      if (!/^(Phần|PHẦN|Câu|[A-D]\.|[a-e]\))/i.test(line)) {
-        // Append vào question text
-        currentQuestion.question += ' ' + line;
-      }
+    // Continuation
+    if (currentQuestion && !/^(Phần|PHẦN|Câu|[A-D]\.|[a-e]\\?\))/i.test(line)) {
+      currentQuestion.question += ' ' + line;
     }
   });
 
