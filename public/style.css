@@ -20,7 +20,6 @@
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
-/* ✅ FIX: Body layout - loại bỏ scroll không cần thiết */
 html, body {
   height: 100%;
   margin: 0;
@@ -39,7 +38,6 @@ body {
   max-width: 100vw;
 }
 
-/* ✅ FIX: Container - vừa màn hình */
 .container {
   flex: 1;
   width: 100%;
@@ -69,7 +67,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ✅ FIX: LOGIN PAGE - Vừa màn hình, không cần scroll */
+/* LOGIN PAGE */
 #loginPage {
   display: none;
   align-items: center;
@@ -349,7 +347,7 @@ body {
   gap: 16px;
 }
 
-/* MODAL */
+/* ✅ MODAL - FIXED: Mở rộng và scroll riêng nội dung */
 .modal {
   display: none;
   position: fixed;
@@ -363,6 +361,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
 }
 
 .modal.active {
@@ -371,40 +370,71 @@ body {
 
 .modal-content {
   background: var(--card-bg);
-  padding: 30px 30px 0 30px;
+  padding: 0;
   border-radius: 16px;
   width: 100%;
-  max-width: 800px;
-  max-height: 85vh;
+  max-width: 900px; /* ✅ Tăng từ 800 lên 900 */
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
   position: relative;
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+  overflow: hidden;
 }
 
-.modal-content h2 {
-  margin-bottom: 20px;
+/* ✅ Header modal - cố định */
+.modal-content > h2 {
+  padding: 24px 30px 20px;
+  margin: 0;
   color: var(--text);
+  border-bottom: 2px solid var(--border);
   flex-shrink: 0;
+  background: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
+/* ✅ Nội dung modal - scroll riêng, mở rộng */
 #examDetailContent {
   flex: 1;
   overflow-y: auto;
-  padding-right: 10px;
-  margin-bottom: 20px;
+  padding: 20px 30px 20px 30px;
+  max-height: calc(90vh - 180px); /* ✅ Dành chỗ cho header + footer */
 }
 
-.modal-content h2 {
-  margin-bottom: 20px;
-  color: var(--text);
+/* ✅ Nút scroll nhanh */
+.scroll-to-bottom {
+  position: sticky;
+  bottom: 20px;
+  right: 30px;
+  float: right;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  transition: all 0.3s;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll-to-bottom:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
 }
 
 .close {
-  position: sticky;
-  top: 0;
-  right: 0;
-  float: right;
+  position: absolute;
+  top: 20px;
+  right: 20px;
   font-size: 28px;
   font-weight: bold;
   color: var(--text-light);
@@ -418,6 +448,7 @@ body {
   justify-content: center;
   border-radius: 8px;
   transition: all 0.3s;
+  z-index: 11;
 }
 
 .close:hover {
@@ -425,18 +456,20 @@ body {
   color: var(--danger);
 }
 
+/* ✅ Footer modal - cố định ở cuối, luôn hiển thị */
 .modal-actions {
   position: sticky;
   bottom: 0;
   background: white;
   padding: 20px 30px;
-  margin: 0 -30px;
+  margin: 0;
   border-top: 2px solid var(--border);
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
   flex-shrink: 0;
   box-shadow: 0 -4px 6px -1px rgb(0 0 0 / 0.05);
+  z-index: 10;
 }
 
 .modal-actions .btn {
@@ -444,24 +477,25 @@ body {
   min-width: 150px;
 }
 
-/* QUESTION BLOCK */
+/* ✅ QUESTION BLOCK - Mở rộng input */
 .question-block {
   background: var(--bg);
-  padding: 16px;
+  padding: 20px; /* ✅ Tăng từ 16 lên 20 */
   border-radius: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 20px; /* ✅ Tăng từ 16 lên 20 */
   border-left: 4px solid var(--primary);
 }
 
 .question-block h4 {
   color: var(--primary);
-  margin-bottom: 8px;
-  font-size: 16px;
+  margin-bottom: 12px; /* ✅ Tăng từ 8 lên 12 */
+  font-size: 17px; /* ✅ Tăng từ 16 lên 17 */
 }
 
 .question-block p {
-  margin-bottom: 12px;
-  line-height: 1.6;
+  margin-bottom: 14px; /* ✅ Tăng từ 12 lên 14 */
+  line-height: 1.7; /* ✅ Tăng từ 1.6 lên 1.7 */
+  font-size: 15px;
 }
 
 .question-block img {
@@ -477,19 +511,20 @@ body {
 .options {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px; /* ✅ Tăng từ 8 lên 10 */
 }
 
 .option {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 10px; /* ✅ Tăng từ 8 lên 10 */
+  padding: 12px 14px; /* ✅ Tăng từ 10px 12px */
   background: white;
   border: 2px solid var(--border);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.3s;
+  font-size: 15px;
 }
 
 .option:hover {
@@ -499,27 +534,33 @@ body {
 
 .option input[type="radio"] {
   cursor: pointer;
+  width: 18px; /* ✅ Tăng kích thước radio button */
+  height: 18px;
 }
 
 /* Multiple choice options */
 .option-block {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px; /* ✅ Tăng từ 6 lên 8 */
 }
 
 .option-block label {
   display: block;
-  margin: 6px 0;
-  padding: 6px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  margin: 8px 0; /* ✅ Tăng từ 6 lên 8 */
+  padding: 10px 14px; /* ✅ Tăng từ 6px 10px */
+  border: 2px solid var(--border);
+  border-radius: 8px; /* ✅ Tăng từ 6 lên 8 */
   background: #f9f9f9;
   cursor: pointer;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .option-block input[type="radio"] {
-  margin-right: 8px;
+  margin-right: 10px; /* ✅ Tăng từ 8 lên 10 */
+  width: 18px;
+  height: 18px;
 }
 
 .option-block label:hover {
@@ -529,31 +570,41 @@ body {
 
 /* True/False block */
 .truefalse-block .sub-item {
-  margin: 10px 0;
-  padding: 8px;
+  margin: 12px 0; /* ✅ Tăng từ 10 lên 12 */
+  padding: 12px; /* ✅ Tăng từ 8 lên 12 */
   border-left: 4px solid var(--primary);
   background: #f0f8ff;
-  border-radius: 6px;
+  border-radius: 8px; /* ✅ Tăng từ 6 lên 8 */
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .truefalse-block label {
-  margin-left: 12px;
+  margin-left: 14px; /* ✅ Tăng từ 12 lên 14 */
+  cursor: pointer;
+}
+
+.truefalse-block input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
 }
 
 /* Short answer form */
 .short-form {
   display: flex;
-  gap: 10px;
-  margin: 12px 0;
+  gap: 12px; /* ✅ Tăng từ 10 lên 12 */
+  margin: 14px 0; /* ✅ Tăng từ 12 lên 14 */
+  flex-wrap: wrap;
 }
 
 .cell {
-  width: 40px;
-  height: 40px;
-  font-size: 20px;
+  width: 50px; /* ✅ Tăng từ 40 lên 50 */
+  height: 50px; /* ✅ Tăng từ 40 lên 50 */
+  font-size: 22px; /* ✅ Tăng từ 20 lên 22 */
   text-align: center;
   border: 2px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px; /* ✅ Tăng từ 6 lên 8 */
 }
 
 .cell-1 { background: #fffbe6; }
@@ -852,16 +903,49 @@ body {
   color: #991b1b;
 }
 
-/* ✅ FIX: FOOTER - Nhỏ gọn và luôn hiển thị */
+/* ✅ FOOTER - Nổi bật nút Wanna Help */
 .footer {
   text-align: center;
-  padding: 12px 16px;
+  padding: 14px 16px; /* ✅ Tăng từ 12 lên 14 */
   color: var(--text-light);
-  font-size: 12px;
+  font-size: 13px; /* ✅ Tăng từ 12 lên 13 */
   border-top: 1px solid var(--border);
   background: var(--card-bg);
   flex-shrink: 0;
   width: 100%;
+}
+
+.footer button {
+  background: linear-gradient(135deg, #ef4444, #dc2626); /* ✅ Gradient đỏ nổi bật */
+  color: white !important;
+  font-size: 14px !important; /* ✅ Tăng từ 11 lên 14 */
+  font-weight: 700 !important; /* ✅ Bold hơn */
+  cursor: pointer;
+  text-decoration: none !important; /* ✅ Không gạch chân */
+  padding: 8px 16px !important; /* ✅ Padding rõ ràng hơn */
+  border-radius: 20px !important; /* ✅ Bo tròn nhiều */
+  border: 2px solid white !important; /* ✅ Viền trắng */
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); /* ✅ Bóng đổ */
+  animation: pulse 2s infinite; /* ✅ Hiệu ứng nhấp nháy */
+}
+
+.footer button:hover {
+  transform: scale(1.1) translateY(-2px); /* ✅ Phóng to khi hover */
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+/* ✅ Animation nhấp nháy */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5);
+  }
 }
 
 /* VIOLATION WARNING */
@@ -870,27 +954,19 @@ body {
   50% { opacity: 0.3; }
 }
 
-.warning-message {
-  color: var(--danger);
-  font-weight: 600;
-  margin-top: 8px;
-  min-height: 24px;
-  font-size: 14px;
-  display: none;
-}
-
 .warning-message[style*="display: block"] {
   display: block !important;
   animation: blink 0.5s ease-in-out 3;
 }
 
-/* ✅ RESPONSIVE - Tối ưu mobile */
+/* ✅ RESPONSIVE */
 @media (max-width: 880px) {
   .dashboard { 
     grid-template-columns: 1fr; 
   }
   .modal-content { 
-    width: 96%; 
+    width: 96%;
+    max-width: 96%;
   }
 }
 
@@ -899,91 +975,17 @@ body {
     padding: 12px;
   }
   
-  .login-box {
-    padding: 28px 24px;
-    max-width: 90%;
-  }
-  
-  .logo {
-    width: 60px;
-    height: 60px;
-    margin-bottom: 16px;
-  }
-  
-  .logo svg {
-    width: 30px;
-    height: 30px;
-  }
-  
-  .login-box h1 {
-    font-size: 26px;
-  }
-  
-  .subtitle {
-    font-size: 14px;
-    margin-bottom: 22px;
-  }
-  
-  .input-group {
-    margin-bottom: 16px;
-  }
-  
-  .input-group input {
-    padding: 12px 38px 12px 12px;
-    font-size: 15px;
-  }
-  
-  .btn {
-    padding: 12px 20px;
-    font-size: 15px;
-  }
-  
-  .info-text {
-    margin-top: 18px;
-    padding-top: 14px;
-  }
-  
-  .info-text p {
-    font-size: 13px;
-  }
-  
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .header h2 {
-    font-size: 20px;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-  
-  .exam-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .timer-container {
-    text-align: left;
-    width: 100%;
-  }
-  
-  .timer {
-    font-size: 28px;
-  }
-  
   .modal-content {
-    padding: 20px 20px 0 20px;
-    max-height: 90vh;
+    max-width: 95%;
+  }
+  
+  #examDetailContent {
+    padding: 16px 20px;
   }
   
   .modal-actions {
-    flex-direction: column;
     padding: 16px 20px;
-    margin: 0 -20px;
+    flex-direction: column;
   }
   
   .modal-actions .btn {
@@ -991,102 +993,33 @@ body {
     min-width: auto;
   }
   
-  .boxes-container {
-    justify-content: center;
-  }
-  
-  .answer-box {
-    width: 60px;
-    height: 60px;
-    font-size: 24px;
-  }
-  
-  .student-form-container {
-    margin: 0;
-    padding: 16px 0;
-  }
-  
-  .result-container {
-    margin: 0;
-    padding: 30px 20px;
-  }
-  
-  .footer {
-    padding: 10px 12px;
-    font-size: 11px;
+  .scroll-to-bottom {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
   }
 }
 
 @media (max-width: 480px) {
-  .container {
-    padding: 10px;
+  .modal-content {
+    max-width: 98%;
+    max-height: 95vh;
   }
   
-  .login-box {
-    width: 95%;
-    padding: 26px 22px;
-    max-width: 100%;
+  #examDetailContent {
+    padding: 14px 16px;
   }
   
-  .logo {
-    width: 56px;
-    height: 56px;
-    margin-bottom: 14px;
+  .modal-actions {
+    padding: 14px 16px;
   }
   
-  .logo svg {
-    width: 28px;
-    height: 28px;
+  .question-block {
+    padding: 14px;
   }
   
-  .login-box h1 {
-    font-size: 24px;
-    margin-bottom: 6px;
-  }
-  
-  .subtitle {
+  .option-block label {
+    padding: 8px 12px;
     font-size: 14px;
-    margin-bottom: 20px;
-  }
-  
-  .input-group {
-    margin-bottom: 15px;
-  }
-  
-  .input-group input {
-    font-size: 15px;
-    padding: 11px 38px 11px 11px;
-  }
-  
-  .btn {
-    font-size: 15px;
-    padding: 12px 18px;
-  }
-  
-  .info-text {
-    margin-top: 16px;
-    padding-top: 12px;
-  }
-  
-  .info-text p {
-    font-size: 12px;
-    margin-bottom: 6px;
-  }
-  
-  .card {
-    padding: 18px;
-  }
-  
-  .exam-content {
-    padding: 16px;
-  }
-  
-  .option {
-    padding: 9px;
-  }
-  
-  .footer {
-    padding: 9px 12px;
-    font-size: 10.5px;
   }
 }
