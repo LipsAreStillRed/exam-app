@@ -114,37 +114,22 @@ function makeRuntimeVariant(baseExam) {
   };
 }
 
-// ✅ UPLOAD - Dùng mammoth.convertToHtml để giữ công thức
+// ✅ UPLOAD - Đơn giản hơn, chỉ cần preserve $...$ từ Word
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
 
     console.log('📄 Processing Word file:', req.file.originalname);
 
-    // ✅ Dùng convertToHtml thay vì extractRawText để giữ format
-    const result = await mammoth.convertToHtml({ 
-      path: req.file.path 
-    });
+    // Parse text với mammoth - giữ nguyên các ký tự đặc biệt
+    const raw = await mammoth.extractRawText({ path: req.file.path });
+    let text = raw.value || '';
     
-    let html = result.value || '';
-    console.log('📝 Extracted HTML length:', html.length);
+    console.log('📝 Extracted text length:', text.length);
     
-    // ✅ Convert HTML về plain text nhưng giữ format
-    let text = html
-      .replace(/<p>/g, '\n')
-      .replace(/<\/p>/g, '\n')
-      .replace(/<br\s*\/?>/g, '\n')
-      .replace(/<strong>/g, '**')
-      .replace(/<\/strong>/g, '**')
-      .replace(/<[^>]+>/g, '')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&')
-      .trim();
-    
-    console.log('📝 Converted text length:', text.length);
-    console.log('📝 Sample:', text.substring(0, 800));
+    // Đếm số công thức (đếm cặp $...$)
+    const mathCount = (text.match(/\$[^$]+\$/g) || []).length;
+    console.log(`📐 Found ${mathCount} math expressions`);
     
     const sections = parseExamContent(text);
     
@@ -165,7 +150,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return { ...q, id };
     });
 
-    console.log(`✅ Parsed ${baseQuestions.length} questions`);
+    console.log(`✅ Parsed ${baseQuestions.length} questions from file`);
 
     const cfg = {
       p1Mode: req.body.p1Mode || 'none',
@@ -187,8 +172,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       shuffleConfig: cfg
     };
 
+    console.log(`💾 Saving exam ${examId} with ${baseQuestions.length} questions`);
     writeExam(examData);
-    console.log('✅ Exam saved:', examPath(examId));
+    console.log('✅ Exam saved to local file:', examPath(examId));
 
     let driveResult = null;
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
@@ -198,7 +184,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           examData.driveFileId = driveResult.id;
           examData.driveLink = driveResult.webViewLink || driveResult.webContentLink;
           writeExam(examData);
-          console.log('✅ Uploaded to Drive:', driveResult.webViewLink);
+          console.log('✅ Uploaded exam to Drive:', driveResult.webViewLink);
         }
       } catch (err) {
         console.error('❌ Drive upload error:', err?.response?.data || err.message);
@@ -206,13 +192,15 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     fs.unlinkSync(req.file.path);
+    console.log(`✅ Upload complete: ${baseQuestions.length} questions, ${mathCount} math expressions`);
     
     res.json({ 
       ok: true, 
       examId, 
       count: baseQuestions.length, 
       variantCount: cfg.variantCount, 
-      savedToDrive: !!driveResult
+      savedToDrive: !!driveResult,
+      mathCount
     });
   } catch (e) {
     console.error('❌ Upload error:', e);
@@ -221,12 +209,16 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
+// ✅ 2. LIST - PHẢI ĐẶT TRƯỚC /:id
 router.get('/list', (req, res) => {
   try {
+    console.log('📥 GET /exam/list called');
     const dir = ensureDir();
     const files = fs.readdirSync(dir).filter(f => {
       return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
     });
+    
+    console.log(`📁 Found ${files.length} exam files:`, files);
     
     if (files.length === 0) {
       return res.json({ ok: true, exams: [] });
@@ -237,12 +229,15 @@ router.get('/list', (req, res) => {
         const fullPath = path.join(dir, f);
         const exam = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
         
+        const questionCount = exam.questions?.length || 0;
+        console.log(`📝 Exam ${exam.id}: ${questionCount} questions`);
+        
         return {
           id: exam.id,
-          originalName: exam.originalName || 'Đề không tên',
+          originalName: exam.originalName || exam.name || 'Đề không tên',
           createdAt: exam.createdAt || Date.now(),
           timeMinutes: exam.timeMinutes || 45,
-          questionCount: exam.questions?.length || 0,
+          questionCount,
           hasAnswers: exam.answers && Object.keys(exam.answers).length > 0,
           variants: exam.variants || [],
           driveLink: exam.driveLink || null
@@ -253,13 +248,14 @@ router.get('/list', (req, res) => {
       }
     }).filter(Boolean);
     
+    console.log(`✅ Returning ${exams.length} exams`);
     res.json({ ok: true, exams });
   } catch (err) {
     console.error('❌ /exam/list error:', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
-
+// ✅ 3. LATEST - PHẢI ĐẶT TRƯỚC /:id
 router.get('/latest', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => {
@@ -272,7 +268,7 @@ router.get('/latest', (req, res) => {
                       .sort((a, b) => b.createdAt - a.createdAt)[0];
   res.json({ ok: true, exam: latest });
 });
-
+// ✅ 4. LATEST-VARIANT - PHẢI ĐẶT TRƯỚC /:id
 router.get('/latest-variant', (req, res) => {
   const dir = ensureDir();
   const files = fs.readdirSync(dir).filter(f => {
@@ -295,7 +291,7 @@ router.get('/latest-variant', (req, res) => {
   };
   res.json({ ok: true, exam: examForStudent });
 });
-
+// ✅ 5. VERIFY-PASSWORD - PHẢI ĐẶT TRƯỚC /:id
 router.post('/verify-password', (req, res) => {
   const { examId, password } = req.body;
   const baseId = String(examId).split('_r')[0].split('_v')[0];
@@ -304,7 +300,7 @@ router.post('/verify-password', (req, res) => {
   const verified = !exam.password || exam.password === password;
   res.json({ ok: verified });
 });
-
+// ✅ 6. CORRECT-ANSWERS
 router.post('/:id/correct-answers', async (req, res) => {
   try {
     const baseId = String(req.params.id);
@@ -326,15 +322,20 @@ router.post('/:id/correct-answers', async (req, res) => {
     });
 
     writeExam(exam);
+    console.log('✅ Đã lưu đáp án vào file local');
 
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
       try {
-        if (exam.driveFileId) await deleteFromDrive(exam.driveFileId);
+        if (exam.driveFileId) {
+          await deleteFromDrive(exam.driveFileId);
+          console.log('🗑️  Đã xóa file cũ trên Drive');
+        }
         const driveResult = await uploadToDrive(examPath(baseId), `exam_${baseId}.json`, 'application/json');
         if (driveResult) {
           exam.driveFileId = driveResult.id;
           exam.driveLink = driveResult.webViewLink || driveResult.webContentLink;
           writeExam(exam);
+          console.log('✅ Đã đồng bộ đáp án lên Drive:', driveResult.webViewLink);
         }
       } catch (err) {
         console.error('❌ Drive sync error:', err?.response?.data || err.message);
@@ -347,13 +348,15 @@ router.post('/:id/correct-answers', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
+// ✅ 7. VARIANTS
 router.get('/:id/variants', (req, res) => {
   const exam = readExam(req.params.id);
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  if (!exam) {
+    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  }
   res.json(exam.variants || []);
 });
-
+// ✅ 8. DELETE
 router.delete('/:id', async (req, res) => {
   try {
     const exam = readExam(req.params.id);
@@ -366,8 +369,11 @@ router.delete('/:id', async (req, res) => {
     if (fs.existsSync(imgDir)) fs.rmSync(imgDir, { recursive: true, force: true });
 
     if (exam.driveFileId) {
-      try { await deleteFromDrive(exam.driveFileId); } 
-      catch (e) { console.error('Delete from Drive error:', e.message); }
+      try { 
+        await deleteFromDrive(exam.driveFileId); 
+      } catch (e) { 
+        console.error('Delete from Drive error:', e.message); 
+      }
     }
 
     res.json({ ok: true, message: 'Đã xóa đề' });
@@ -375,7 +381,7 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
-
+// ✅ 9. GET BY ID - PHẢI ĐẶT CUỐI CÙNG
 router.get('/:id', async (req, res) => {
   const baseId = String(req.params.id);
   let exam = readExam(baseId);
