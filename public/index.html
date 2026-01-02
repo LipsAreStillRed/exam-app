@@ -6,7 +6,7 @@
   <title>Hệ Thống Kiểm Tra Trực Tuyến</title>
   <link rel="stylesheet" href="style.css" />
   
-  <!-- ✅ MathJax Configuration - QUAN TRỌNG -->
+  <!-- ✅ MathJax Configuration -->
   <script>
     window.MathJax = {
       tex: {
@@ -144,9 +144,14 @@
       <!-- EXAM DETAIL MODAL -->
       <div id="examDetailModal" class="modal" aria-hidden="true">
         <div class="modal-content" role="dialog" aria-modal="true">
-          <button class="close" id="closeModal" title="Đóng" aria-label="Đóng">✖</button>
           <h2>📋 Chi Tiết & Đáp Án</h2>
-          <div id="examDetailContent"></div>
+          <button class="close" id="closeModal" title="Đóng" aria-label="Đóng">✖</button>
+          
+          <!-- ✅ NÚT SCROLL NHANH XUỐNG CUỐI -->
+          <div id="examDetailContent">
+            <!-- Content sẽ được inject ở đây -->
+          </div>
+          
           <div class="modal-actions">
             <button class="btn btn-primary" id="saveAnswers">💾 Lưu Đáp Án</button>
             <button class="btn btn-secondary" id="sendReport">📧 Gửi Báo Cáo</button>
@@ -219,11 +224,11 @@
     </div>
   </div>
 
-  <!-- FOOTER -->
+  <!-- ✅ FOOTER - NÚT WANNA HELP ĐÃ ĐƯỢC NÂNG CẤP -->
   <footer class="footer">
     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
       <p style="margin: 0;">NMT – Dùng AI code ra web này đó</p>
-      <button id="helpBtn" style="background: none; border: none; color: var(--text-light); font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;">
+      <button id="helpBtn">
         Wanna Help? 🆘
       </button>
     </div>
@@ -231,9 +236,8 @@
 
   <script src="main.js?v=20251218"></script>
   
-  <!-- ✅ Re-render MathJax khi thêm nội dung mới -->
+  <!-- ✅ MathJax Auto-Render -->
   <script>
-    // Helper function để render lại công thức sau khi thêm content động
     window.renderMath = function() {
       if (window.MathJax && window.MathJax.typesetPromise) {
         MathJax.typesetPromise().then(() => {
@@ -242,12 +246,11 @@
       }
     };
     
-    // Auto-render sau 500ms (đợi content load xong)
     document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => window.renderMath(), 500);
     });
     
-    // ✅ Troll "Wanna Help" button
+    // ✅ WANNA HELP BUTTON - THÊM NÚT OK
     document.getElementById('helpBtn')?.addEventListener('click', () => {
       const overlay = document.createElement('div');
       overlay.style.cssText = `
@@ -276,7 +279,7 @@
       `;
       
       box.innerHTML = `
-        <div style="font-size: 64px; margin-bottom: 20px;"></div>
+        <div style="font-size: 64px; margin-bottom: 20px;">🤔</div>
         <h2 style="font-size: 32px; color: #ef4444; margin-bottom: 20px; font-weight: bold;">
           BẠN THẬT SỰ CẦN GIÚP ĐỠ?
         </h2>
@@ -295,13 +298,13 @@
           box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
           transition: all 0.3s;
         ">
+          OK, Hiểu Rồi! 👌
         </button>
       `;
       
       overlay.appendChild(box);
       document.body.appendChild(overlay);
       
-      // Thêm CSS animations
       const style = document.createElement('style');
       style.textContent = `
         @keyframes fadeIn {
@@ -318,10 +321,13 @@
           transform: translateY(-2px);
           box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5) !important;
         }
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
       `;
       document.head.appendChild(style);
       
-      // Close khi click button hoặc overlay
       document.getElementById('closeHelp').onclick = () => {
         overlay.style.animation = 'fadeOut 0.3s ease';
         setTimeout(() => overlay.remove(), 300);
@@ -333,14 +339,6 @@
           setTimeout(() => overlay.remove(), 300);
         }
       };
-      
-      // Thêm fadeOut animation
-      style.textContent += `
-        @keyframes fadeOut {
-          from { opacity: 1; }
-          to { opacity: 0; }
-        }
-      `;
     });
   </script>
 </body>
