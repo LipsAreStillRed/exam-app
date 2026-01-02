@@ -114,63 +114,37 @@ function makeRuntimeVariant(baseExam) {
   };
 }
 
-// ✅ HELPER: Clean text từ Word
-function cleanWordText(text) {
-  if (!text) return text;
-  
-  let cleaned = text;
-  
-  // ✅ Fix 1: Chuyển ^0^C → °C
-  cleaned = cleaned.replace(/\^0\^([A-Z])/g, '°$1');
-  
-  // ✅ Fix 2: Chuyển {2,3.10}^{6} → 2.3×10⁶
-  cleaned = cleaned.replace(/\{([0-9,]+)\.([0-9]+)\}\^\{([0-9]+)\}/g, (match, p1, p2, p3) => {
-    return `${p1}.${p2}×10^${p3}`;
-  });
-  
-  // ✅ Fix 3: Loại bỏ 〖...〗
-  cleaned = cleaned.replace(/〖([^〗]+)〗/g, '$1');
-  
-  // ✅ Fix 4: Wrap công thức trong $...$
-  // Pattern: Nếu có ký tự đặc biệt mà chưa có $
-  if (!cleaned.includes('$') && /[×·°^_{}\\]/.test(cleaned)) {
-    cleaned = `$${cleaned}$`;
-  }
-  
-  // ✅ Fix 5: Clean $...$ bị lỗi
-  cleaned = cleaned.replace(/\$([^$]+)\$/g, (match, inner) => {
-    let fixed = inner
-      .replace(/\\ +/g, ' ')                           // Loại bỏ \ thừa
-      .replace(/_\{\}\^\{0\}\{([A-Z])\}/g, '°$1')     // _(^0){C} → °C
-      .replace(/\(_\{\}\^\{0\}\{([A-Z])\)/g, '°$1')   // (_(^0){C) → °C
-      .replace(/\{([A-Z])\}/g, '$1')                   // {C} → C
-      .replace(/\\ /g, ' ')
-      .trim();
-    return `$${fixed}$`;
-  });
-  
-  // ✅ Fix 6: Normalize spaces
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  
-  return cleaned;
-}
-
-// ✅ UPLOAD ROUTE - Apply cleanWordText
+// ✅ UPLOAD - Dùng mammoth.convertToHtml để giữ công thức
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
 
     console.log('📄 Processing Word file:', req.file.originalname);
 
-    // Parse text với mammoth
-    const raw = await mammoth.extractRawText({ path: req.file.path });
-    let text = raw.value || '';
+    // ✅ Dùng convertToHtml thay vì extractRawText để giữ format
+    const result = await mammoth.convertToHtml({ 
+      path: req.file.path 
+    });
     
-    console.log('📝 Extracted text length:', text.length);
-    console.log('📝 Sample text:', text.substring(0, 500));
+    let html = result.value || '';
+    console.log('📝 Extracted HTML length:', html.length);
     
-    // ✅ Clean text trước khi parse
-    text = cleanWordText(text);
+    // ✅ Convert HTML về plain text nhưng giữ format
+    let text = html
+      .replace(/<p>/g, '\n')
+      .replace(/<\/p>/g, '\n')
+      .replace(/<br\s*\/?>/g, '\n')
+      .replace(/<strong>/g, '**')
+      .replace(/<\/strong>/g, '**')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&')
+      .trim();
+    
+    console.log('📝 Converted text length:', text.length);
+    console.log('📝 Sample:', text.substring(0, 800));
     
     const sections = parseExamContent(text);
     
@@ -188,24 +162,10 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       let id = q.id != null ? String(q.id) : String(nextId++);
       while (seen.has(id)) id = String(nextId++);
       seen.add(id);
-      
-      // ✅ Clean lại question và options
-      return { 
-        ...q, 
-        id,
-        question: cleanWordText(q.question || ''),
-        options: (q.options || []).map(opt => ({
-          ...opt,
-          text: cleanWordText(opt.text || '')
-        })),
-        subQuestions: (q.subQuestions || []).map(sub => ({
-          ...sub,
-          text: cleanWordText(sub.text || '')
-        }))
-      };
+      return { ...q, id };
     });
 
-    console.log(`✅ Parsed ${baseQuestions.length} questions from file`);
+    console.log(`✅ Parsed ${baseQuestions.length} questions`);
 
     const cfg = {
       p1Mode: req.body.p1Mode || 'none',
@@ -227,9 +187,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       shuffleConfig: cfg
     };
 
-    console.log(`💾 Saving exam ${examId} with ${baseQuestions.length} questions`);
     writeExam(examData);
-    console.log('✅ Exam saved to local file:', examPath(examId));
+    console.log('✅ Exam saved:', examPath(examId));
 
     let driveResult = null;
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
@@ -239,7 +198,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
           examData.driveFileId = driveResult.id;
           examData.driveLink = driveResult.webViewLink || driveResult.webContentLink;
           writeExam(examData);
-          console.log('✅ Uploaded exam to Drive:', driveResult.webViewLink);
+          console.log('✅ Uploaded to Drive:', driveResult.webViewLink);
         }
       } catch (err) {
         console.error('❌ Drive upload error:', err?.response?.data || err.message);
@@ -247,7 +206,6 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     fs.unlinkSync(req.file.path);
-    console.log(`✅ Upload complete: ${baseQuestions.length} questions`);
     
     res.json({ 
       ok: true, 
@@ -263,16 +221,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// ✅ Các route khác giữ nguyên...
 router.get('/list', (req, res) => {
   try {
-    console.log('📥 GET /exam/list called');
     const dir = ensureDir();
     const files = fs.readdirSync(dir).filter(f => {
       return f.endsWith('.json') && !f.includes('_v') && !f.includes('_r');
     });
-    
-    console.log(`📁 Found ${files.length} exam files:`, files);
     
     if (files.length === 0) {
       return res.json({ ok: true, exams: [] });
@@ -283,15 +237,12 @@ router.get('/list', (req, res) => {
         const fullPath = path.join(dir, f);
         const exam = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
         
-        const questionCount = exam.questions?.length || 0;
-        console.log(`📝 Exam ${exam.id}: ${questionCount} questions`);
-        
         return {
           id: exam.id,
-          originalName: exam.originalName || exam.name || 'Đề không tên',
+          originalName: exam.originalName || 'Đề không tên',
           createdAt: exam.createdAt || Date.now(),
           timeMinutes: exam.timeMinutes || 45,
-          questionCount,
+          questionCount: exam.questions?.length || 0,
           hasAnswers: exam.answers && Object.keys(exam.answers).length > 0,
           variants: exam.variants || [],
           driveLink: exam.driveLink || null
@@ -302,7 +253,6 @@ router.get('/list', (req, res) => {
       }
     }).filter(Boolean);
     
-    console.log(`✅ Returning ${exams.length} exams`);
     res.json({ ok: true, exams });
   } catch (err) {
     console.error('❌ /exam/list error:', err);
@@ -376,20 +326,15 @@ router.post('/:id/correct-answers', async (req, res) => {
     });
 
     writeExam(exam);
-    console.log('✅ Đã lưu đáp án vào file local');
 
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
       try {
-        if (exam.driveFileId) {
-          await deleteFromDrive(exam.driveFileId);
-          console.log('🗑️  Đã xóa file cũ trên Drive');
-        }
+        if (exam.driveFileId) await deleteFromDrive(exam.driveFileId);
         const driveResult = await uploadToDrive(examPath(baseId), `exam_${baseId}.json`, 'application/json');
         if (driveResult) {
           exam.driveFileId = driveResult.id;
           exam.driveLink = driveResult.webViewLink || driveResult.webContentLink;
           writeExam(exam);
-          console.log('✅ Đã đồng bộ đáp án lên Drive:', driveResult.webViewLink);
         }
       } catch (err) {
         console.error('❌ Drive sync error:', err?.response?.data || err.message);
@@ -405,9 +350,7 @@ router.post('/:id/correct-answers', async (req, res) => {
 
 router.get('/:id/variants', (req, res) => {
   const exam = readExam(req.params.id);
-  if (!exam) {
-    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  }
+  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
   res.json(exam.variants || []);
 });
 
@@ -423,11 +366,8 @@ router.delete('/:id', async (req, res) => {
     if (fs.existsSync(imgDir)) fs.rmSync(imgDir, { recursive: true, force: true });
 
     if (exam.driveFileId) {
-      try { 
-        await deleteFromDrive(exam.driveFileId); 
-      } catch (e) { 
-        console.error('Delete from Drive error:', e.message); 
-      }
+      try { await deleteFromDrive(exam.driveFileId); } 
+      catch (e) { console.error('Delete from Drive error:', e.message); }
     }
 
     res.json({ ok: true, message: 'Đã xóa đề' });
