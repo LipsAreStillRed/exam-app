@@ -306,7 +306,42 @@ async function loadSubmissions() {
     listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
   }
 }
+function addEditButtonToQuestion(qDiv, examId, question) {
+  const editBtn = document.createElement('button');
+  editBtn.className = 'btn btn-secondary';
+  editBtn.style.cssText = 'margin-top:12px; margin-left:8px; padding:6px 14px; font-size:13px;';
+  editBtn.innerHTML = '✏️ Sửa nội dung';
+  
+  editBtn.onclick = () => {
+    const newText = prompt('Nhập nội dung mới (dùng $...$ cho công thức):\n\nVí dụ: $T(K) = t(°C) + 273$', question.question);
+    if (newText === null) return;
+    updateQuestionText(examId, question.id, newText);
+  };
+  
+  qDiv.appendChild(editBtn);
+}
 
+async function updateQuestionText(examId, qid, newText) {
+  try {
+    const res = await fetch(`/exam/${examId}/questions/${qid}/text`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: newText })
+    });
+    
+    const result = await res.json();
+    
+    if (result.ok) {
+      alert('✅ Đã cập nhật!');
+      closeExamDetail();
+      openExamDetail(examId);
+    } else {
+      alert('❌ Lỗi: ' + (result.error || 'Unknown'));
+    }
+  } catch (err) {
+    alert('❌ Lỗi: ' + err.message);
+  }
+}
 // ✅ MODAL CHI TIẾT ĐỀ - THÊM NÚT SCROLL NHANH
 async function openExamDetail(examId) {
   try {
@@ -429,6 +464,8 @@ async function openExamDetail(examId) {
       }
 
       div.appendChild(optsDiv);
+      
+      addEditButtonToQuestion(div, examId, q);
       
       // Upload/Xóa ảnh
       const uploadDiv = document.createElement('div');
