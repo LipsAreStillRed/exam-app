@@ -408,4 +408,35 @@ router.get('/:id', async (req, res) => {
   res.json({ ok: true, exam });
 });
 
+router.put('/:id/questions/:qid/text', async (req, res) => {
+  try {
+    const { id, qid } = req.params;
+    const { text } = req.body;
+    
+    if (!text) {
+      return res.status(400).json({ ok: false, error: 'Thiếu nội dung mới' });
+    }
+    
+    const exam = readExam(id);
+    if (!exam) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+    
+    const question = exam.questions.find(q => String(q.id) === String(qid));
+    if (!question) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
+    }
+    
+    question.question = text;
+    writeExam(exam);
+    
+    console.log(`✅ Updated question ${qid} in exam ${id}`);
+    
+    res.json({ ok: true, message: 'Đã cập nhật nội dung câu hỏi' });
+  } catch (e) {
+    console.error('❌ Update question error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 export default router;
