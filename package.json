@@ -16,7 +16,7 @@
     "nodemailer": "^6.9.8",
     "xmlbuilder2": "^3.1.1",
     "mammoth": "^1.6.0",
-    "adm-zip": "^3.0.5",
+    "adm-zip": "^0.5.10",
     "dotenv": "^16.3.0",
     "uuid": "^9.0.0",
     "googleapis": "^128.0.0",
