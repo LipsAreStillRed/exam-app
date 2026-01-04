@@ -1098,6 +1098,7 @@ function setupEventHandlers() {
       formData.append('p1Mode', document.getElementById('p1Mode')?.value || 'none');
       formData.append('p2Mode', document.getElementById('p2Mode')?.value || 'none');
       formData.append('p3Mode', document.getElementById('p3Mode')?.value || 'none');
+      formData.append('useAI', document.getElementById('useAI')?.checked ? 'true' : 'false');
       try {
         const res = await fetch('/exam/upload', { method: 'POST', body: formData });
         const data = await res.json();
