@@ -1,58 +1,38 @@
-// utils/parseExamContent.js - ✅ ENHANCED PARSER
+// utils/parseExamContent.js - ✅ PRODUCTION PARSER
 
-/**
- * ✅ Smart Math Wrap - Tự động detect và wrap công thức
- */
 function smartMathWrap(text) {
   if (!text) return text;
   
   let result = text;
   
-  // 1. Đã có $ rồi thì giữ nguyên
   if (result.includes('$')) {
     return result;
   }
   
-  // 2. Xử lý ký hiệu độ: ^0^C → °C
+  // Xử lý ký hiệu độ
   result = result.replace(/\^0\^([A-Z])/g, '°$1');
   result = result.replace(/\^\{?0\}?\^([A-Z])/g, '°$1');
   
-  // 3. Xử lý số mũ: 10^6 → 10⁶
-  const superscriptMap = {
-    '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
-    '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹'
-  };
-  
-  result = result.replace(/\^(\d)/g, (m, d) => superscriptMap[d] || m);
-  result = result.replace(/\^\{(\d+)\}/g, (m, num) => {
-    return num.split('').map(d => superscriptMap[d] || d).join('');
-  });
-  
-  // 4. Normalize spaces
+  // Normalize spaces
   result = result.replace(/\s+/g, ' ').trim();
   
   return result;
 }
 
-/**
- * ✅ ENHANCED Parse Exam Content
- */
 export function parseExamContent(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   const sections = [];
   let currentSection = null;
   let currentQuestion = null;
-  let pendingOptions = []; // ✅ Lưu options tạm thời
+  let pendingOptions = [];
 
   const pushQuestion = () => {
     if (currentQuestion && currentSection) {
-      // ✅ Apply pending options
       if (pendingOptions.length > 0) {
         currentQuestion.options = pendingOptions;
         pendingOptions = [];
       }
       
-      // Smart wrap
       if (currentQuestion.question) {
         currentQuestion.question = smartMathWrap(currentQuestion.question);
       }
@@ -85,7 +65,7 @@ export function parseExamContent(text) {
   };
 
   lines.forEach((line, lineIndex) => {
-    // ✅ Detect sections
+    // Detect sections
     if (/^Phần\s*1\b/i.test(line) || /^PHẦN\s*I\b/i.test(line)) {
       pushSection();
       currentSection = { 
@@ -116,7 +96,7 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ Detect câu hỏi: "Câu 1:" hoặc "Câu 1."
+    // Detect questions
     const questionMatch = line.match(/^Câu\s*(\d+)[:.]\s*(.*)/i);
     if (questionMatch) {
       pushQuestion();
@@ -148,25 +128,18 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ ENHANCED: Detect options với nhiều pattern
-    // Pattern 1: "A. text" (standard)
-    // Pattern 2: "A.text" (no space)
-    // Pattern 3: "A) text" (parenthesis)
+    // ✅ ENHANCED: Detect options - nhiều pattern
     const optionMatch = line.match(/^([A-D])[\.\)]\s*(.*)/i);
     if (optionMatch && currentSection?.type === 'multiple_choice' && currentQuestion) {
       const key = optionMatch[1].toUpperCase();
       const textPart = optionMatch[2].trim();
       
-      // ✅ Check if this option belongs to current question
-      // If we already have 4 options, this might be a new question
       if (pendingOptions.length >= 4) {
-        // Start new question context
-        console.warn(`⚠️ Line ${lineIndex}: Found option ${key} but already have 4 options. Might be formatting issue.`);
+        console.warn(`⚠️ Line ${lineIndex}: Found option ${key} but already have 4 options`);
       }
       
       pendingOptions.push({ key, text: textPart });
       
-      // ✅ Auto-assign if we have all 4 options
       if (pendingOptions.length === 4 && currentQuestion) {
         currentQuestion.options = [...pendingOptions];
         pendingOptions = [];
@@ -175,7 +148,7 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ Detect sub-questions: a) b) c) d)
+    // Detect sub-questions
     const subQuestionMatch = line.match(/^([a-e])[\.\)]\s*(.*)/i);
     if (subQuestionMatch && currentSection?.type === 'true_false' && currentQuestion) {
       const key = subQuestionMatch[1].toLowerCase();
@@ -184,14 +157,12 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ Continuation of question or option text
+    // Continuation
     if (currentQuestion) {
-      // If we have pending options, append to last option
       if (pendingOptions.length > 0 && !/^(Câu|Phần|PHẦN)/i.test(line)) {
         const lastOption = pendingOptions[pendingOptions.length - 1];
         lastOption.text += ' ' + line;
       } else if (!/^(Câu|Phần|PHẦN|[A-D][\.\)]|[a-e][\.\)])/i.test(line)) {
-        // Otherwise append to question
         currentQuestion.question += ' ' + line;
       }
     }
@@ -200,7 +171,7 @@ export function parseExamContent(text) {
   pushQuestion();
   pushSection();
   
-  // ✅ VALIDATION: Ensure all multiple_choice questions have 4 options
+  // ✅ VALIDATION: Ensure 4 options
   sections.forEach(section => {
     if (section.type === 'multiple_choice') {
       section.questions = section.questions.map(q => {
@@ -214,7 +185,7 @@ export function parseExamContent(text) {
             if (existingOptions[idx]) {
               return { key: letter, text: existingOptions[idx].text };
             }
-            return { key: letter, text: `Đáp án ${letter} (cần bổ sung)` };
+            return { key: letter, text: `` }; // ✅ Empty but present
           });
         }
         return q;
