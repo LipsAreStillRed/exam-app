@@ -119,8 +119,9 @@ function makeRuntimeVariant(baseExam) {
     questions
   };
 }
+
 // ============================================
-// ✅ TIER 1: OMML PARSER (Word Equation)
+// ✅ TIER 1: ENHANCED OMML PARSER - FULL SUPPORT
 // ============================================
 function extractMathFromDocx(docxPath) {
   try {
@@ -143,6 +144,8 @@ function extractMathFromDocx(docxPath) {
       const latex = ommlToLatex(omml);
       const placeholder = `__MATH_${i}__`;
       mathMap.set(placeholder, latex);
+      
+      console.log(`  Math ${i}: ${latex.substring(0, 50)}...`);
     }
     
     return mathMap;
@@ -152,45 +155,96 @@ function extractMathFromDocx(docxPath) {
   }
 }
 
+// ✅ ENHANCED OMML TO LATEX - SUPPORT MORE PATTERNS
 function ommlToLatex(omml) {
   let latex = omml;
   
-  // Superscript
+  // ✅ 1. Superscript: <m:sSup>
   latex = latex.replace(/<m:sSup>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<m:sup>([\s\S]*?)<\/m:sup>[\s\S]*?<\/m:sSup>/g, 
     (match, base, sup) => {
-      const cleanBase = base.replace(/<[^>]+>/g, '').trim();
-      const cleanSup = sup.replace(/<[^>]+>/g, '').trim();
+      const cleanBase = cleanOMMLText(base);
+      const cleanSup = cleanOMMLText(sup);
       return `${cleanBase}^{${cleanSup}}`;
     });
   
-  // Subscript
+  // ✅ 2. Subscript: <m:sSub>
   latex = latex.replace(/<m:sSub>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<m:sub>([\s\S]*?)<\/m:sub>[\s\S]*?<\/m:sSub>/g,
     (match, base, sub) => {
-      const cleanBase = base.replace(/<[^>]+>/g, '').trim();
-      const cleanSub = sub.replace(/<[^>]+>/g, '').trim();
+      const cleanBase = cleanOMMLText(base);
+      const cleanSub = cleanOMMLText(sub);
       return `${cleanBase}_{${cleanSub}}`;
     });
   
-  // Fraction
+  // ✅ 3. Fraction: <m:f>
   latex = latex.replace(/<m:f>[\s\S]*?<m:num>([\s\S]*?)<\/m:num>[\s\S]*?<m:den>([\s\S]*?)<\/m:den>[\s\S]*?<\/m:f>/g,
     (match, num, den) => {
-      const cleanNum = num.replace(/<[^>]+>/g, '').trim();
-      const cleanDen = den.replace(/<[^>]+>/g, '').trim();
+      const cleanNum = cleanOMMLText(num);
+      const cleanDen = cleanOMMLText(den);
       return `\\frac{${cleanNum}}{${cleanDen}}`;
     });
   
-  // Text nodes
+  // ✅ 4. Square root: <m:rad>
+  latex = latex.replace(/<m:rad>[\s\S]*?<m:deg\s*\/?>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:rad>/g,
+    (match, content) => {
+      const cleanContent = cleanOMMLText(content);
+      return `\\sqrt{${cleanContent}}`;
+    });
+  
+  // ✅ 5. Nth root
+  latex = latex.replace(/<m:rad>[\s\S]*?<m:deg>([\s\S]*?)<\/m:deg>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:rad>/g,
+    (match, deg, content) => {
+      const cleanDeg = cleanOMMLText(deg);
+      const cleanContent = cleanOMMLText(content);
+      return `\\sqrt[${cleanDeg}]{${cleanContent}}`;
+    });
+  
+  // ✅ 6. Delimiter (brackets): <m:d>
+  latex = latex.replace(/<m:d>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:d>/g,
+    (match, content) => {
+      const cleanContent = cleanOMMLText(content);
+      return `\\left(${cleanContent}\\right)`;
+    });
+  
+  // ✅ 7. Function: <m:func>
+  latex = latex.replace(/<m:func>[\s\S]*?<m:fName>([\s\S]*?)<\/m:fName>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:func>/g,
+    (match, fname, arg) => {
+      const cleanFname = cleanOMMLText(fname);
+      const cleanArg = cleanOMMLText(arg);
+      return `\\${cleanFname}(${cleanArg})`;
+    });
+  
+  // ✅ 8. Text nodes
   latex = latex.replace(/<m:t>(.*?)<\/m:t>/g, '$1');
   
-  // Remove XML tags
+  // ✅ 9. Remove all XML tags
   latex = latex.replace(/<[^>]+>/g, '');
+  
+  // ✅ 10. Clean up whitespace
   latex = latex.replace(/\s+/g, ' ').trim();
   
   return latex;
 }
 
+function cleanOMMLText(text) {
+  let clean = text;
+  
+  // Extract text from <m:t> tags
+  clean = clean.replace(/<m:t>(.*?)<\/m:t>/g, '$1');
+  
+  // Recursively parse nested structures
+  clean = ommlToLatex(clean);
+  
+  // Remove remaining XML tags
+  clean = clean.replace(/<[^>]+>/g, '');
+  
+  // Clean whitespace
+  clean = clean.replace(/\s+/g, ' ').trim();
+  
+  return clean;
+}
+
 // ============================================
-// ✅ TIER 2: GEMINI AI PARSER
+// ✅ TIER 2: ENHANCED GEMINI AI PARSER
 // ============================================
 async function parseWithGemini(filePath) {
   try {
@@ -207,17 +261,19 @@ async function parseWithGemini(filePath) {
     const base64Data = fileBuffer.toString('base64');
     
     const prompt = `
-Bạn là giáo viên Toán lớp 6 Việt Nam. Trích xuất câu hỏi từ đề thi này.
+Bạn là hệ thống trích xuất đề thi tự động. Phân tích file Word này và trả về JSON.
 
-QUAN TRỌNG: Chỉ trả về JSON hợp lệ theo định dạng:
+QUAN TRỌNG:
+1. Trả về ĐÚNG format JSON sau (KHÔNG thêm markdown, explanation):
 {
   "questions": [
     {
       "id": 1,
+      "part": 1,
       "type": "multiple_choice",
-      "question": "Nội dung câu hỏi với công thức LaTeX như $T(K) = t(°C) + 273$",
+      "question": "Nội dung câu hỏi (dùng LaTeX cho công thức: $x^2$, $\\frac{a}{b}$)",
       "options": [
-        {"key": "A", "text": "Đáp án A với $x^2$"},
+        {"key": "A", "text": "Đáp án A"},
         {"key": "B", "text": "Đáp án B"},
         {"key": "C", "text": "Đáp án C"},
         {"key": "D", "text": "Đáp án D"}
@@ -226,13 +282,23 @@ QUAN TRỌNG: Chỉ trả về JSON hợp lệ theo định dạng:
   ]
 }
 
-Quy tắc:
-- Bọc TẤT CẢ công thức trong $...$ (định dạng LaTeX)
-- Dùng ° cho ký hiệu độ
-- Dùng \\times cho phép nhân
-- Dùng \\frac{a}{b} cho phân số
-- Giữ nguyên văn bản tiếng Việt
-- CHỈ trả về JSON, không giải thích
+2. Quy tắc công thức:
+   - Bọc TẤT CẢ công thức trong $...$
+   - Phân số: $\\frac{a}{b}$
+   - Mũ: $x^{2}$, $10^{6}$
+   - Chỉ số dưới: $H_{2}O$
+   - Nhân: $\\times$
+   - Độ: sử dụng ký tự °
+   - Phép chia: $\\div$
+
+3. Cấu trúc đề:
+   - Phần 1 (part: 1): Trắc nghiệm 4 lựa chọn (A, B, C, D)
+   - Phần 2 (part: 2): Đúng/Sai
+   - Phần 3 (part: 3): Trả lời ngắn
+
+4. BẮT BUỘC phải có đủ 4 options (A, B, C, D) cho mỗi câu trắc nghiệm.
+
+CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH.
 `;
 
     const result = await model.generateContent([
@@ -246,7 +312,10 @@ Quy tắc:
     ]);
     
     const response = await result.response;
-    const text = response.text();
+    let text = response.text();
+    
+    // Clean markdown code blocks
+    text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -255,6 +324,23 @@ Quy tắc:
     }
     
     const parsed = JSON.parse(jsonMatch[0]);
+    
+    // ✅ VALIDATE: Ensure all multiple_choice questions have 4 options
+    if (parsed.questions) {
+      parsed.questions = parsed.questions.map(q => {
+        if (q.type === 'multiple_choice' && (!q.options || q.options.length !== 4)) {
+          console.warn(`⚠️ Câu ${q.id}: Thiếu options, bổ sung mặc định`);
+          q.options = [
+            { key: 'A', text: q.options?.[0]?.text || 'Đáp án A' },
+            { key: 'B', text: q.options?.[1]?.text || 'Đáp án B' },
+            { key: 'C', text: q.options?.[2]?.text || 'Đáp án C' },
+            { key: 'D', text: q.options?.[3]?.text || 'Đáp án D' }
+          ];
+        }
+        return q;
+      });
+    }
+    
     console.log(`✅ Gemini parsed ${parsed.questions?.length || 0} questions`);
     
     return parsed;
@@ -263,8 +349,9 @@ Quy tắc:
     return null;
   }
 }
+
 // ============================================
-// ✅ UPLOAD ROUTE với 3-TIER PARSING
+// ✅ UPLOAD ROUTE - FIXED GEMINI SAVE ISSUE
 // ============================================
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
@@ -273,21 +360,66 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     console.log('📄 Processing file:', req.file.originalname);
     
     const useAI = req.body.useAI === 'true';
-    let text = '';
+    let sections = [];
     let mathCount = 0;
+    let method = 'OMML';
 
     // ============================================
-    // TIER 1: Try OMML Parser first
+    // TIER 2: Gemini AI (if requested)
     // ============================================
-    if (!useAI) {
-      console.log('🔧 TIER 1: Trying OMML parser...');
+    if (useAI) {
+      console.log('🤖 TIER 2: Using Gemini AI...');
+      
+      const geminiResult = await parseWithGemini(req.file.path);
+      
+      if (geminiResult && geminiResult.questions) {
+        // ✅ Group by part
+        const part1 = geminiResult.questions.filter(q => q.part === 1 || q.type === 'multiple_choice');
+        const part2 = geminiResult.questions.filter(q => q.part === 2 || q.type === 'true_false');
+        const part3 = geminiResult.questions.filter(q => q.part === 3 || q.type === 'short_answer');
+        
+        if (part1.length > 0) {
+          sections.push({
+            title: 'Phần 1: Trắc nghiệm nhiều lựa chọn',
+            type: 'multiple_choice',
+            questions: part1
+          });
+        }
+        
+        if (part2.length > 0) {
+          sections.push({
+            title: 'Phần 2: Đúng/Sai',
+            type: 'true_false',
+            questions: part2
+          });
+        }
+        
+        if (part3.length > 0) {
+          sections.push({
+            title: 'Phần 3: Trả lời ngắn',
+            type: 'short_answer',
+            questions: part3
+          });
+        }
+        
+        mathCount = geminiResult.questions.length;
+        method = 'Gemini AI';
+      }
+    }
+
+    // ============================================
+    // TIER 1: OMML Parser (fallback or default)
+    // ============================================
+    if (sections.length === 0) {
+      console.log('🔧 TIER 1: Using OMML parser...');
       
       const mathMap = extractMathFromDocx(req.file.path);
       mathCount = mathMap.size;
       
       const result = await mammoth.extractRawText({ path: req.file.path });
-      text = result.value || '';
+      let text = result.value || '';
       
+      // Replace math placeholders with LaTeX
       let placeholderIndex = 0;
       text = text.replace(/__MATH_\d+__/g, () => {
         const placeholder = `__MATH_${placeholderIndex}__`;
@@ -297,74 +429,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       });
       
       console.log(`✅ OMML: Extracted ${mathCount} formulas`);
+      
+      // Parse with enhanced parser
+      sections = parseExamContent(text);
+      method = 'OMML';
     }
 
-    // ============================================
-    // TIER 2: Fallback to Gemini AI
-    // ============================================
-    if (useAI || mathCount === 0) {
-      console.log('🤖 TIER 2: Using Gemini AI...');
-      
-      const geminiResult = await parseWithGemini(req.file.path);
-      
-      if (geminiResult && geminiResult.questions) {
-        const sections = [{
-          title: 'Phần 1: Trắc nghiệm nhiều lựa chọn',
-          type: 'multiple_choice',
-          questions: geminiResult.questions.map(q => ({
-            id: q.id,
-            type: q.type || 'multiple_choice',
-            question: q.question,
-            options: q.options || []
-          }))
-        }];
-        
-        const examId = uuidv4();
-        const timeMinutes = parseInt(req.body.timeMinutes || '45', 10);
-        
-        const baseQuestions = flattenSections(sections).map((q, idx) => ({
-          ...q,
-          id: String(q.id || idx + 1)
-        }));
-        
-        const examData = {
-          id: examId,
-          originalName: req.file.originalname,
-          createdAt: Date.now(),
-          timeMinutes,
-          password: req.body.password || null,
-          sections,
-          questions: baseQuestions,
-          answers: {},
-          variants: [],
-          shuffleConfig: {
-            p1Mode: req.body.p1Mode || 'none',
-            p2Mode: req.body.p2Mode || 'none',
-            p3Mode: req.body.p3Mode || 'none',
-            variantCount: parseInt(req.body.variantCount || '1', 10)
-          },
-          parsedBy: 'gemini'
-        };
-        
-        writeExam(examData);
-        fs.unlinkSync(req.file.path);
-        
-        return res.json({ 
-          ok: true, 
-          examId, 
-          count: baseQuestions.length,
-          method: 'AI',
-          mathCount: baseQuestions.length
-        });
-      }
-    }
-
-    // ============================================
-    // Parse with existing parser
-    // ============================================
-    console.log('📝 Parsing content...');
-    const sections = parseExamContent(text);
-    
     if (!sections.length) {
       fs.unlinkSync(req.file.path);
       return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
@@ -398,10 +468,12 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         p3Mode: req.body.p3Mode || 'none',
         variantCount: parseInt(req.body.variantCount || '1', 10)
       },
-      parsedBy: 'omml'
+      parsedBy: method.toLowerCase().replace(' ', '_')
     };
 
+    // ✅ CRITICAL FIX: SAVE TO DISK BEFORE RETURNING
     writeExam(examData);
+    console.log(`✅ Exam saved to disk: ${examPath(examId)}`);
 
     // Upload to Drive if enabled
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
@@ -423,7 +495,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       ok: true, 
       examId, 
       count: baseQuestions.length,
-      method: 'OMML',
+      variantCount: 1,
+      method,
       mathCount
     });
   } catch (e) {
@@ -432,8 +505,9 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+
 // ============================================
-// ✅ OTHER ROUTES
+// ✅ OTHER ROUTES (unchanged)
 // ============================================
 
 router.get('/list', (req, res) => {
