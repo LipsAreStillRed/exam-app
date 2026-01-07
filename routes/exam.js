@@ -1,7 +1,3 @@
-// ============================================
-// routes/exam.js - FINAL PRODUCTION VERSION
-// ============================================
-
 import express from 'express';
 import multer from 'multer';
 import mammoth from 'mammoth';
@@ -423,26 +419,11 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       }
     }
 
-    // TIER 2: OMML Parser (fallback)
-    if (sections.length === 0) {
-      console.log('🔧 Using OMML parser...');
-      
-      const mathMap = extractMathFromDocx(req.file.path);
-      mathCount = mathMap.size;
-      
-      const result = await mammoth.extractRawText({ path: req.file.path });
-      let text = result.value || '';
-      
-      // Replace placeholders with LaTeX
-      let placeholderIndex = 0;
-      text = text.replace(/__MATH_\d+__/g, () => {
-        const placeholder = `__MATH_${placeholderIndex}__`;
-        const latex = mathMap.get(placeholder) || '';
-        placeholderIndex++;
-        return latex ? `$${latex}$` : '';
+ : '';
       });
       
       console.log(`✅ OMML: Extracted ${mathCount} formulas`);
+      console.log(`📄 Sample text (first 500 chars):\n${text.substring(0, 500)}`);
       
       sections = parseExamContent(text);
       method = 'OMML';
