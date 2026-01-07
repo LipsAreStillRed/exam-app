@@ -1,3 +1,7 @@
+// ============================================
+// routes/exam.js - FINAL PRODUCTION VERSION
+// ============================================
+
 import express from 'express';
 import multer from 'multer';
 import mammoth from 'mammoth';
@@ -14,6 +18,10 @@ const router = express.Router();
 const upload = multer({ dest: 'uploads/' });
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
+
+// ============================================
+// PART 1: FILE SYSTEM HELPERS
+// ============================================
 
 function ensureDir() {
   const dir = path.join(process.cwd(), 'data', 'exams');
@@ -37,6 +45,10 @@ function writeExam(exam) {
   fs.writeFileSync(examPath(exam.id), JSON.stringify(exam, null, 2), 'utf8'); 
 }
 
+// ============================================
+// PART 2: SHUFFLE UTILITIES
+// ============================================
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -53,36 +65,50 @@ function resequenceOptionsABCD(options) {
 
 function shuffleOptionsWithRekey(q) {
   if (!Array.isArray(q.options) || q.options.length === 0) return q;
+  
   const correctKey = q.correctAnswer;
   let correctText = null;
+  
   if (correctKey) {
     const found = q.options.find(o => o.key === correctKey);
     if (found) correctText = found.text;
   } else if (q.correctAnswerText) {
     correctText = q.correctAnswerText;
   }
+  
   const shuffledByText = shuffle(q.options.map(o => ({ text: o.text })));
   const rekeyed = resequenceOptionsABCD(shuffledByText);
+  
   let newCorrectKey = null;
   if (correctText) {
     const match = rekeyed.find(o => o.text === correctText);
     if (match) newCorrectKey = match.key;
   }
-  return { ...q, options: rekeyed, ...(newCorrectKey ? { correctAnswer: newCorrectKey } : {}) };
+  
+  return { 
+    ...q, 
+    options: rekeyed, 
+    ...(newCorrectKey ? { correctAnswer: newCorrectKey } : {}) 
+  };
 }
 
 function shuffleTrueFalseSubQuestions(q) {
   if (!(q.type === 'true_false' && Array.isArray(q.subQuestions))) return q;
+  
   const shuffled = shuffle(q.subQuestions.map(sq => ({ text: sq.text })));
   const letters = ['a','b','c','d','e','f'];
   const rekeyed = shuffled.map((sq, idx) => ({ key: letters[idx], text: sq.text }));
+  
   let newCorrect = {};
   if (q.correctAnswer && typeof q.correctAnswer === 'object') {
     for (const sq of rekeyed) {
       const oldKey = (q.subQuestions || []).find(x => x.text === sq.text)?.key;
-      if (oldKey && q.correctAnswer[oldKey]) newCorrect[sq.key] = q.correctAnswer[oldKey];
+      if (oldKey && q.correctAnswer[oldKey]) {
+        newCorrect[sq.key] = q.correctAnswer[oldKey];
+      }
     }
   }
+  
   return { ...q, subQuestions: rekeyed, correctAnswer: newCorrect };
 }
 
@@ -93,18 +119,32 @@ function makeRuntimeVariant(baseExam) {
   const part3 = baseExam.questions.filter(q => q.part === 3);
 
   let p1 = [...part1];
-  if (cfg.p1Mode === 'questions' || cfg.p1Mode === 'both') p1 = shuffle(p1);
-  p1 = p1.map(q => (cfg.p1Mode === 'both' ? shuffleOptionsWithRekey(q)
-                                          : (q.type === 'multiple_choice'
-                                             ? { ...q, options: resequenceOptionsABCD(q.options.map(o => ({ text: o.text }))) }
-                                             : q)));
+  if (cfg.p1Mode === 'questions' || cfg.p1Mode === 'both') {
+    p1 = shuffle(p1);
+  }
+  p1 = p1.map(q => {
+    if (cfg.p1Mode === 'both') {
+      return shuffleOptionsWithRekey(q);
+    }
+    if (q.type === 'multiple_choice') {
+      return { 
+        ...q, 
+        options: resequenceOptionsABCD(q.options.map(o => ({ text: o.text }))) 
+      };
+    }
+    return q;
+  });
 
   let p2 = [...part2];
-  if (cfg.p2Mode === 'questions' || cfg.p2Mode === 'both') p2 = shuffle(p2);
+  if (cfg.p2Mode === 'questions' || cfg.p2Mode === 'both') {
+    p2 = shuffle(p2);
+  }
   p2 = p2.map(q => (cfg.p2Mode === 'both' ? shuffleTrueFalseSubQuestions(q) : q));
 
   let p3 = [...part3];
-  if (cfg.p3Mode === 'questions') p3 = shuffle(p3);
+  if (cfg.p3Mode === 'questions') {
+    p3 = shuffle(p3);
+  }
 
   const questions = [...p1, ...p2, ...p3].map((q, idx) => ({
     ...q,
@@ -120,8 +160,9 @@ function makeRuntimeVariant(baseExam) {
 }
 
 // ============================================
-// ✅ ENHANCED OMML PARSER
+// PART 3: OMML MATH PARSER
 // ============================================
+
 function extractMathFromDocx(docxPath) {
   try {
     const zip = new AdmZip(docxPath);
@@ -131,7 +172,11 @@ function extractMathFromDocx(docxPath) {
     const doc = parser.parseFromString(docXml, 'text/xml');
     const serializer = new XMLSerializer();
     
-    const mathElements = doc.getElementsByTagNameNS('http://schemas.openxmlformats.org/wordprocessingml/2006/math', 'oMath');
+    const mathElements = doc.getElementsByTagNameNS(
+      'http://schemas.openxmlformats.org/wordprocessingml/2006/math', 
+      'oMath'
+    );
+    
     const mathMap = new Map();
     
     console.log(`📐 Found ${mathElements.length} OMML math elements`);
@@ -154,44 +199,54 @@ function extractMathFromDocx(docxPath) {
 function ommlToLatex(omml) {
   let latex = omml;
   
-  // Superscript
-  latex = latex.replace(/<m:sSup>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<m:sup>([\s\S]*?)<\/m:sup>[\s\S]*?<\/m:sSup>/g, 
+  // Superscript: base^{sup}
+  latex = latex.replace(
+    /<m:sSup>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<m:sup>([\s\S]*?)<\/m:sup>[\s\S]*?<\/m:sSup>/g, 
     (match, base, sup) => {
       const cleanBase = cleanOMMLText(base);
       const cleanSup = cleanOMMLText(sup);
       return `${cleanBase}^{${cleanSup}}`;
-    });
+    }
+  );
   
-  // Subscript
-  latex = latex.replace(/<m:sSub>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<m:sub>([\s\S]*?)<\/m:sub>[\s\S]*?<\/m:sSub>/g,
+  // Subscript: base_{sub}
+  latex = latex.replace(
+    /<m:sSub>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<m:sub>([\s\S]*?)<\/m:sub>[\s\S]*?<\/m:sSub>/g,
     (match, base, sub) => {
       const cleanBase = cleanOMMLText(base);
       const cleanSub = cleanOMMLText(sub);
       return `${cleanBase}_{${cleanSub}}`;
-    });
+    }
+  );
   
-  // Fraction
-  latex = latex.replace(/<m:f>[\s\S]*?<m:num>([\s\S]*?)<\/m:num>[\s\S]*?<m:den>([\s\S]*?)<\/m:den>[\s\S]*?<\/m:f>/g,
+  // Fraction: \frac{num}{den}
+  latex = latex.replace(
+    /<m:f>[\s\S]*?<m:num>([\s\S]*?)<\/m:num>[\s\S]*?<m:den>([\s\S]*?)<\/m:den>[\s\S]*?<\/m:f>/g,
     (match, num, den) => {
       const cleanNum = cleanOMMLText(num);
       const cleanDen = cleanOMMLText(den);
       return `\\frac{${cleanNum}}{${cleanDen}}`;
-    });
+    }
+  );
   
-  // Square root
-  latex = latex.replace(/<m:rad>[\s\S]*?<m:deg\s*\/?>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:rad>/g,
+  // Square root: \sqrt{content}
+  latex = latex.replace(
+    /<m:rad>[\s\S]*?<m:deg\s*\/?>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:rad>/g,
     (match, content) => {
       const cleanContent = cleanOMMLText(content);
       return `\\sqrt{${cleanContent}}`;
-    });
+    }
+  );
   
-  // Nth root
-  latex = latex.replace(/<m:rad>[\s\S]*?<m:deg>([\s\S]*?)<\/m:deg>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:rad>/g,
+  // Nth root: \sqrt[n]{content}
+  latex = latex.replace(
+    /<m:rad>[\s\S]*?<m:deg>([\s\S]*?)<\/m:deg>[\s\S]*?<m:e>([\s\S]*?)<\/m:e>[\s\S]*?<\/m:rad>/g,
     (match, deg, content) => {
       const cleanDeg = cleanOMMLText(deg);
       const cleanContent = cleanOMMLText(content);
       return `\\sqrt[${cleanDeg}]{${cleanContent}}`;
-    });
+    }
+  );
   
   // Text nodes
   latex = latex.replace(/<m:t>(.*?)<\/m:t>/g, '$1');
@@ -213,8 +268,9 @@ function cleanOMMLText(text) {
 }
 
 // ============================================
-// ✅ GEMINI AI PARSER
+// PART 4: GEMINI AI PARSER
 // ============================================
+
 async function parseWithGemini(filePath) {
   try {
     if (!process.env.GOOGLE_GEMINI_API_KEY) {
@@ -252,7 +308,7 @@ QUAN TRỌNG - CHỈ TRẢ VỀ JSON, KHÔNG GIẢI THÍCH:
 
 QUY TẮC:
 1. Bọc công thức trong $...$ (LaTeX)
-2. Phân số: $\\frac{a}{b}$, Mũ: $x^{2}$, Nhân: $\\times$, Độ: °
+2. Phân số: $\\frac{a}{b}$, Mũ: $x^{2}$, Độ: °
 3. BẮT BUỘC đủ 4 options cho multiple_choice
 4. CHỈ TRẢ VỀ JSON, không markdown, không giải thích
 `;
@@ -270,6 +326,7 @@ QUY TẮC:
     const response = await result.response;
     let text = response.text();
     
+    // Clean markdown
     text = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
     
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -280,7 +337,7 @@ QUY TẮC:
     
     const parsed = JSON.parse(jsonMatch[0]);
     
-    // ✅ VALIDATE: Ensure 4 options
+    // Validate 4 options
     if (parsed.questions) {
       parsed.questions = parsed.questions.map(q => {
         if (q.type === 'multiple_choice') {
@@ -304,11 +361,14 @@ QUY TẮC:
 }
 
 // ============================================
-// ✅ UPLOAD ROUTE
+// PART 5: UPLOAD ROUTE (3-TIER PARSER)
 // ============================================
+
 router.post('/upload', upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'Chưa chọn file' });
+    }
 
     console.log('📄 Processing file:', req.file.originalname);
     
@@ -317,16 +377,22 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     let mathCount = 0;
     let method = 'OMML';
 
-    // TIER 2: Gemini AI
+    // TIER 1: Gemini AI (if enabled)
     if (useAI) {
       console.log('🤖 Using Gemini AI...');
       
       const geminiResult = await parseWithGemini(req.file.path);
       
       if (geminiResult && geminiResult.questions) {
-        const part1 = geminiResult.questions.filter(q => q.part === 1 || q.type === 'multiple_choice');
-        const part2 = geminiResult.questions.filter(q => q.part === 2 || q.type === 'true_false');
-        const part3 = geminiResult.questions.filter(q => q.part === 3 || q.type === 'short_answer');
+        const part1 = geminiResult.questions.filter(
+          q => q.part === 1 || q.type === 'multiple_choice'
+        );
+        const part2 = geminiResult.questions.filter(
+          q => q.part === 2 || q.type === 'true_false'
+        );
+        const part3 = geminiResult.questions.filter(
+          q => q.part === 3 || q.type === 'short_answer'
+        );
         
         if (part1.length > 0) {
           sections.push({
@@ -357,7 +423,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       }
     }
 
-    // TIER 1: OMML Parser
+    // TIER 2: OMML Parser (fallback)
     if (sections.length === 0) {
       console.log('🔧 Using OMML parser...');
       
@@ -367,6 +433,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       const result = await mammoth.extractRawText({ path: req.file.path });
       let text = result.value || '';
       
+      // Replace placeholders with LaTeX
       let placeholderIndex = 0;
       text = text.replace(/__MATH_\d+__/g, () => {
         const placeholder = `__MATH_${placeholderIndex}__`;
@@ -381,6 +448,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       method = 'OMML';
     }
 
+    // Validation
     if (!sections.length) {
       fs.unlinkSync(req.file.path);
       return res.status(400).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
@@ -389,6 +457,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const examId = uuidv4();
     const timeMinutes = parseInt(req.body.timeMinutes || '45', 10);
 
+    // Generate unique IDs
     let nextId = 1;
     const seen = new Set();
     const baseQuestions = flattenSections(sections).map(q => {
@@ -420,9 +489,15 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     writeExam(examData);
     console.log(`✅ Exam saved: ${examPath(examId)}`);
 
+    // Drive sync
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
       try {
-        const driveResult = await uploadToDrive(examPath(examId), `exam_${examId}.json`, 'application/json');
+        const driveResult = await uploadToDrive(
+          examPath(examId), 
+          `exam_${examId}.json`, 
+          'application/json'
+        );
+        
         if (driveResult) {
           examData.driveFileId = driveResult.id;
           examData.driveLink = driveResult.webViewLink || driveResult.webContentLink;
@@ -451,7 +526,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 // ============================================
-// ✅ OTHER ROUTES (UNCHANGED - KEEP ALL FEATURES)
+// PART 6: LIST & RETRIEVAL ROUTES
 // ============================================
 
 router.get('/list', (req, res) => {
@@ -499,8 +574,10 @@ router.get('/latest', (req, res) => {
   
   if (!files.length) return res.json({ ok: true, exam: null });
   
-  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
-                      .sort((a, b) => b.createdAt - a.createdAt)[0];
+  const latest = files
+    .map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
+    .sort((a, b) => b.createdAt - a.createdAt)[0];
+    
   res.json({ ok: true, exam: latest });
 });
 
@@ -512,10 +589,12 @@ router.get('/latest-variant', (req, res) => {
   
   if (!files.length) return res.json({ ok: true, exam: null });
 
-  const latest = files.map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
-                      .sort((a, b) => b.createdAt - a.createdAt)[0];
+  const latest = files
+    .map(f => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')))
+    .sort((a, b) => b.createdAt - a.createdAt)[0];
 
   const runtime = makeRuntimeVariant(latest);
+  
   const examForStudent = {
     id: runtime.id,
     baseId: latest.id,
@@ -524,17 +603,68 @@ router.get('/latest-variant', (req, res) => {
     password: runtime.password,
     questions: runtime.questions
   };
+  
   res.json({ ok: true, exam: examForStudent });
 });
+
+router.get('/:id', async (req, res) => {
+  const baseId = String(req.params.id);
+  let exam = readExam(baseId);
+
+  // Drive fallback
+  if (!exam) {
+    try {
+      const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
+      if (fs.existsSync(metaPath)) {
+        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+        if (meta.driveFileId) {
+          const remoteExam = await downloadFromDrive(meta.driveFileId);
+          if (remoteExam && remoteExam.id === baseId) {
+            exam = remoteExam;
+            writeExam(exam);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Fallback load exam from Drive error:', err.message);
+    }
+  }
+
+  if (!exam) {
+    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  }
+  
+  res.json({ ok: true, exam });
+});
+
+// ============================================
+// PART 7: PASSWORD & VARIANTS
+// ============================================
 
 router.post('/verify-password', (req, res) => {
   const { examId, password } = req.body;
   const baseId = String(examId).split('_r')[0].split('_v')[0];
   const exam = readExam(baseId);
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  
+  if (!exam) {
+    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  }
+  
   const verified = !exam.password || exam.password === password;
   res.json({ ok: verified });
 });
+
+router.get('/:id/variants', (req, res) => {
+  const exam = readExam(req.params.id);
+  if (!exam) {
+    return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+  }
+  res.json(exam.variants || []);
+});
+
+// ============================================
+// PART 8: EDIT QUESTION TEXT
+// ============================================
 
 router.put('/:id/questions/:qid/text', async (req, res) => {
   try {
@@ -567,32 +697,55 @@ router.put('/:id/questions/:qid/text', async (req, res) => {
   }
 });
 
+// ============================================
+// PART 9: CORRECT ANSWERS
+// ============================================
+
 router.post('/:id/correct-answers', async (req, res) => {
   try {
     const baseId = String(req.params.id);
+    
     if (baseId.includes('_v') || baseId.includes('_r')) {
-      return res.status(400).json({ ok: false, error: 'Chỉ được lưu đáp án trên đề gốc' });
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Chỉ được lưu đáp án trên đề gốc' 
+      });
     }
+    
     const exam = readExam(baseId);
-    if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    if (!exam) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
 
     const incomingAnswers = Object.fromEntries(
       Object.entries(req.body.answers || {}).map(([k, v]) => [String(k), v])
     );
+    
     exam.answers = incomingAnswers;
 
     exam.questions = (exam.questions || []).map(q => {
       const ans = incomingAnswers[String(q.id)];
-      if (ans !== undefined) return { ...q, correctAnswer: ans };
+      if (ans !== undefined) {
+        return { ...q, correctAnswer: ans };
+      }
       return q;
     });
 
     writeExam(exam);
 
+    // Drive sync
     if (String(process.env.DRIVE_ENABLED || '').toLowerCase() === 'true') {
       try {
-        if (exam.driveFileId) await deleteFromDrive(exam.driveFileId);
-        const driveResult = await uploadToDrive(examPath(baseId), `exam_${baseId}.json`, 'application/json');
+        if (exam.driveFileId) {
+          await deleteFromDrive(exam.driveFileId);
+        }
+        
+        const driveResult = await uploadToDrive(
+          examPath(baseId), 
+          `exam_${baseId}.json`, 
+          'application/json'
+        );
+        
         if (driveResult) {
           exam.driveFileId = driveResult.id;
           exam.driveLink = driveResult.webViewLink || driveResult.webContentLink;
@@ -609,58 +762,42 @@ router.post('/:id/correct-answers', async (req, res) => {
   }
 });
 
-router.get('/:id/variants', (req, res) => {
-  const exam = readExam(req.params.id);
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  res.json(exam.variants || []);
-});
+// ============================================
+// PART 10: DELETE EXAM
+// ============================================
 
 router.delete('/:id', async (req, res) => {
   try {
     const exam = readExam(req.params.id);
-    if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    if (!exam) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
 
+    // Delete local file
     const p = examPath(req.params.id);
-    if (fs.existsSync(p)) fs.unlinkSync(p);
+    if (fs.existsSync(p)) {
+      fs.unlinkSync(p);
+    }
 
+    // Delete images folder
     const imgDir = path.join('public', 'uploads', 'question-images', req.params.id);
-    if (fs.existsSync(imgDir)) fs.rmSync(imgDir, { recursive: true, force: true });
+    if (fs.existsSync(imgDir)) {
+      fs.rmSync(imgDir, { recursive: true, force: true });
+    }
 
+    // Delete from Drive
     if (exam.driveFileId) {
-      try { await deleteFromDrive(exam.driveFileId); } 
-      catch (e) { console.error('Delete from Drive error:', e.message); }
+      try { 
+        await deleteFromDrive(exam.driveFileId); 
+      } catch (e) { 
+        console.error('Delete from Drive error:', e.message); 
+      }
     }
 
     res.json({ ok: true, message: 'Đã xóa đề' });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
-});
-
-router.get('/:id', async (req, res) => {
-  const baseId = String(req.params.id);
-  let exam = readExam(baseId);
-
-  if (!exam) {
-    try {
-      const metaPath = path.join(process.cwd(), 'data', 'exams', `${baseId}.json`);
-      if (fs.existsSync(metaPath)) {
-        const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-        if (meta.driveFileId) {
-          const remoteExam = await downloadFromDrive(meta.driveFileId);
-          if (remoteExam && remoteExam.id === baseId) {
-            exam = remoteExam;
-            writeExam(exam);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Fallback load exam from Drive error:', err.message);
-    }
-  }
-
-  if (!exam) return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
-  res.json({ ok: true, exam });
 });
 
 export default router;
