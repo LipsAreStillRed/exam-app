@@ -1,15 +1,16 @@
-// utils/parseExamContent.js - ✅ PRODUCTION PARSER
+// utils/parseExamContent.js - ✅ FIXED: Preserve LaTeX formulas
 
 function smartMathWrap(text) {
   if (!text) return text;
   
   let result = text;
   
+  // ✅ Nếu đã có $ thì giữ nguyên
   if (result.includes('$')) {
     return result;
   }
   
-  // Xử lý ký hiệu độ
+  // ✅ Xử lý ký hiệu độ
   result = result.replace(/\^0\^([A-Z])/g, '°$1');
   result = result.replace(/\^\{?0\}?\^([A-Z])/g, '°$1');
   
@@ -17,6 +18,25 @@ function smartMathWrap(text) {
   result = result.replace(/\s+/g, ' ').trim();
   
   return result;
+}
+
+// ✅ NEW: Detect if text contains math-like patterns
+function containsMathPattern(text) {
+  if (!text) return false;
+  
+  // Check for common math patterns
+  const mathPatterns = [
+    /\$/,                           // LaTeX delimiter
+    /\\frac/,                       // Fraction
+    /\^{.*?}/,                      // Superscript with braces
+    /_{.*?}/,                       // Subscript with braces
+    /\\sqrt/,                       // Square root
+    /\\times/,                      // Multiplication
+    /\\cdot/,                       // Dot product
+    /[A-Z]\s*\(\s*[A-Z]\s*\)/      // T(K), t(C), etc.
+  ];
+  
+  return mathPatterns.some(pattern => pattern.test(text));
 }
 
 export function parseExamContent(text) {
@@ -33,10 +53,12 @@ export function parseExamContent(text) {
         pendingOptions = [];
       }
       
+      // ✅ Wrap math in question
       if (currentQuestion.question) {
         currentQuestion.question = smartMathWrap(currentQuestion.question);
       }
       
+      // ✅ Wrap math in options
       if (currentQuestion.options) {
         currentQuestion.options = currentQuestion.options.map(opt => ({
           ...opt,
@@ -44,6 +66,7 @@ export function parseExamContent(text) {
         }));
       }
       
+      // ✅ Wrap math in sub-questions
       if (currentQuestion.subQuestions) {
         currentQuestion.subQuestions = currentQuestion.subQuestions.map(sub => ({
           ...sub,
@@ -128,11 +151,16 @@ export function parseExamContent(text) {
       return;
     }
     
-    // ✅ ENHANCED: Detect options - nhiều pattern
+    // ✅ ENHANCED: Detect options with better pattern matching
     const optionMatch = line.match(/^([A-D])[\.\)]\s*(.*)/i);
     if (optionMatch && currentSection?.type === 'multiple_choice' && currentQuestion) {
       const key = optionMatch[1].toUpperCase();
-      const textPart = optionMatch[2].trim();
+      let textPart = optionMatch[2].trim();
+      
+      // ✅ FIX: If text is empty but line contains math symbols, keep raw line
+      if (!textPart && containsMathPattern(line)) {
+        textPart = line.replace(/^[A-D][\.\)]\s*/i, '').trim();
+      }
       
       if (pendingOptions.length >= 4) {
         console.warn(`⚠️ Line ${lineIndex}: Found option ${key} but already have 4 options`);
@@ -157,11 +185,16 @@ export function parseExamContent(text) {
       return;
     }
     
-    // Continuation
+    // ✅ ENHANCED: Continuation handling - preserve math symbols
     if (currentQuestion) {
       if (pendingOptions.length > 0 && !/^(Câu|Phần|PHẦN)/i.test(line)) {
         const lastOption = pendingOptions[pendingOptions.length - 1];
-        lastOption.text += ' ' + line;
+        // ✅ If option text is empty and this line has math, use this line
+        if (!lastOption.text && containsMathPattern(line)) {
+          lastOption.text = line;
+        } else {
+          lastOption.text += ' ' + line;
+        }
       } else if (!/^(Câu|Phần|PHẦN|[A-D][\.\)]|[a-e][\.\)])/i.test(line)) {
         currentQuestion.question += ' ' + line;
       }
@@ -185,7 +218,7 @@ export function parseExamContent(text) {
             if (existingOptions[idx]) {
               return { key: letter, text: existingOptions[idx].text };
             }
-            return { key: letter, text: `` }; // ✅ Empty but present
+            return { key: letter, text: `(Đáp án ${letter})` }; // ✅ Placeholder thay vì rỗng
           });
         }
         return q;
