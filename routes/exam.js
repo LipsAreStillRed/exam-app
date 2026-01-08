@@ -640,7 +640,89 @@ router.put('/:id/questions/:qid/text', async (req, res) => {
     res.status(500).json({ ok: false, error: e.message });
   }
 });
+// ✅ API MỚI 1: Cập nhật text của đáp án (option)
+router.put('/:id/questions/:qid/options/:optionKey', async (req, res) => {
+  try {
+    const { id, qid, optionKey } = req.params;
+    const { text } = req.body;
+    
+    if (!text) {
+      return res.status(400).json({ ok: false, error: 'Thiếu nội dung mới' });
+    }
+    
+    const exam = readExam(id);
+    if (!exam) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+    
+    const question = exam.questions.find(q => String(q.id) === String(qid));
+    if (!question) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
+    }
+    
+    if (question.type !== 'multiple_choice' || !Array.isArray(question.options)) {
+      return res.status(400).json({ ok: false, error: 'Câu hỏi không phải dạng multiple choice' });
+    }
+    
+    const option = question.options.find(opt => opt.key === optionKey);
+    if (!option) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đáp án' });
+    }
+    
+    // Cập nhật text
+    option.text = text;
+    
+    writeExam(exam);
+    console.log(`✅ Updated option ${optionKey} in question ${qid} of exam ${id}`);
+    
+    res.json({ ok: true, message: 'Đã cập nhật nội dung đáp án' });
+  } catch (e) {
+    console.error('❌ Update option error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 
+// ✅ API MỚI 2: Cập nhật text của câu hỏi con (true/false sub-question)
+router.put('/:id/questions/:qid/subquestions/:subKey', async (req, res) => {
+  try {
+    const { id, qid, subKey } = req.params;
+    const { text } = req.body;
+    
+    if (!text) {
+      return res.status(400).json({ ok: false, error: 'Thiếu nội dung mới' });
+    }
+    
+    const exam = readExam(id);
+    if (!exam) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy đề' });
+    }
+    
+    const question = exam.questions.find(q => String(q.id) === String(qid));
+    if (!question) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy câu hỏi' });
+    }
+    
+    if (question.type !== 'true_false' || !Array.isArray(question.subQuestions)) {
+      return res.status(400).json({ ok: false, error: 'Câu hỏi không phải dạng true/false với câu hỏi con' });
+    }
+    
+    const subQuestion = question.subQuestions.find(sq => sq.key === subKey);
+    if (!subQuestion) {
+      return res.status(404).json({ ok: false, error: 'Không tìm thấy câu hỏi con' });
+    }
+    
+    // Cập nhật text
+    subQuestion.text = text;
+    
+    writeExam(exam);
+    console.log(`✅ Updated sub-question ${subKey} in question ${qid} of exam ${id}`);
+    
+    res.json({ ok: true, message: 'Đã cập nhật câu hỏi con' });
+  } catch (e) {
+    console.error('❌ Update sub-question error:', e);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
 router.post('/:id/correct-answers', async (req, res) => {
   try {
     const baseId = String(req.params.id);
