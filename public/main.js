@@ -178,8 +178,7 @@ async function handleLogin(password) {
   if (!res.ok || !data.ok) throw new Error(data.error || 'Đăng nhập thất bại');
   return data;
 }
-
-// ====================== TEACHER FUNCTIONS ======================
+// ====================== TEACHER: LOAD EXAM LIST ======================
 async function loadExamList() {
   const listDiv = document.getElementById('examList');
   if (!listDiv) {
@@ -271,6 +270,7 @@ async function loadExamList() {
   }
 }
 
+// ====================== TEACHER: LOAD SUBMISSIONS ======================
 async function loadSubmissions() {
   const listDiv = document.getElementById('submissionsList');
   if (!listDiv) return;
@@ -306,11 +306,13 @@ async function loadSubmissions() {
     listDiv.innerHTML = '<p class="empty-state">Lỗi kết nối server</p>';
   }
 }
+
+// ====================== HELPER: ADD EDIT BUTTON TO QUESTION ======================
 function addEditButtonToQuestion(qDiv, examId, question) {
   const editBtn = document.createElement('button');
   editBtn.className = 'btn btn-secondary';
   editBtn.style.cssText = 'margin-top:12px; margin-left:8px; padding:6px 14px; font-size:13px;';
-  editBtn.innerHTML = '✏️ Sửa nội dung';
+  editBtn.innerHTML = '✏️ Sửa nội dung câu hỏi';
   
   editBtn.onclick = () => {
     const newText = prompt('Nhập nội dung mới (dùng $...$ cho công thức):\n\nVí dụ: $T(K) = t(°C) + 273$', question.question);
@@ -321,6 +323,7 @@ function addEditButtonToQuestion(qDiv, examId, question) {
   qDiv.appendChild(editBtn);
 }
 
+// ====================== API: UPDATE QUESTION TEXT ======================
 async function updateQuestionText(examId, qid, newText) {
   try {
     const res = await fetch(`/exam/${examId}/questions/${qid}/text`, {
@@ -342,7 +345,43 @@ async function updateQuestionText(examId, qid, newText) {
     alert('❌ Lỗi: ' + err.message);
   }
 }
-// ✅ MODAL CHI TIẾT ĐỀ - THÊM NÚT SCROLL NHANH
+
+// ====================== IMAGE UPLOAD/DELETE FOR QUESTION ======================
+async function attachImage(examId, qid, fileInput) {
+  if (!fileInput?.files[0]) throw new Error('Chưa chọn ảnh');
+  
+  const fd = new FormData();
+  fd.append('image', fileInput.files[0]);
+  
+  const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, { 
+    method: 'POST', 
+    body: fd 
+  });
+  
+  const result = await res.json();
+  
+  if (!result.ok) {
+    throw new Error(result.error || 'Không cập nhật được');
+  }
+  
+  console.log('✅ Ảnh đã upload:', result.url);
+  return result;
+}
+
+async function deleteImage(examId, qid) {
+  const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, {
+    method: 'DELETE'
+  });
+  
+  const result = await res.json();
+  
+  if (!result.ok) {
+    throw new Error(result.error || 'Không xóa được');
+  }
+  
+  console.log('✅ Ảnh đã xóa');
+  return result;
+}
 async function openExamDetail(examId) {
   try {
     console.log('📖 Loading exam:', examId);
@@ -365,7 +404,7 @@ async function openExamDetail(examId) {
     const content = document.getElementById('examDetailContent');
     content.innerHTML = `<h3>${exam.originalName || 'Đề thi'}</h3>`;
 
-    // ✅ THÊM NÚT SCROLL NHANH XUỐNG CUỐI
+    // ✅ NÚT SCROLL NHANH XUỐNG CUỐI
     const scrollBtn = document.createElement('button');
     scrollBtn.className = 'scroll-to-bottom';
     scrollBtn.innerHTML = '⬇';
@@ -396,20 +435,125 @@ async function openExamDetail(examId) {
       const optsDiv = document.createElement('div');
       optsDiv.className = 'options';
 
+      // ============ MULTIPLE CHOICE ============
       if (q.type === 'multiple_choice' && Array.isArray(q.options) && q.options.length > 0) {
         const block = document.createElement('div');
         block.className = 'option-block';
+        
         q.options.forEach(opt => {
-          const label = document.createElement('label');
+          const optDiv = document.createElement('div');
+          optDiv.className = 'option-item-wrapper';
+          optDiv.style.cssText = 'margin:10px 0; padding:12px; border:2px solid #e0e0e0; border-radius:8px; background:#f9f9f9;';
+          
           const isCorrect = q.correctAnswer === opt.key;
+          
+          // Radio button + Text
+          const label = document.createElement('label');
+          label.style.cssText = 'display:flex; align-items:center; gap:10px; cursor:pointer; flex:1;';
           label.innerHTML = `
-            <input type="radio" name="ans_${q.id}" value="${opt.key}" ${isCorrect ? 'checked' : ''}>
-            ${opt.key}. ${opt.text || ''}
+            <input type="radio" name="ans_${q.id}" value="${opt.key}" ${isCorrect ? 'checked' : ''} style="width:18px; height:18px;">
+            <span style="flex:1; font-size:15px;">${opt.key}. <span class="option-text-${q.id}-${opt.key}">${opt.text || ''}</span></span>
           `;
-          block.appendChild(label);
+          
+          // ✅ NÚT SỬA ĐÁP ÁN
+          const editAnswerBtn = document.createElement('button');
+          editAnswerBtn.className = 'btn-edit-answer';
+          editAnswerBtn.innerHTML = '✏️ Sửa';
+          editAnswerBtn.title = 'Sửa nội dung đáp án này';
+          editAnswerBtn.style.cssText = 'padding:6px 12px; margin-left:10px; font-size:13px; background:#3b82f6; color:white; border:none; border-radius:6px; cursor:pointer;';
+          editAnswerBtn.onclick = () => editOptionText(examId, q.id, opt.key);
+          
+          // Container cho label + button
+          const topRow = document.createElement('div');
+          topRow.style.cssText = 'display:flex; align-items:center; gap:8px;';
+          topRow.appendChild(label);
+          topRow.appendChild(editAnswerBtn);
+          
+          optDiv.appendChild(topRow);
+          
+          // ✅ HIỂN THỊ ẢNH ĐÁP ÁN (NẾU CÓ)
+          if (opt.image) {
+            const imgPreview = document.createElement('img');
+            imgPreview.src = opt.image;
+            imgPreview.className = `option-image-${q.id}-${opt.key}`;
+            imgPreview.style.cssText = 'max-width:200px; border-radius:6px; margin-top:8px; display:block;';
+            optDiv.appendChild(imgPreview);
+          }
+          
+          // ✅ UPLOAD/XÓA ẢNH CHO ĐÁP ÁN
+          const imageControls = document.createElement('div');
+          imageControls.style.cssText = 'margin-top:8px; display:flex; gap:8px; align-items:center;';
+          imageControls.innerHTML = `
+            <input type="file" id="img_option_${q.id}_${opt.key}" accept="image/*" style="display:none;">
+            ${opt.image ? `
+              <button class="btn btn-secondary" id="change_option_${q.id}_${opt.key}" style="padding:4px 10px;font-size:12px;">📷 Thay ảnh</button>
+              <button class="btn btn-danger" id="delete_option_${q.id}_${opt.key}" style="padding:4px 10px;font-size:12px;">🗑️ Xóa ảnh</button>
+            ` : `
+              <button class="btn btn-secondary" id="add_option_${q.id}_${opt.key}" style="padding:4px 10px;font-size:12px;">📷 Thêm ảnh</button>
+            `}
+          `;
+          
+          optDiv.appendChild(imageControls);
+          
+          // Setup event listeners cho upload/delete ảnh đáp án
+          setTimeout(() => {
+            const fileInput = document.getElementById(`img_option_${q.id}_${opt.key}`);
+            const changeBtn = document.getElementById(`change_option_${q.id}_${opt.key}`);
+            const deleteBtn = document.getElementById(`delete_option_${q.id}_${opt.key}`);
+            const addBtn = document.getElementById(`add_option_${q.id}_${opt.key}`);
+            
+            if (changeBtn || addBtn) {
+              const uploadBtn = changeBtn || addBtn;
+              uploadBtn.onclick = () => fileInput.click();
+              
+              fileInput.onchange = async () => {
+                if (!fileInput.files[0]) return;
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = '⏳ Đang tải...';
+                
+                try {
+                  await attachImageToOption(examId, q.id, opt.key, fileInput);
+                  uploadBtn.textContent = '✅ Đã cập nhật';
+                  setTimeout(() => {
+                    closeExamDetail();
+                    openExamDetail(examId);
+                  }, 1000);
+                } catch (err) {
+                  uploadBtn.textContent = '❌ Lỗi';
+                  uploadBtn.disabled = false;
+                  alert('Lỗi upload: ' + err.message);
+                }
+              };
+            }
+            
+            if (deleteBtn) {
+              deleteBtn.onclick = async () => {
+                if (!confirm('Xóa ảnh đáp án này?')) return;
+                deleteBtn.disabled = true;
+                deleteBtn.textContent = '⏳ Đang xóa...';
+                
+                try {
+                  await deleteImageFromOption(examId, q.id, opt.key);
+                  deleteBtn.textContent = '✅ Đã xóa';
+                  setTimeout(() => {
+                    closeExamDetail();
+                    openExamDetail(examId);
+                  }, 1000);
+                } catch (err) {
+                  deleteBtn.textContent = '❌ Lỗi';
+                  deleteBtn.disabled = false;
+                  alert('Lỗi xóa ảnh: ' + err.message);
+                }
+              };
+            }
+          }, 100);
+          
+          block.appendChild(optDiv);
         });
+        
         optsDiv.appendChild(block);
       }
+      // ============ TRUE/FALSE NHIỀU Ý ============
       else if (q.type === 'true_false' && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
         const block = document.createElement('div');
         block.className = 'truefalse-block';
@@ -419,21 +563,28 @@ async function openExamDetail(examId) {
           const correctAnswer = q.correctAnswer?.[sub.key];
           const isDung = correctAnswer === 'Đúng';
           const isSai = correctAnswer === 'Sai';
+          
           row.innerHTML = `
-            <strong>${sub.key})</strong> ${sub.text || ''}
-            <label>
-              <input type="radio" name="ans_${q.id}_${sub.key}" value="Đúng" ${isDung ? 'checked' : ''}> 
-              Đúng
-            </label>
-            <label>
-              <input type="radio" name="ans_${q.id}_${sub.key}" value="Sai" ${isSai ? 'checked' : ''}> 
-              Sai
-            </label>
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+              <strong>${sub.key})</strong> <span class="subq-text-${q.id}-${sub.key}">${sub.text || ''}</span>
+              <button class="btn-edit-answer" onclick="editSubQuestionText('${examId}', '${q.id}', '${sub.key}')" style="padding:4px 10px; font-size:12px; background:#3b82f6; color:white; border:none; border-radius:6px; cursor:pointer;">✏️ Sửa</button>
+            </div>
+            <div style="margin-top:8px;">
+              <label style="margin-right:14px;">
+                <input type="radio" name="ans_${q.id}_${sub.key}" value="Đúng" ${isDung ? 'checked' : ''}> 
+                Đúng
+              </label>
+              <label>
+                <input type="radio" name="ans_${q.id}_${sub.key}" value="Sai" ${isSai ? 'checked' : ''}> 
+                Sai
+              </label>
+            </div>
           `;
           block.appendChild(row);
         });
         optsDiv.appendChild(block);
       }
+      // ============ TRUE/FALSE ĐƠN ============
       else if (q.type === 'true_false') {
         const block = document.createElement('div');
         block.className = 'truefalse-block';
@@ -448,6 +599,7 @@ async function openExamDetail(examId) {
         });
         optsDiv.appendChild(block);
       }
+      // ============ SHORT ANSWER ============
       else if (q.type === 'short_answer') {
         const form = document.createElement('div');
         form.className = 'short-form';
@@ -465,9 +617,10 @@ async function openExamDetail(examId) {
 
       div.appendChild(optsDiv);
       
+      // Nút sửa nội dung câu hỏi
       addEditButtonToQuestion(div, examId, q);
       
-      // Upload/Xóa ảnh
+      // Upload/Xóa ảnh CHO CÂU HỎI (không phải đáp án)
       const uploadDiv = document.createElement('div');
       uploadDiv.style.marginTop = '12px';
       uploadDiv.style.display = 'flex';
@@ -478,17 +631,17 @@ async function openExamDetail(examId) {
         uploadDiv.innerHTML = `
           <input type="file" id="img_${q.id}" accept="image/*" style="display:none;">
           <button class="btn btn-secondary" id="change_${q.id}" style="padding:6px 14px;font-size:13px;">
-            📷 Thay ảnh
+            📷 Thay ảnh câu hỏi
           </button>
           <button class="btn btn-danger" id="delete_${q.id}" style="padding:6px 14px;font-size:13px;">
-            🗑️ Xóa ảnh
+            🗑️ Xóa ảnh câu hỏi
           </button>
         `;
       } else {
         uploadDiv.innerHTML = `
           <input type="file" id="img_${q.id}" accept="image/*" style="display:none;">
           <button class="btn btn-secondary" id="add_${q.id}" style="padding:6px 14px;font-size:13px;">
-            📷 Thêm ảnh
+            📷 Thêm ảnh câu hỏi
           </button>
         `;
       }
@@ -566,14 +719,70 @@ function closeExamDetail() {
   const modal = document.getElementById('examDetailModal');
   if (modal) modal.style.display = 'none';
 }
+// ✅ HÀM MỚI: Sửa text đáp án
+async function editOptionText(examId, qid, optionKey) {
+  const currentText = document.querySelector(`.option-text-${qid}-${optionKey}`)?.textContent || '';
+  const newText = prompt('Nhập nội dung mới cho đáp án (dùng $...$ cho công thức):\n\nVí dụ: $\\frac{1}{2}$', currentText);
+  
+  if (newText === null) return;
+  
+  try {
+    const res = await fetch(`/exam/${examId}/questions/${qid}/options/${optionKey}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: newText })
+    });
+    
+    const result = await res.json();
+    
+    if (result.ok) {
+      alert('✅ Đã cập nhật đáp án!');
+      closeExamDetail();
+      openExamDetail(examId);
+    } else {
+      alert('❌ Lỗi: ' + (result.error || 'Unknown'));
+    }
+  } catch (err) {
+    alert('❌ Lỗi: ' + err.message);
+  }
+}
 
-async function attachImage(examId, qid, fileInput) {
+// ✅ HÀM MỚI: Sửa text câu hỏi con (true/false)
+async function editSubQuestionText(examId, qid, subKey) {
+  const currentText = document.querySelector(`.subq-text-${qid}-${subKey}`)?.textContent || '';
+  const newText = prompt('Nhập nội dung mới cho câu hỏi con:', currentText);
+  
+  if (newText === null) return;
+  
+  try {
+    const res = await fetch(`/exam/${examId}/questions/${qid}/subquestions/${subKey}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: newText })
+    });
+    
+    const result = await res.json();
+    
+    if (result.ok) {
+      alert('✅ Đã cập nhật!');
+      closeExamDetail();
+      openExamDetail(examId);
+    } else {
+      alert('❌ Lỗi: ' + (result.error || 'Unknown'));
+    }
+  } catch (err) {
+    alert('❌ Lỗi: ' + err.message);
+  }
+}
+
+// ✅ HÀM MỚI: Upload ảnh cho đáp án
+async function attachImageToOption(examId, qid, optionKey, fileInput) {
   if (!fileInput?.files[0]) throw new Error('Chưa chọn ảnh');
   
   const fd = new FormData();
   fd.append('image', fileInput.files[0]);
   
-  const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, { 
+  const res = await fetch(`/exam-media/${examId}/questions/${qid}/options/${optionKey}/image`, { 
     method: 'POST', 
     body: fd 
   });
@@ -584,12 +793,13 @@ async function attachImage(examId, qid, fileInput) {
     throw new Error(result.error || 'Không cập nhật được');
   }
   
-  console.log('✅ Ảnh đã upload:', result.url);
+  console.log('✅ Ảnh đáp án đã upload:', result.url);
   return result;
 }
 
-async function deleteImage(examId, qid) {
-  const res = await fetch(`/exam-media/${examId}/questions/${qid}/image`, {
+// ✅ HÀM MỚI: Xóa ảnh đáp án
+async function deleteImageFromOption(examId, qid, optionKey) {
+  const res = await fetch(`/exam-media/${examId}/questions/${qid}/options/${optionKey}/image`, {
     method: 'DELETE'
   });
   
@@ -599,7 +809,7 @@ async function deleteImage(examId, qid) {
     throw new Error(result.error || 'Không xóa được');
   }
   
-  console.log('✅ Ảnh đã xóa');
+  console.log('✅ Ảnh đáp án đã xóa');
   return result;
 }
 
@@ -688,8 +898,6 @@ function setupModalButtons(examId) {
     }
   };
 }
-
-// ====================== STUDENT FUNCTIONS ======================
 async function loadLatestExamVariant() {
   const res = await fetch('/exam/latest-variant');
   const data = await res.json();
@@ -821,8 +1029,6 @@ function renderExam(exam) {
     }
   }, 100);
 }
-
-// ====================== SUBMIT EXAM ======================
 async function submitExam(autoSubmit = false) {
   if (!autoSubmit && !confirm('Nộp bài?')) return;
   
@@ -947,7 +1153,6 @@ async function submitExam(autoSubmit = false) {
   }
 }
 
-// ====================== EVENT HANDLERS ======================
 function setupEventHandlers() {
   const loginForm = document.getElementById('loginForm');
   const loginError = document.getElementById('loginError');
@@ -1138,17 +1343,26 @@ function setupEventHandlers() {
 
 // ====================== INITIALIZATION ======================
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🚀 App initialized - FINAL FIXED VERSION');
+  console.log('🚀 App initialized - ENHANCED VERSION WITH ANSWER EDITING');
   console.log('✅ Công thức toán: Hiển thị với MathJax');
   console.log('✅ Modal: Scroll riêng + Nút scroll nhanh');
-  console.log('✅ Wanna Help: Có nút OK màu đỏ nổi bật');
+  console.log('✅ Chỉnh sửa đáp án: Upload/Edit text cho từng đáp án');
+  console.log('✅ Chỉnh sửa câu hỏi con: True/False sub-questions');
   showPage('loginPage');
   setupEventHandlers();
 });
 
+// ====================== GLOBAL EXPORTS ======================
 window.openExamDetail = openExamDetail;
 window.closeExamDetail = closeExamDetail;
 window.loadExamList = loadExamList;
 window.loadSubmissions = loadSubmissions;
 window.attachImage = attachImage;
 window.deleteImage = deleteImage;
+window.editOptionText = editOptionText;
+window.editSubQuestionText = editSubQuestionText;
+window.attachImageToOption = attachImageToOption;
+window.deleteImageFromOption = deleteImageFromOption;
+
+
+
