@@ -48,6 +48,7 @@ body.dark-mode {
 
 html {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -56,11 +57,11 @@ body {
   background-attachment: fixed;
   color: var(--text);
   line-height: 1.6;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
-
 .container {
   flex: 1 0 auto;
   width: 100%;
@@ -89,11 +90,10 @@ body {
 /* ====================== LOGIN PAGE - 2 CỘT ====================== */
 #loginPage {
   display: none;
-  align-items: stretch;
-  justify-content: center;
-  min-height: 100vh;
+  height: 100%;
   padding: 0;
   overflow: hidden;
+  flex-direction: column;
 }
 
 #loginPage.active {
@@ -105,11 +105,13 @@ body {
   display: grid;
   grid-template-columns: 480px 1fr;
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  min-height: 100vh;
+  max-width: 100%;
+  margin: 0;
+  flex: 1;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
 }
+
 
 /* ✅ CỘT TRÁI - FORM LOGIN GỌN */
 .login-left {
@@ -120,6 +122,8 @@ body {
   background: rgba(0, 4, 53, 0.4);
   backdrop-filter: blur(20px);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-y: auto;
+  height: 100%;
 }
 
 body.dark-mode .login-left {
@@ -200,9 +204,11 @@ body.dark-mode .login-box {
 .login-right {
   display: flex;
   flex-direction: column;
-  padding: 50px 40px;
+  padding: 50px 40px 80px;
   overflow-y: auto;
+  height: 100%;
 }
+
 
 .login-right h2 {
   font-size: 28px;
@@ -307,20 +313,45 @@ body.dark-mode .feature-card {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Scrollbar cho cột phải và cột trái */
+.login-left::-webkit-scrollbar,
+.login-right::-webkit-scrollbar {
+  width: 6px;
+}
+
+.login-left::-webkit-scrollbar-track,
+.login-right::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.login-left::-webkit-scrollbar-thumb,
+.login-right::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.login-left::-webkit-scrollbar-thumb:hover,
+.login-right::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* ====================== RESPONSIVE LOGIN ====================== */
 @media (max-width: 968px) {
   .login-container {
     grid-template-columns: 1fr;
+    overflow-y: auto;
   }
   
   .login-left {
+    height: auto;
     min-height: 100vh;
     border-right: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   }
   
   .login-right {
-    padding: 40px 30px;
+    height: auto;
+    padding: 40px 30px 100px;
   }
   
   .features-grid {
@@ -342,7 +373,7 @@ body.dark-mode .feature-card {
   }
   
   .login-right {
-    padding: 30px 20px;
+    padding: 30px 20px 100px;
   }
   
   .login-right h2 {
@@ -1413,11 +1444,15 @@ body.dark-mode .result-container {
   background: rgba(0, 4, 53, 0.3);
   backdrop-filter: blur(10px);
   width: 100%;
-  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
 }
 
 body.dark-mode .footer {
