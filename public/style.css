@@ -1402,11 +1402,11 @@ body.dark-mode .result-container {
   margin: 22px 0;
 }
 
-/* ✅ FOOTER  */
+/* ✅ FOOTER - THIẾT KẾ MỚI, HÀI HÒA */
 .footer {
   flex-shrink: 0;
   text-align: center;
-  padding: 14px 18px;
+  padding: 16px 20px;
   color: rgba(255, 255, 255, 0.75);
   font-size: 13px;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
@@ -1414,6 +1414,10 @@ body.dark-mode .result-container {
   backdrop-filter: blur(10px);
   width: 100%;
   margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 body.dark-mode .footer {
@@ -1427,34 +1431,36 @@ body.dark-mode .footer {
 }
 
 .footer button {
-  background: linear-gradient(135deg, #ef4444, #dc2626);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.08));
   color: white !important;
   font-size: 13px !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   cursor: pointer;
-  padding: 7px 16px !important;
+  padding: 8px 18px !important;
   border-radius: 20px !important;
-  border: 2px solid white !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
   transition: all 0.3s ease;
-  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3);
-  margin-left: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .footer button:hover {
-  transform: scale(1.08) translateY(-1px);
-  box-shadow: 0 5px 16px rgba(239, 68, 68, 0.5);
-  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.12));
 }
 
-/* ====================== ANIMATION - BLINK ====================== */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.warning-message[style*="display: block"] {
-  display: block !important;
-  animation: blink 0.5s ease-in-out 3;
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .footer {
+    flex-direction: column;
+    padding: 14px 18px;
+    gap: 10px;
+  }
+  
+  .footer button {
+    width: 100%;
+    max-width: 200px;
+  }
 }
 
 /* ====================== PULSE ANIMATION ====================== */
