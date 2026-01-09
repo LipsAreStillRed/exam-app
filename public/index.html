@@ -49,35 +49,108 @@
     <span class="theme-toggle-text" id="themeText">Light</span>
   </div>
   <div class="container">
-    <!-- LOGIN PAGE -->
-    <div id="loginPage" class="page active">
-      <div class="login-box">
-        <div class="logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-          </svg>
-        </div>
-        <h1>Hệ Thống Kiểm Tra</h1>
-        <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
-        <form id="loginForm">
-          <div class="input-group">
-            <input type="password" id="passwordInput" placeholder="Mật khẩu" autocomplete="off" required />
-            <button type="button" class="toggle-password" id="togglePassword" aria-label="Hiện/ẩn mật khẩu">
-              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
+    <!-- LOGIN PAGE - 2 CỘT -->
+  <div id="loginPage" class="page active">
+    <div class="login-container">
+      <!-- ✅ CỘT TRÁI - FORM LOGIN -->
+      <div class="login-left">
+        <div class="login-box">
+          <div class="logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
           </div>
-          <button type="submit" class="btn btn-primary" id="loginBtn">Đăng nhập</button>
-        </form>
-        <div id="loginError" class="error-message"></div>
-        <div class="info-text">
-          <p>💡 <strong>Giáo viên:</strong> Tất nhiên biết mật khẩu rồi</p>
-          <p>📚 <strong>Học sinh:</strong> Kiếm mật khẩu rồi vào làm lẹ lên</p>
+          <h1>Hệ Thống Kiểm Tra</h1>
+          <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
+        
+          <form id="loginForm">
+            <div class="input-group">
+              <input type="password" id="passwordInput" placeholder="Mật khẩu" autocomplete="off" required />
+              <button type="button" class="toggle-password" id="togglePassword" aria-label="Hiện/ẩn mật khẩu">
+                <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+            <button type="submit" class="btn btn-primary" id="loginBtn">Đăng nhập</button>
+          </form>
+        
+          <div id="loginError" class="error-message"></div>
+        
+          <div class="info-text">
+            <p>💡 <strong>Giáo viên:</strong> Tất nhiên biết mật khẩu rồi</p>
+            <p>📚 <strong>Học sinh:</strong> Kiếm mật khẩu rồi vào làm lẹ lên</p>
+          </div>
+        </div>
+      </div>
+    
+      <!-- ✅ CỘT PHẢI - TÍNH NĂNG HỮU ÍCH -->
+      <div class="login-right">
+        <h2>🚀 Công Cụ Hỗ Trợ Học Tập</h2>
+        <p>Khám phá các tính năng giúp bạn học tập và giảng dạy hiệu quả hơn</p>
+      
+        <div class="features-grid">
+          <div class="feature-card" onclick="window.open('https://www.geogebra.org/calculator', '_blank')">
+            <div class="feature-icon">📐</div>
+            <h3>GeoGebra Calculator</h3>
+            <p>Máy tính đồ thị, hình học, đại số trực tuyến miễn phí</p>
+          </div>
+        
+          <div class="feature-card" onclick="window.open('https://www.wolframalpha.com/', '_blank')">
+            <div class="feature-icon">🧮</div>
+            <h3>Wolfram Alpha</h3>
+            <p>Giải toán, vẽ đồ thị, tra cứu công thức nhanh chóng</p>
+          </div>
+        
+          <div class="feature-card" onclick="window.open('https://www.desmos.com/calculator', '_blank')">
+            <div class="feature-icon">📊</div>
+            <h3>Desmos Graphing</h3>
+            <p>Vẽ đồ thị hàm số, biểu thức toán học chuyên nghiệp</p>
+          </div>
+        
+          <div class="feature-card" onclick="window.open('https://sciencenotes.org/periodic-table/', '_blank')">
+            <div class="feature-icon">⚗️</div>
+            <h3>Bảng Tuần Hoàn</h3>
+            <p>Bảng tuần hoàn các nguyên tố hóa học tương tác</p>
+          </div>
+        
+          <div class="feature-card" onclick="window.open('https://phet.colorado.edu/vi/', '_blank')">
+            <div class="feature-icon">🔬</div>
+            <h3>PhET Simulations</h3>
+            <p>Mô phỏng thí nghiệm Vật lý, Hóa học, Sinh học</p>
+          </div>
+        
+          <div class="feature-card" onclick="window.open('https://www.google.com/search?q=timer', '_blank')">
+            <div class="feature-icon">⏱️</div>
+            <h3>Đồng Hồ Đếm Ngược</h3>
+            <p>Timer cho bài kiểm tra, pomodoro học tập</p>
+          </div>
+        </div>
+      
+        <div class="quick-links">
+          <h3>🔗 Liên Kết Hữu Ích</h3>
+          <div class="links-list">
+            <a href="https://drive.google.com" target="_blank" class="quick-link">
+              <span>💾</span> Google Drive
+            </a>
+            <a href="https://docs.google.com" target="_blank" class="quick-link">
+              <span>📝</span> Google Docs
+            </a>
+            <a href="https://www.youtube.com/results?search_query=học+toán" target="_blank" class="quick-link">
+              <span>📺</span> YouTube Học
+            </a>
+            <a href="https://translate.google.com" target="_blank" class="quick-link">
+              <span>🌐</span> Google Dịch
+            </a>
+            <a href="https://www.canva.com" target="_blank" class="quick-link">
+              <span>🎨</span> Canva
+            </a>
+          </div>
         </div>
       </div>
     </div>
+  </div>
 
     <!-- TEACHER PAGE -->
     <div id="teacherPage" class="page">
