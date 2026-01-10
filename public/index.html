@@ -4,256 +4,249 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hệ Thống Kiểm Tra</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="style.css"/>
+  <!-- MathJax (nếu bạn đã có renderMath wrapper) -->
+  <script>
+    window.renderMath = () => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise();
+      }
+    };
+  </script>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">Hệ Thống Kiểm Tra</div>
-    <button id="themeToggle" class="theme-toggle" aria-label="Chuyển theme">
-      <svg id="themeIcon" viewBox="0 0 24 24" width="22" height="22"></svg>
-      <span id="themeText">Light</span>
-    </button>
-  </header>
+  <!-- Toggle theme -->
+  <button class="theme-toggle" id="themeToggle">
+    <span class="theme-toggle-icon">🌗</span>
+    <span class="theme-toggle-text">Đổi giao diện</span>
+  </button>
 
-  <main id="app">
-    <section id="loginPage" class="page active">
-      <div class="login-container">
-        <!-- Cột trái: form -->
-        <div class="login-left">
-          <div class="login-box">
-            <div class="logo">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+  <!-- LOGIN PAGE -->
+  <section id="loginPage" class="active">
+    <div class="login-left">
+      <div class="login-box">
+        <div class="logo">
+          <!-- icon -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M8 12l2 2 4-4"></path>
+          </svg>
+        </div>
+        <h1>Hệ Thống Kiểm Tra</h1>
+        <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
+
+        <form id="loginForm">
+          <div class="input-group">
+            <input id="passwordInput" type="password" placeholder="Mật khẩu..." autocomplete="current-password"/>
+            <button type="button" id="togglePassword" class="toggle-password" aria-label="Ẩn/Hiện mật khẩu">
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
               </svg>
-            </div>
-            <h1>Hệ Thống Kiểm Tra</h1>
-            <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
-
-            <form id="loginForm">
-              <div class="input-group">
-                <input
-                  type="password"
-                  id="passwordInput"
-                  placeholder="Mật khẩu"
-                  autocomplete="off"
-                  required
-                />
-                <button type="button" class="toggle-password" id="togglePassword" aria-label="Hiện/ẩn mật khẩu">
-                  <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <!-- Mắt (hiện) -->
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                </button>
-              </div>
-              <button type="submit" class="btn btn-primary" id="loginBtn">Đăng nhập</button>
-              <div id="loginError" class="message error"></div>
-            </form>
-
-            <div class="info-text">
-              <p>💡 <strong>Giáo viên:</strong> Tất nhiên biết mật khẩu rồi</p>
-              <p>📚 <strong>Học sinh:</strong> Kiếm mật khẩu rồi vào làm lẹ lên</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Cột phải: công cụ -->
-        <div class="login-right">
-          <h2>🚀 Công Cụ Hỗ Trợ Học Tập</h2>
-          <p class="subtitle">Khám phá nhanh các công cụ cần thiết</p>
-
-          <div class="features-grid">
-            <button class="feature-card" onclick="window.open('https://www.geogebra.org/calculator', '_blank')">
-              <div class="feature-icon">📐</div>
-              <h3>GeoGebra</h3>
-            </button>
-            <button class="feature-card" onclick="window.open('https://www.wolframalpha.com/', '_blank')">
-              <div class="feature-icon">🧮</div>
-              <h3>Wolfram Alpha</h3>
-            </button>
-            <button class="feature-card" onclick="window.open('https://www.desmos.com/calculator', '_blank')">
-              <div class="feature-icon">📊</div>
-              <h3>Desmos</h3>
-            </button>
-            <button class="feature-card" onclick="window.open('https://sciencenotes.org/periodic-table/', '_blank')">
-              <div class="feature-icon">⚗️</div>
-              <h3>Bảng tuần hoàn</h3>
-            </button>
-            <button class="feature-card" onclick="window.open('https://phet.colorado.edu/vi/', '_blank')">
-              <div class="feature-icon">🔬</div>
-              <h3>PhET</h3>
-            </button>
-            <button class="feature-card" onclick="window.open('https://www.google.com/search?q=timer', '_blank')">
-              <div class="feature-icon">⏱️</div>
-              <h3>Timer</h3>
             </button>
           </div>
+          <button id="loginBtn" class="btn btn-primary" type="submit">Đăng nhập</button>
+          <div id="loginError" class="error-message"></div>
+        </form>
 
-          <div class="quick-links">
-            <h3>🔗 Liên kết nhanh</h3>
-            <div class="links-list">
-              <a href="https://drive.google.com" target="_blank" class="quick-link"><span>💾</span> Drive</a>
-              <a href="https://docs.google.com" target="_blank" class="quick-link"><span>📝</span> Docs</a>
-              <a href="https://www.youtube.com/results?search_query=học+toán" target="_blank" class="quick-link"><span>📺</span> YouTube</a>
-              <a href="https://translate.google.com" target="_blank" class="quick-link"><span>🌐</span> Dịch</a>
-              <a href="https://www.canva.com" target="_blank" class="quick-link"><span>🎨</span> Canva</a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-    <!-- Trang giáo viên -->
-    <section id="teacherPage" class="page">
-      <div class="page-header">
-        <h2>Giáo viên</h2>
-        <button id="logoutTeacher" class="btn btn-secondary">Đăng xuất</button>
-      </div>
-
-      <form id="uploadForm" class="card">
-        <h3>Upload đề thi</h3>
-        <div class="grid-2">
-          <div>
-            <label>File đề thi</label>
-            <input type="file" id="examFile" accept=".doc,.docx,.pdf,.txt" required>
-          </div>
-          <div>
-            <label>Thời gian (phút)</label>
-            <input type="number" id="timeMinutes" min="1" value="45">
-          </div>
-          <div>
-            <label>Mật khẩu đề (tuỳ chọn)</label>
-            <input type="text" id="examPassword" placeholder="Để trống nếu không dùng">
-          </div>
-          <div>
-            <label>Số phiên bản</label>
-            <input type="number" id="variantCount" min="1" value="1">
-          </div>
-        </div>
-
-        <div class="grid-3">
-          <div>
-            <label>Phần 1</label>
-            <select id="p1Mode">
-              <option value="none">Không trộn</option>
-              <option value="shuffle">Trộn câu</option>
-            </select>
-          </div>
-          <div>
-            <label>Phần 2</label>
-            <select id="p2Mode">
-              <option value="none">Không trộn</option>
-              <option value="shuffle">Trộn câu</option>
-            </select>
-          </div>
-          <div>
-            <label>Phần 3</label>
-            <select id="p3Mode">
-              <option value="none">Không trộn</option>
-              <option value="shuffle">Trộn câu</option>
-            </select>
-          </div>
-        </div>
-
-        <label class="checkbox">
-          <input type="checkbox" id="useAI"> Dùng AI hỗ trợ phân tích đề
-        </label>
-
-        <button type="submit" class="btn btn-primary">Upload</button>
-        <div id="uploadMessage" class="message"></div>
-      </form>
-
-      <div class="card">
-        <h3>Danh sách đề thi</h3>
-        <div id="examList"></div>
-      </div>
-
-      <div class="card">
-        <h3>Bài nộp gần đây</h3>
-        <div id="submissionsList"></div>
-      </div>
-    </section>
-
-    <!-- Trang thông tin học sinh -->
-    <section id="studentInfoPage" class="page">
-      <div class="page-header">
-        <h2>Thông tin học sinh</h2>
-        <button id="logoutStudent" class="btn btn-secondary">Đăng xuất</button>
-      </div>
-
-      <form id="studentInfoForm" class="card">
-        <div class="grid-2">
-          <div>
-            <label>Họ và tên</label>
-            <input type="text" id="studentName" placeholder="Nguyễn Văn A" required>
-          </div>
-          <div>
-            <label>Lớp</label>
-            <input type="text" id="studentClass" readonly>
-          </div>
-          <div>
-            <label>Ngày sinh</label>
-            <input type="text" id="studentDOB" placeholder="dd/mm/yyyy" required>
-          </div>
-          <div id="examPasswordGroup" style="display:none;">
-            <label>Mật khẩu đề thi</label>
-            <input type="password" id="studentExamPassword" placeholder="Nhập mật khẩu đề thi">
-          </div>
-        </div>
-        <div id="studentInfoError" class="message error"></div>
-        <button type="submit" class="btn btn-primary">Vào làm bài</button>
-      </form>
-    </section>
-
-    <!-- Trang làm bài -->
-    <section id="examPage" class="page">
-      <div class="page-header">
-        <h2>Làm bài</h2>
-        <div class="exam-meta">
-          <span id="studentInfo"></span>
-          <span class="timer">⏱️ <span id="timer">00:00</span></span>
-        </div>
-        <button id="backToHome" class="btn btn-secondary">Về trang chủ</button>
-      </div>
-
-      <div id="warningMessage" class="message warning" style="display:none;"></div>
-      <div id="questionsContainer" class="card"></div>
-
-      <div class="actions">
-        <button id="submitBtn" class="btn btn-primary">Nộp bài</button>
-      </div>
-    </section>
-
-    <!-- Trang kết quả -->
-    <section id="resultPage" class="page">
-      <div class="result-container card">
-        <h2>Kết quả</h2>
-        <p id="resultMessage"></p>
-        <p>Điểm: <strong id="scoreDisplay">Chờ chấm điểm</strong></p>
-        <button id="logoutStudent2" class="btn btn-secondary" onclick="location.reload()">Thoát</button>
-      </div>
-    </section>
-
-    <!-- Modal chi tiết đề -->
-    <div id="examDetailModal" class="modal">
-      <div class="modal-content">
-        <button id="closeModal" class="modal-close">✖</button>
-        <div id="examDetailContent" class="modal-body"></div>
-        <div class="modal-actions">
-          <button id="saveAnswers" class="btn btn-primary">Lưu đáp án đúng</button>
-          <button id="sendReport" class="btn btn-secondary">Gửi báo cáo lớp</button>
-          <button id="deleteExam" class="btn btn-danger">Xóa đề</button>
+        <div class="info-text">
+          <p>👨‍🏫 <strong>Giáo viên:</strong> Tất nhiên biết mật khẩu rồi</p>
+          <p>👩‍🎓 <strong>Học sinh:</strong> Kiếm mật khẩu rồi vào làm lẹ lên</p>
         </div>
       </div>
     </div>
-  </main>
 
-  <footer class="footer">
-    <div class="footer-left">NMT – Dùng AI code ra web này đó</div>
-    <button class="btn btn-outline" onclick="alert('Nếu bạn muốn giúp, hãy liên hệ trực tiếp nhé!')">Wanna Help</button>
-  </footer>
+    <div class="login-right">
+      <h2>Chào mừng đến hệ thống kiểm tra</h2>
+      <p>Giao diện mới mượt hơn, hỗ trợ dark mode, chỉnh sửa đề trực tiếp, upload ảnh cho câu hỏi/đáp án, và hiển thị công thức bằng MathJax.</p>
 
-  <script src="/main.js"></script>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📝</div>
+          <h3>Chỉnh sửa đề trực tiếp</h3>
+          <p>Sửa nội dung câu hỏi, đáp án, câu hỏi con ngay trong modal chi tiết.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📷</div>
+          <h3>Ảnh câu hỏi/đáp án</h3>
+          <p>Upload/xóa ảnh cho từng câu hỏi và từng đáp án.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⏱️</div>
+          <h3>Đếm giờ</h3>
+          <p>Tự động nộp khi hết giờ hoặc vi phạm.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">∑</div>
+          <h3>MathJax</h3>
+          <p>Hiển thị công thức toán với cú pháp $...$.</p>
+        </div>
+      </div>
+
+      <div class="quick-links">
+        <h3>Liên kết nhanh</h3>
+        <div class="links-list">
+          <a class="quick-link" href="#">📚 Hướng dẫn</a>
+          <a class="quick-link" href="#">🛠️ Cấu hình</a>
+          <a class="quick-link" href="#">💬 Góp ý</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEACHER PAGE -->
+  <section id="teacherPage" style="display:none;">
+    <div class="container">
+      <div class="header">
+        <h2>Bảng điều khiển giáo viên</h2>
+        <button id="logoutTeacher" class="btn">Đăng xuất</button>
+      </div>
+
+      <div class="dashboard">
+        <div class="card">
+          <h3>Upload đề thi</h3>
+          <form id="uploadForm">
+            <div class="form-group">
+              <label>File đề thi</label>
+              <input type="file" id="examFile" accept=".docx,.pdf,.txt,.json"/>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Thời gian (phút)</label>
+                <input type="number" id="timeMinutes" min="10" value="45"/>
+              </div>
+              <div class="form-group">
+                <label>Mật khẩu đề (tuỳ chọn)</label>
+                <input type="text" id="examPassword" placeholder="Để trống nếu không dùng"/>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Số phiên bản</label>
+                <input type="number" id="variantCount" min="1" value="1"/>
+              </div>
+              <div class="form-group">
+                <label>Chế độ P1/P2/P3</label>
+                <div class="form-row">
+                  <select id="p1Mode">
+                    <option value="none">Không</option>
+                    <option value="shuffle">Trộn</option>
+                  </select>
+                  <select id="p2Mode">
+                    <option value="none">Không</option>
+                    <option value="shuffle">Trộn</option>
+                  </select>
+                  <select id="p3Mode">
+                    <option value="none">Không</option>
+                    <option value="shuffle">Trộn</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="useAI"/> Dùng AI hỗ trợ phân tích</label>
+            </div>
+            <button class="btn btn-primary" type="submit">Upload</button>
+            <div id="uploadMessage" class="message" style="display:none;"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Danh sách đề thi</h3>
+          <div id="examList" class="exams-list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Bài nộp gần đây</h3>
+          <div id="submissionsList" class="submissions-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STUDENT INFO PAGE -->
+  <section id="studentInfoPage" style="display:none;">
+    <div class="student-form-container">
+      <div class="card">
+        <h3>Thông tin học sinh</h3>
+        <form id="studentInfoForm">
+          <div class="form-group">
+            <label>Lớp</label>
+            <input type="text" id="studentClass" readonly/>
+          </div>
+          <div class="form-group">
+            <label>Họ và tên</label>
+            <input type="text" id="studentName" placeholder="VD: Nguyễn Văn A"/>
+          </div>
+          <div class="form-group">
+            <label>Ngày sinh (dd/mm/yyyy)</label>
+            <input type="text" id="studentDOB" placeholder="VD: 01/01/2008"/>
+            <small>Nhập đúng định dạng dd/mm/yyyy</small>
+          </div>
+          <div id="examPasswordGroup" class="form-group" style="display:none;">
+            <label>Mật khẩu đề thi</label>
+            <input type="password" id="studentExamPassword" placeholder="Nhập mật khẩu đề"/>
+          </div>
+          <button class="btn btn-primary" type="submit">Vào làm bài</button>
+          <div id="studentInfoError" class="error-message"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXAM PAGE -->
+  <section id="examPage" style="display:none;">
+    <div class="container">
+      <div class="exam-header">
+        <div class="exam-info">
+          <h2 id="examTitle">Đề thi</h2>
+          <p id="studentInfo">Học sinh - Lớp</p>
+        </div>
+        <div class="timer-container">
+          <div id="timer" class="timer">00:00</div>
+          <div id="warningMessage" class="warning-message"></div>
+        </div>
+      </div>
+
+      <div class="exam-content">
+        <div id="questionsContainer" class="questions-container"></div>
+        <button id="submitBtn" class="btn btn-primary btn-submit">Nộp bài</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULT PAGE -->
+  <section id="resultPage" style="display:none;">
+    <div class="container">
+      <div class="result-container">
+        <div class="result-icon">🎉</div>
+        <h2 id="resultMessage">Nộp bài thành công!</h2>
+        <div id="scoreDisplay" class="score-display">Chờ chấm điểm</div>
+        <button id="logoutStudent" class="btn">Về trang chủ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL CHI TIẾT ĐỀ -->
+  <div id="examDetailModal" class="modal">
+    <div class="modal-content">
+      <button id="closeModal" class="close">✕</button>
+      <h2>Chi tiết đề thi</h2>
+      <div id="examDetailContent"></div>
+      <div class="modal-actions">
+        <button id="saveAnswers" class="btn btn-primary">Lưu đáp án đúng</button>
+        <button id="sendReport" class="btn">Gửi báo cáo lớp</button>
+        <button id="deleteExam" class="btn">Xóa đề</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>NMT – Dùng AI code ra web này đó</p>
+    <button id="backToHome" class="btn">Wanna Help</button>
+  </div>
+
+  <script src="main.js"></script>
 </body>
 </html>
