@@ -8,7 +8,7 @@
   --primary: #1e88e5;
   --primary-dark: #1565c0;
   --gradient-start: #0d47a1;
-  --gradient-end: #80deea;
+  --gradient-end: #1976d2;
   --secondary: #546e7a;
   --success: #26a69a;
   --danger: #ef5350;
@@ -943,7 +943,9 @@ body.dark-mode .modal-content > h2 {
   box-shadow: 0 -4px 18px rgba(0, 4, 53, 0.08);
   z-index: 10;
 }
-d: var(--card-bg);
+
+body.dark-mode .modal-actions {
+  background: var(--card-bg);
 }
 
 .modal-actions .btn {
