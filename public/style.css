@@ -82,22 +82,21 @@ body {
 #loginPage {
   padding: 0 !important;
   margin: 0 !important;
-  height: 100vh;
   display: none;
+  flex-direction: row;
 }
 
 #loginPage.active {
-  display: grid !important;
-  grid-template-columns: 480px 1fr;
-  grid-template-rows: 1fr auto;
+  display: flex !important;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .login-container {
-  grid-column: 1 / -1;
-  grid-row: 1;
   display: grid;
   grid-template-columns: 480px 1fr;
-  height: calc(100vh - 50px);
+  width: 100%;
+  height: 100%;
   overflow: hidden;
 }
 
@@ -1329,8 +1328,6 @@ body.dark-mode .result-container {
 }
 
 .footer {
-  grid-column: 1 / -1;
-  grid-row: 2;
   flex-shrink: 0;
   padding: 12px 20px;
   color: rgba(255, 255, 255, 0.9);
@@ -1342,9 +1339,6 @@ body.dark-mode .result-container {
   gap: 16px;
   background: transparent;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-body:not(#loginPage.active) .footer {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -1583,5 +1577,4 @@ body:not(#loginPage.active) .footer {
     padding: 5px 12px !important;
   }
 }
-body.dark-mode .modal-actions {
-  backgroun
+
