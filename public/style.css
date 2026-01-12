@@ -1790,3 +1790,497 @@ body.dark-mode .submission-item {
     --text-light: #ccc;
   }
 }
+/* Theme Toggle - Cập nhật */
+.theme-toggle .sun-icon,
+.theme-toggle .moon-icon {
+  font-size: 24px;
+  transition: var(--transition);
+}
+
+.theme-toggle .moon-icon {
+  display: none;
+}
+
+/* Login Wrapper - 2 cột */
+.login-wrapper {
+  display: grid;
+  grid-template-columns: 460px 1fr;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* ✨ Cột Trái: Login Box */
+.login-left {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 30px;
+  background: rgba(0, 4, 53, 0.4);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+body.dark-mode .login-left {
+  background: rgba(22, 33, 62, 0.5);
+}
+
+.login-box {
+  width: 100%;
+  max-width: 380px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 40px 36px;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  text-align: center;
+  animation: slideInLeft 0.6s ease;
+}
+
+body.dark-mode .login-box {
+  background: rgba(22, 33, 62, 0.3);
+  border: 1px solid rgba(100, 181, 246, 0.2);
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.login-box h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: white;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 28px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* ✨ Input Group */
+.input-group {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 15px 50px 15px 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 14px;
+  font-size: 15px;
+  transition: var(--transition);
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-weight: 500;
+}
+
+.input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.2);
+}
+
+.toggle-password {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: var(--transition);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.toggle-password:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.eye-closed {
+  display: none;
+}
+
+/* ✨ Info Text */
+.info-text {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: left;
+}
+
+.info-text p {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.info-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.info-text strong {
+  color: white;
+  font-weight: 600;
+}
+
+/* ✨ Cột Phải: Video & Tools */
+.login-right {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .login-right {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.content-wrapper {
+  flex: 1;
+  padding: 50px 40px;
+  animation: slideInRight 0.6s ease;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.login-right h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 24px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  letter-spacing: -0.5px;
+}
+
+.section-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: white;
+  margin: 32px 0 20px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* ✨ Video Container */
+.video-wrapper {
+  margin-bottom: 20px;
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* 16:9 */
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.3);
+  transition: var(--transition);
+}
+
+.video-container:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+}
+
+.video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ✨ Tools Grid */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.tool-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-align: center;
+  text-decoration: none;
+  transition: var(--transition);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+body.dark-mode .tool-card {
+  background: rgba(22, 33, 62, 0.3);
+  border-color: rgba(100, 181, 246, 0.2);
+}
+
+.tool-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+  opacity: 0;
+  transition: var(--transition);
+}
+
+.tool-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.tool-card:hover::before {
+  opacity: 1;
+}
+
+.tool-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  transition: var(--transition);
+  position: relative;
+  z-index: 1;
+}
+
+.tool-card:hover .tool-icon {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.tool-icon svg {
+  width: 32px;
+  height: 32px;
+  fill: white;
+}
+
+.tool-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  position: relative;
+  z-index: 1;
+}
+
+/* ✨ Tool Colors */
+.google-tool .tool-icon { background: linear-gradient(135deg, #4285f4 0%, #34a853 100%); }
+.youtube-tool .tool-icon { background: linear-gradient(135deg, #ff0000 0%, #c4302b 100%); }
+.slides-tool .tool-icon { background: linear-gradient(135deg, #fbbc04 0%, #ea4335 100%); }
+.zoom-tool .tool-icon { background: linear-gradient(135deg, #2d8cff 0%, #0b5cff 100%); }
+.teams-tool .tool-icon { background: linear-gradient(135deg, #5b5fc7 0%, #464eb8 100%); }
+.calculator-tool .tool-icon { background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); }
+
+/* ✨ Footer cập nhật */
+#loginPage .footer {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 20px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 4, 53, 0.3);
+  backdrop-filter: blur(10px);
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+body.dark-mode #loginPage .footer {
+  background: rgba(22, 33, 62, 0.4);
+  border-top-color: rgba(100, 181, 246, 0.2);
+}
+
+#loginPage .footer p {
+  margin: 0;
+  font-weight: 500;
+}
+
+.btn-footer {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.1));
+  color: white;
+  font-size: 14px;
+  padding: 10px 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn-footer:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.15));
+}
+
+/* ====================== RESPONSIVE - LOGIN PAGE ====================== */
+
+/* Tablet (Portrait & Landscape) */
+@media (max-width: 1024px) {
+  .login-wrapper {
+    grid-template-columns: 1fr;
+  }
+  
+  .login-left {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: auto;
+    padding: 50px 30px;
+  }
+  
+  .login-right {
+    padding: 40px 30px;
+  }
+  
+  .tools-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .content-wrapper {
+    padding: 40px 30px;
+  }
+}
+
+/* Tablet Small & Mobile (Landscape) */
+@media (max-width: 768px) {
+  .login-left {
+    padding: 40px 24px;
+  }
+  
+  .login-box {
+    padding: 32px 28px;
+  }
+  
+  .login-box h1 {
+    font-size: 26px;
+  }
+  
+  .login-right h2 {
+    font-size: 28px;
+  }
+  
+  .section-title {
+    font-size: 20px;
+  }
+  
+  .tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  
+  .tool-card {
+    padding: 24px 20px;
+  }
+  
+  .tool-icon {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .tool-icon svg {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .tool-name {
+    font-size: 14px;
+  }
+  
+  #loginPage .footer {
+    flex-direction: column;
+    padding: 16px;
+    gap: 12px;
+  }
+  
+  .btn-footer {
+    width: 100%;
+    max-width: 220px;
+  }
+}
+
+/* Mobile (Portrait) */
+@media (max-width: 480px) {
+  .login-left {
+    padding: 30px 20px;
+  }
+  
+  .login-box {
+    padding: 28px 24px;
+  }
+  
+  .login-box h1 {
+    font-size: 24px;
+  }
+  
+  .logo {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .content-wrapper {
+    padding: 30px 20px;
+  }
+  
+  .login-right h2 {
+    font-size: 24px;
+  }
+  
+  .section-title {
+    font-size: 18px;
+    margin: 24px 0 16px;
+  }
+  
+  .tools-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tool-card {
+    padding: 20px;
+  }
+  
+  #loginPage .footer {
+    padding: 14px;
+    font-size: 13px;
+  }
+  
+  .btn-footer {
+    font-size: 13px;
+    padding: 8px 18px;
+  }
+}
