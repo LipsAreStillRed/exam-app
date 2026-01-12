@@ -61,7 +61,6 @@ function initDarkMode() {
     });
   }
 }
-
 // ====================== YOUTUBE VIDEO SETUP ======================
 function setupYouTubeVideo() {
   const iframe = document.getElementById('youtubeVideo');
@@ -284,9 +283,9 @@ function setupPasswordToggle() {
     if (eyeOpen && eyeClosed) {
       if (isPassword) {
         eyeOpen.style.display = 'none';
-        eyeClosed.style.display = 'block';
+        eyeClosed.style.display = 'inline';
       } else {
-        eyeOpen.style.display = 'block';
+        eyeOpen.style.display = 'inline';
         eyeClosed.style.display = 'none';
       }
     }
@@ -294,7 +293,6 @@ function setupPasswordToggle() {
   
   console.log('✅ Password toggle initialized');
 }
-
 // ====================== TEACHER: LOAD EXAM LIST ======================
 async function loadExamList() {
   const listDiv = document.getElementById('examList');
@@ -856,7 +854,10 @@ function setupEventHandlers() {
     const modal = document.getElementById('examDetailModal');
     if (event.target === modal) closeExamDetail();
   };
-  
+  // Back to Home from Login Page
+  document.getElementById('backToHome')?.addEventListener('click', () => {
+    window.open('https://github.com/yourusername', '_blank'); // Thay link của bạn vào đây
+  });
   console.log('✅ Event handlers initialized');
 }
 
