@@ -25,11 +25,9 @@
     };
     window.renderMath = () => window.MathJax?.typesetPromise?.();
 
-    // ENV: có thể override bằng biến môi trường Render (inject vào window.ENV)
+    // ENV: có thể override bằng biến môi trường Render
     window.ENV = {
-      // YouTube: chọn 1 video mặc định (Sealock hoặc bất kỳ)
-      YOUTUBE_VIDEO_ID: 'kQKkGqZf3nE', // bạn thay ID tại Render: ENV.YOUTUBE_VIDEO_ID
-      // Tools: nếu không set ENV.TOOLS thì dùng mặc định dưới
+      YOUTUBE_VIDEO_ID: 'kQKkGqZf3nE', // mặc định, thay bằng ENV.YOUTUBE_VIDEO_ID
       TOOLS: [
         { name: 'Google', url: 'https://google.com', icon: 'google' },
         { name: 'YouTube', url: 'https://youtube.com', icon: 'youtube' },
@@ -38,13 +36,13 @@
         { name: 'MS Teams', url: 'https://teams.microsoft.com', icon: 'teams' },
         { name: 'Máy tính', url: 'https://www.wolframalpha.com', icon: 'calculator' }
       ],
-      // Troll video (giữ nguyên link nổi tiếng)
       TROLL_VIDEO_ID: 'dQw4w9WgXcQ'
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 </head>
 <body>
+  
   <!-- Theme Toggle -->
   <button class="theme-toggle" id="themeToggle" aria-label="Đổi giao diện">
     <span class="theme-label">Light</span>
@@ -92,7 +90,7 @@
         <div class="content-wrapper">
           <h2>Công Cụ Hỗ Trợ Học Tập</h2>
 
-          <!-- Video YouTube (Sealock hoặc video ENV) -->
+          <!-- Video YouTube -->
           <div class="video-wrapper">
             <div class="video-container">
               <iframe 
@@ -107,9 +105,7 @@
           </div>
 
           <h3 class="section-title">Công cụ nhanh</h3>
-          <div id="toolsGrid" class="tools-grid">
-            <!-- Sẽ render từ ENV.TOOLS trong main.js -->
-          </div>
+          <div id="toolsGrid" class="tools-grid"></div>
         </div>
 
         <!-- FOOTER -->
@@ -148,7 +144,6 @@
               </div>
             </div>
 
-            <!-- Làm rõ các tùy biến trộn đề -->
             <div class="form-row">
               <div class="form-group">
                 <label>Phần 1: Trộn</label>
@@ -165,7 +160,7 @@
                   <option value="none">Không</option>
                   <option value="questions">Trộn câu hỏi & giữ nguyên thứ tự câu dẫn</option>
                   <option value="subquestions">Trộn cả câu hỏi và câu dẫn trong từng câu</option>
-                  <option value="both">Trộn cả 2 (nếu hệ thống hỗ trợ)</option>
+                  <option value="both">Trộn cả 2</option>
                 </select>
               </div>
               <div class="form-group">
@@ -209,13 +204,82 @@
       <button id="backToHomeTeacher" class="btn"><span>Wanna Help</span></button>
     </div>
   </section>
-
   <!-- STUDENT INFO PAGE -->
-  <!-- (giữ nguyên như bạn gửi) -->
+  <section id="studentInfoPage" style="display:none;">
+    <div class="student-form-container">
+      <div class="card">
+        <h3>Thông tin học sinh</h3>
+        <form id="studentInfoForm">
+          <div class="form-group">
+            <label>Lớp</label>
+            <input type="text" id="studentClass" readonly/>
+          </div>
+          <div class="form-group">
+            <label>Họ và tên</label>
+            <input type="text" id="studentName" placeholder="VD: Nguyễn Văn A"/>
+          </div>
+          <div class="form-group">
+            <label>Ngày sinh (dd/mm/yyyy)</label>
+            <input type="text" id="studentDOB" placeholder="VD: 01/01/2008"/>
+            <small>Nhập đúng định dạng dd/mm/yyyy</small>
+          </div>
+          <div id="examPasswordGroup" class="form-group" style="display:none;">
+            <label>Mật khẩu đề thi</label>
+            <input type="password" id="studentExamPassword" placeholder="Nhập mật khẩu đề"/>
+          </div>
+          <button class="btn btn-primary" type="submit">Vào làm bài</button>
+          <div id="studentInfoError" class="error-message"></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>NMT – Dùng AI code ra web này đó</p>
+      <button id="backToHomeStudent" class="btn"><span>Wanna Help</span></button>
+    </div>
+  </section>
   <!-- EXAM PAGE -->
-  <!-- (giữ nguyên như bạn gửi) -->
+  <section id="examPage" style="display:none;">
+    <div class="container">
+      <div class="exam-header">
+        <div class="exam-info">
+          <h2 id="examTitle">Đề thi</h2>
+          <p id="studentInfo">Học sinh - Lớp</p>
+        </div>
+        <div class="timer-container">
+          <div id="timer" class="timer">00:00</div>
+          <div id="warningMessage" class="warning-message"></div>
+        </div>
+      </div>
+
+      <div class="exam-content">
+        <div id="questionsContainer" class="questions-container"></div>
+        <button id="submitBtn" class="btn btn-primary btn-submit">Nộp bài</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>NMT – Dùng AI code ra web này đó</p>
+      <button id="backToHomeExam" class="btn"><span>Wanna Help</span></button>
+    </div>
+  </section>
+
   <!-- RESULT PAGE -->
-  <!-- (giữ nguyên như bạn gửi) -->
+  <section id="resultPage" style="display:none;">
+    <div class="container">
+      <div class="result-container">
+        <div class="result-icon">🎉</div>
+        <h2 id="resultMessage">Nộp bài thành công!</h2>
+        <div id="scoreDisplay" class="score-display">Chờ chấm điểm</div>
+        <button id="logoutStudent" class="btn">Về trang chủ</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>NMT – Dùng AI code ra web này đó</p>
+      <button id="backToHomeResult" class="btn"><span>Wanna Help</span></button>
+    </div>
+  </section>
   <!-- MODAL CHI TIẾT ĐỀ -->
   <div id="examDetailModal" class="modal">
     <div class="modal-content">
