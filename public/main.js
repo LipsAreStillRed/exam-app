@@ -1326,6 +1326,7 @@ function setupEventHandlers() {
         }
         showPage('examPage');
         document.getElementById('studentInfo').textContent = `${name} - ${currentClassName}`;
+        document.getElementById('examTitle').textContent = exam.originalName || 'Đề thi';
         renderExam(exam);
         startExamTimer(exam.timeMinutes);
         setupViolationDetection();
