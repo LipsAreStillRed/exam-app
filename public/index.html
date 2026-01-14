@@ -4,502 +4,44 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hệ Thống Kiểm Tra</title>
-  <style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-<script>
-  MathJax = {
-    tex: {
-      inlineMath: [['$', '$']],
-      displayMath: [['$$', '$$']]
-    },
-    svg: {
-      fontCache: 'global'
-    }
-  };
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-<script>
-  window.renderMath = () => {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise();
-    }
-  };
-</script>
-}
-
-:root {
-  --primary: #1e88e5;
-  --primary-dark: #1565c0;
-  --gradient-start: #0d47a1;
-  --gradient-end: #1976d2;
-  --secondary: #546e7a;
-  --success: #26a69a;
-  --danger: #ef5350;
-  --warning: #ffa726;
-  --bg: #f5f7fa;
-  --card-bg: #ffffff;
-  --text: #263238;
-  --text-light: #78909c;
-  --border: #cfd8dc;
-  --shadow: 0 2px 8px rgba(0, 4, 53, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 4, 53, 0.12);
-}
-
-body.dark-mode {
-  --primary: #64b5f6;
-  --primary-dark: #42a5f5;
-  --gradient-start: #1a237e;
-  --gradient-end: #004d40;
-  --bg: #1a1a2e;
-  --card-bg: #16213e;
-  --text: #e0e0e0;
-  --text-light: #b0b0b0;
-  --border: #0f3460;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-}
-
-html, body {
-  height: 100%;
-  overflow: hidden;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
-  background-attachment: fixed;
-  color: var(--text);
-  line-height: 1.6;
-}
-
-/* ===== THEME TOGGLE ===== */
-.theme-toggle {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 30px;
-  padding: 8px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s;
-}
-
-body.dark-mode .theme-toggle {
-  background: rgba(22, 33, 62, 0.3);
-  border-color: rgba(100, 181, 246, 0.3);
-}
-
-.theme-toggle:hover {
-  transform: scale(1.05);
-}
-
-.theme-toggle-icon {
-  font-size: 20px;
-}
-
-.theme-toggle-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: white;
-}
-
-/* ===== LOGIN PAGE - 2 CỘT (FIXED) ===== */
-#loginPage {
-  display: grid;
-  grid-template-columns: 380px 1fr;
-  height: 100vh;
-  width: 100%;
-  overflow: hidden;
-}
-
-/* CỘT TRÁI - LOGIN FORM */
-.login-left {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 30px 20px;
-  background: rgba(0, 4, 53, 0.4);
-  backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  overflow-y: auto;
-}
-
-body.dark-mode .login-left {
-  background: rgba(22, 33, 62, 0.5);
-}
-
-.login-box {
-  width: 100%;
-  max-width: 320px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 24px 20px;
-  border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  text-align: center;
-}
-
-body.dark-mode .login-box {
-  background: rgba(22, 33, 62, 0.25);
-  border: 1px solid rgba(100, 181, 246, 0.2);
-}
-
-.logo {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 12px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 4px 15px rgba(30, 136, 229, 0.4);
-}
-
-.logo svg {
-  width: 28px;
-  height: 28px;
-}
-
-.login-box h1 {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 6px;
-  color: white;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.subtitle {
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 20px;
-  font-size: 13px;
-}
-
-.info-text {
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  text-align: left;
-}
-
-.info-text p {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.info-text strong {
-  color: white;
-  font-weight: 600;
-}
-
-/* CỘT PHẢI - CONTENT (CÓ SCROLL) */
-.login-right {
-  display: flex;
-  flex-direction: column;
-  padding: 30px 28px 100px;
-  overflow-y: auto;
-  height: 100vh;
-}
-
-.login-right::-webkit-scrollbar {
-  width: 6px;
-}
-
-.login-right::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.login-right::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-}
-
-.login-right h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 16px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.login-right h3 {
-  font-size: 20px;
-  font-weight: 700;
-  color: white;
-  margin: 24px 0 16px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-/* VIDEO CONTAINER */
-.video-container {
-  width: 100%;
-  margin: 16px 0;
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  background: rgba(0, 0, 0, 0.3);
-}
-
-.video-container iframe {
-  width: 100%;
-  height: 280px;
-  border: none;
-  display: block;
-}
-
-/* TOOLS GRID */
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-top: 16px;
-}
-
-.tool-btn {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  color: white;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 14px;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-
-body.dark-mode .tool-btn {
-  background: rgba(22, 33, 62, 0.3);
-  border-color: rgba(100, 181, 246, 0.2);
-}
-
-.tool-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-
-.tool-btn .icon {
-  font-size: 20px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* INPUT GROUP */
-.input-group {
-  position: relative;
-  margin-bottom: 16px;
-}
-
-.input-group input {
-  width: 100%;
-  padding: 12px 40px 12px 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 12px;
-  font-size: 14px;
-  transition: all 0.3s;
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-}
-
-.input-group input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.input-group input:focus {
-  outline: none;
-  border-color: var(--primary);
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.2);
-}
-
-.toggle-password {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 6px;
-  color: rgba(255, 255, 255, 0.7);
-  transition: all 0.3s;
-  border-radius: 6px;
-}
-
-.toggle-password:hover {
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.toggle-password svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* BUTTONS */
-.btn {
-  padding: 12px 20px;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  color: white;
-  width: 100%;
-  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2), 0 6px 20px rgba(30, 136, 229, 0.4);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2), 0 8px 24px rgba(30, 136, 229, 0.5);
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* FOOTER */
-.footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  padding: 14px 20px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  background: rgba(0, 4, 53, 0.3);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.footer p {
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-.footer button {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.footer button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background: rgba(255, 255, 255, 0.25);
-}
-
-/* RESPONSIVE */
-@media (max-width: 968px) {
-  #loginPage {
-    display: flex;
-    flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-  }
+  <link rel="stylesheet" href="style.css"/>
   
-  .login-left {
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 40px 20px;
-  }
-  
-  .login-right {
-    padding: 30px 25px 100px;
-  }
-  
-  .tools-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .video-container iframe {
-    height: 280px;
-  }
-}
-
-@media (max-width: 480px) {
-  .login-box {
-    max-width: 100%;
-    padding: 24px 20px;
-  }
-  
-  .login-right {
-    padding: 25px 20px 100px;
-  }
-  
-  .login-right h2 {
-    font-size: 22px;
-  }
-  
-  .tools-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .video-container iframe {
-    height: 220px;
-  }
-  
-  .footer {
-    flex-direction: column;
-    padding: 12px 16px;
-    gap: 10px;
-  }
-}
-  </style>
+  <!-- MathJax Configuration -->
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$']],
+        displayMath: [['$$', '$$']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script>
+    window.renderMath = () => {
+      if (window.MathJax && window.MathJax.typesetPromise) {
+        window.MathJax.typesetPromise();
+      }
+    };
+  </script>
 </head>
 <body>
-  <!-- Toggle theme -->
+  <!-- Theme Toggle Button -->
   <button class="theme-toggle" id="themeToggle">
-    <span class="theme-toggle-icon">🌗</span>
-    <span class="theme-toggle-text">Đổi giao diện</span>
+    <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/>
+      <line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </svg>
+    <span id="themeText" class="theme-toggle-text">Light</span>
   </button>
 
   <!-- LOGIN PAGE -->
@@ -526,6 +68,7 @@ body.dark-mode .tool-btn {
             </button>
           </div>
           <button id="loginBtn" class="btn btn-primary" type="submit">Đăng nhập</button>
+          <div id="loginError" class="error-message"></div>
         </form>
 
         <div class="info-text">
@@ -578,43 +121,159 @@ body.dark-mode .tool-btn {
     </div>
   </section>
 
+  <!-- TEACHER PAGE -->
+  <section id="teacherPage" style="display:none;">
+    <div class="container">
+      <div class="header">
+        <h2>Bảng điều khiển giáo viên</h2>
+        <button id="logoutTeacher" class="btn">Đăng xuất</button>
+      </div>
+
+      <div class="dashboard">
+        <div class="card">
+          <h3>Upload đề thi</h3>
+          <form id="uploadForm">
+            <div class="form-group">
+              <label>File đề thi</label>
+              <input type="file" id="examFile" accept=".docx,.pdf,.txt,.json"/>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Thời gian (phút)</label>
+                <input type="number" id="timeMinutes" min="10" value="45"/>
+              </div>
+              <div class="form-group">
+                <label>Mật khẩu đề (tuỳ chọn)</label>
+                <input type="text" id="examPassword" placeholder="Để trống nếu không dùng"/>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Số phiên bản</label>
+                <input type="number" id="variantCount" min="1" value="1"/>
+              </div>
+              <div class="form-group">
+                <label>Chế độ P1/P2/P3</label>
+                <div class="form-row">
+                  <select id="p1Mode">
+                    <option value="none">Không</option>
+                    <option value="shuffle">Trộn</option>
+                  </select>
+                  <select id="p2Mode">
+                    <option value="none">Không</option>
+                    <option value="shuffle">Trộn</option>
+                  </select>
+                  <select id="p3Mode">
+                    <option value="none">Không</option>
+                    <option value="shuffle">Trộn</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label><input type="checkbox" id="useAI"/> Dùng AI hỗ trợ phân tích</label>
+            </div>
+            <button class="btn btn-primary" type="submit">Upload</button>
+            <div id="uploadMessage" class="message" style="display:none;"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Danh sách đề thi</h3>
+          <div id="examList" class="exams-list"></div>
+        </div>
+
+        <div class="card">
+          <h3>Bài nộp gần đây</h3>
+          <div id="submissionsList" class="submissions-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STUDENT INFO PAGE -->
+  <section id="studentInfoPage" style="display:none;">
+    <div class="student-form-container">
+      <div class="card">
+        <h3>Thông tin học sinh</h3>
+        <form id="studentInfoForm">
+          <div class="form-group">
+            <label>Lớp</label>
+            <input type="text" id="studentClass" readonly/>
+          </div>
+          <div class="form-group">
+            <label>Họ và tên</label>
+            <input type="text" id="studentName" placeholder="VD: Nguyễn Văn A"/>
+          </div>
+          <div class="form-group">
+            <label>Ngày sinh (dd/mm/yyyy)</label>
+            <input type="text" id="studentDOB" placeholder="VD: 01/01/2008"/>
+            <small>Nhập đúng định dạng dd/mm/yyyy</small>
+          </div>
+          <div id="examPasswordGroup" class="form-group" style="display:none;">
+            <label>Mật khẩu đề thi</label>
+            <input type="password" id="studentExamPassword" placeholder="Nhập mật khẩu đề"/>
+          </div>
+          <button class="btn btn-primary" type="submit">Vào làm bài</button>
+          <div id="studentInfoError" class="error-message"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXAM PAGE -->
+  <section id="examPage" style="display:none;">
+    <div class="container">
+      <div class="exam-header">
+        <div class="exam-info">
+          <h2 id="examTitle">Đề thi</h2>
+          <p id="studentInfo">Học sinh - Lớp</p>
+        </div>
+        <div class="timer-container">
+          <div id="timer" class="timer">00:00</div>
+          <div id="warningMessage" class="warning-message"></div>
+        </div>
+      </div>
+
+      <div class="exam-content">
+        <div id="questionsContainer" class="questions-container"></div>
+        <button id="submitBtn" class="btn btn-primary btn-submit">Nộp bài</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULT PAGE -->
+  <section id="resultPage" style="display:none;">
+    <div class="container">
+      <div class="result-container">
+        <div class="result-icon">🎉</div>
+        <h2 id="resultMessage">Nộp bài thành công!</h2>
+        <div id="scoreDisplay" class="score-display">Chờ chấm điểm</div>
+        <button id="logoutStudent" class="btn">Về trang chủ</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL CHI TIẾT ĐỀ -->
+  <div id="examDetailModal" class="modal">
+    <div class="modal-content">
+      <button id="closeModal" class="close">✕</button>
+      <h2>Chi tiết đề thi</h2>
+      <div id="examDetailContent"></div>
+      <div class="modal-actions">
+        <button id="saveAnswers" class="btn btn-primary">Lưu đáp án đúng</button>
+        <button id="sendReport" class="btn">Gửi báo cáo lớp</button>
+        <button id="deleteExam" class="btn">Xóa đề</button>
+      </div>
+    </div>
+  </div>
+
   <!-- FOOTER -->
   <div class="footer">
     <p>NMT – Dùng AI code ra web này đó</p>
     <button id="backToHome">Wanna Help</button>
   </div>
 
-  <script>
-    // Dark mode toggle
-    document.getElementById('themeToggle').onclick = () => {
-      document.body.classList.toggle('dark-mode');
-    };
-
-    // Toggle password visibility
-    document.getElementById('togglePassword').addEventListener('click', () => {
-      const input = document.getElementById('passwordInput');
-      const icon = document.getElementById('eyeIcon');
-      
-      if (input.type === 'password') {
-        input.type = 'text';
-        icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
-      } else {
-        input.type = 'password';
-        icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
-      }
-    });
-
-    // Login form
-    document.getElementById('loginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const password = document.getElementById('passwordInput').value;
-      alert('Mật khẩu nhập: ' + password);
-    });
-
-    // Footer button
-    document.getElementById('backToHome').onclick = () => {
-      alert('Liên hệ hỗ trợ!');
-    };
-  </script>
+  <script src="main.js"></script>
 </body>
 </html>
