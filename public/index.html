@@ -29,8 +29,8 @@
 </head>
 <body>
   <!-- Theme Toggle Button -->
-  <button class="theme-toggle" id="themeToggle">
-    <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+    <svg class="theme-toggle-icon" id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="5"/>
       <line x1="12" y1="1" x2="12" y2="3"/>
       <line x1="12" y1="21" x2="12" y2="23"/>
@@ -41,7 +41,7 @@
       <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
       <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
     </svg>
-    <span id="themeText" class="theme-toggle-text">Light</span>
+    <span class="theme-toggle-text" id="themeText">Đổi giao diện</span>
   </button>
 
   <!-- LOGIN PAGE -->
@@ -60,7 +60,7 @@
         <form id="loginForm">
           <div class="input-group">
             <input id="passwordInput" type="password" placeholder="Mật khẩu..." autocomplete="current-password"/>
-            <button type="button" id="togglePassword" class="toggle-password">
+            <button type="button" id="togglePassword" class="toggle-password" aria-label="Toggle password visibility">
               <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                 <circle cx="12" cy="12" r="3"/>
@@ -85,35 +85,37 @@
       <div class="video-container">
         <iframe 
           src="https://www.youtube.com/embed/dQw4w9WgXcQ" 
+          title="YouTube video player"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen>
         </iframe>
       </div>
 
-      <h3>Công Cụ Hỗ Trợ học tập</h3>
+      <h3>Công Cụ Hỗ Trợ Học Tập</h3>
       
       <!-- Tools Grid -->
       <div class="tools-grid">
-        <a href="https://google.com" class="tool-btn" target="_blank">
+        <a href="https://google.com" class="tool-btn" target="_blank" rel="noopener noreferrer">
           <span class="icon">🔍</span>
           <span>Google</span>
         </a>
-        <a href="https://youtube.com" class="tool-btn" target="_blank">
+        <a href="https://youtube.com" class="tool-btn" target="_blank" rel="noopener noreferrer">
           <span class="icon">▶️</span>
           <span>YouTube</span>
         </a>
-        <a href="#" class="tool-btn">
+        <a href="https://slides.google.com" class="tool-btn" target="_blank" rel="noopener noreferrer">
           <span class="icon">📊</span>
           <span>Tạo Slide</span>
         </a>
-        <a href="https://zoom.us" class="tool-btn" target="_blank">
+        <a href="https://zoom.us" class="tool-btn" target="_blank" rel="noopener noreferrer">
           <span class="icon">📹</span>
           <span>Zoom</span>
         </a>
-        <a href="https://teams.microsoft.com" class="tool-btn" target="_blank">
+        <a href="https://teams.microsoft.com" class="tool-btn" target="_blank" rel="noopener noreferrer">
           <span class="icon">👥</span>
           <span>Microsoft Teams</span>
         </a>
-        <a href="#" class="tool-btn">
+        <a href="https://calculator.net" class="tool-btn" target="_blank" rel="noopener noreferrer">
           <span class="icon">🧮</span>
           <span>Máy tính</span>
         </a>
@@ -257,7 +259,7 @@
   <!-- MODAL CHI TIẾT ĐỀ -->
   <div id="examDetailModal" class="modal">
     <div class="modal-content">
-      <button id="closeModal" class="close">✕</button>
+      <button id="closeModal" class="close" aria-label="Close modal">✕</button>
       <h2>Chi tiết đề thi</h2>
       <div id="examDetailContent"></div>
       <div class="modal-actions">
@@ -269,10 +271,10 @@
   </div>
 
   <!-- FOOTER -->
-  <div class="footer">
+  <footer class="footer">
     <p>NMT – Dùng AI code ra web này đó</p>
     <button id="backToHome">Wanna Help</button>
-  </div>
+  </footer>
 
   <script src="main.js"></script>
 </body>
