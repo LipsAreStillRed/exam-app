@@ -107,7 +107,7 @@ body.dark-mode .theme-toggle {
   white-space: nowrap;
 }
 /* =============================================
-   PART 3: LOGIN PAGE - 2 CỘT LAYOUT
+   LOGIN PAGE - 2 CỘT LAYOUT (FIXED VERSION)
    ============================================= */
 
 #loginPage {
@@ -115,7 +115,7 @@ body.dark-mode .theme-toggle {
   grid-template-columns: 450px 1fr;
   min-height: 100vh;
   width: 100%;
-  overflow: hidden;
+  position: relative;
 }
 
 /* CỘT TRÁI - LOGIN FORM */
@@ -123,13 +123,14 @@ body.dark-mode .theme-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
+  padding: 40px 20px 100px; /* Thêm padding-bottom để tránh bị footer che */
   background: rgba(0, 4, 53, 0.4);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
   position: relative;
   z-index: 1;
+  overflow-y: auto;
 }
 
 body.dark-mode .login-left {
@@ -154,311 +155,392 @@ body.dark-mode .login-box {
   border: 1px solid rgba(100, 181, 246, 0.2);
 }
 
-.logo {
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 16px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  border-radius: 50%;
+/* CỘT PHẢI - VIDEO & TOOLS */
+.login-right {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 4px 15px rgba(30, 136, 229, 0.4);
+  flex-direction: column;
+  padding: 40px 40px 120px; /* Padding-bottom lớn hơn để footer không che */
+  overflow-y: auto;
+  height: 100vh;
+  position: relative;
 }
 
-.logo svg {
-  width: 28px;
-  height: 28px;
+.login-right::-webkit-scrollbar {
+  width: 8px;
 }
 
-.login-box h1 {
-  font-size: 24px;
+.login-right::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.login-right::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+}
+
+.login-right::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.login-right h2 {
+  font-size: 28px;
   font-weight: 700;
-  margin-bottom: 8px;
   color: white;
+  margin-bottom: 12px;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-.subtitle {
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 24px;
+/* VIDEO CONTAINER */
+.video-container {
+  width: 100%;
+  margin: 20px 0 30px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.3);
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+  height: 0;
+}
+
+.video-container iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.login-right h3 {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  margin: 30px 0 20px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* TOOLS GRID - 2 CỘT TRÊN DESKTOP */
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+  margin-bottom: 40px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 18px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+body.dark-mode .tool-btn {
+  background: rgba(22, 33, 62, 0.3);
+  border-color: rgba(100, 181, 246, 0.2);
+}
+
+.tool-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.tool-btn .icon {
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* FOOTER - LUÔN Ở DƯỚI CÙNG */
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  padding: 14px 24px;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 14px;
-}
-
-.info-text {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  text-align: left;
-}
-
-.info-text p {
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 8px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: rgba(0, 4, 53, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+body.dark-mode .footer {
+  background: rgba(22, 33, 62, 0.4);
+}
+
+.footer p {
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  font-weight: 500;
+}
+
+.footer button {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-family: inherit;
+}
+
+.footer button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* RESPONSIVE - CHỈ ÁP DỤNG CHO MÀN HÌNH NHỎ */
+@media (max-width: 1200px) {
+  .tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 968px) {
+  #loginPage {
+    display: flex !important;
+    flex-direction: column;
+    grid-template-columns: none;
+  }
+  
+  .login-left {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: auto;
+    padding: 40px 20px;
+  }
+  
+  .login-right {
+    padding: 30px 25px 120px;
+    height: auto;
+    min-height: auto;
+  }
+  
+  .tools-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .footer {
+    flex-direction: column;
+    padding: 12px 16px;
+    gap: 10px;
+    text-align: center;
+  }
+  
+  .footer button {
+    width: 100%;
+    max-width: 200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .login-left {
+    padding: 30px 20px;
+  }
+  
+  .login-box {
+    max-width: 100%;
+    padding: 28px 24px;
+  }
+  
+  .login-right {
+    padding: 25px 20px 120px;
+  }
+  
+  .login-right h2 {
+    font-size: 24px;
+  }
+  
+  .login-right h3 {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-left {
+    padding: 25px 16px;
+  }
+  
+  .login-box {
+    padding: 24px 20px;
+  }
+  
+  .login-right {
+    padding: 20px 16px 120px;
+  }
+  
+  .footer {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  
+  .footer button {
+    font-size: 13px;
+    padding: 7px 16px;
+  }
+}
+/* =============================================
+   PART 5: INPUT GROUPS & BUTTONS
+   ============================================= */
+
+.input-group {
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 14px 44px 14px 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  font-family: inherit;
+}
+
+.input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.2);
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-password:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.toggle-password svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* BUTTONS */
+.btn {
+  padding: 14px 24px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  font-family: inherit;
 }
 
-.info-text strong {
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  font-weight: 600;
-}
-/* =============================================
-   PART 4: CỘT PHẢI - VIDEO & TOOLS (CÓ SCROLL)
-   ============================================= */
-
-.login-right {
-  display: flex;
-  flex-direction: column;
-  padding: 40px 40px 100px;
-  overflow-y: auto;
-  height: 100vh;
-  position: relative;
-}
-
-.login-right::-webkit-scrollbar {
-  width: 8px;
-}
-
-.login-right::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-}
-
-.login-right::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-}
-
-.login-right::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.login-right h2 {
-  font-size: 28px;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 12px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.login-right > p {
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 30px;
-  font-size: 15px;
-}
-
-/* VIDEO CONTAINER */
-.video-container {
   width: 100%;
-  margin: 20px 0 30px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  background: rgba(0, 0, 0, 0.3);
-  position: relative;
-  padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-  height: 0;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2), 0 6px 20px rgba(30, 136, 229, 0.4);
 }
 
-.video-container iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2), 0 8px 24px rgba(30, 136, 229, 0.5);
 }
 
-.login-right h3 {
-  font-size: 24px;
-  font-weight: 700;
+.btn-primary:active:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2), 0 4px 16px rgba(30, 136, 229, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: var(--secondary);
   color: white;
-  margin: 30px 0 20px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 
-/* TOOLS GRID */
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-top: 20px;
-  margin-bottom: 40px;
-}
-
-.tool-btn {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 18px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
+.btn-danger {
+  background: var(--danger);
   color: white;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 15px;
-  transition: all 0.3s ease;
-  cursor: pointer;
 }
 
-body.dark-mode .tool-btn {
-  background: rgba(22, 33, 62, 0.3);
-  border-color: rgba(100, 181, 246, 0.2);
-}
-
-.tool-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-
-.tool-btn:active {
-  transform: translateY(-2px);
-}
-
-.tool-btn .icon {
-  font-size: 24px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-/* =============================================
-   PART 4: CỘT PHẢI - VIDEO & TOOLS (CÓ SCROLL)
-   ============================================= */
-
-.login-right {
-  display: flex;
-  flex-direction: column;
-  padding: 40px 40px 100px;
-  overflow-y: auto;
-  height: 100vh;
-  position: relative;
-}
-
-.login-right::-webkit-scrollbar {
-  width: 8px;
-}
-
-.login-right::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+/* ERROR MESSAGE */
+.error-message {
+  color: #ff1744;
+  background: rgba(255, 23, 68, 0.15);
+  padding: 12px 14px;
   border-radius: 10px;
+  margin-top: 14px;
+  display: none;
+  font-size: 13px;
+  border-left: 4px solid #ff1744;
+  animation: shake 0.5s ease;
 }
 
-.login-right::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-8px); }
+  75% { transform: translateX(8px); }
 }
 
-.login-right::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.login-right h2 {
-  font-size: 28px;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 12px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.login-right > p {
-  color: rgba(255, 255, 255, 0.85);
-  margin-bottom: 30px;
-  font-size: 15px;
-}
-
-/* VIDEO CONTAINER */
-.video-container {
-  width: 100%;
-  margin: 20px 0 30px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  background: rgba(0, 0, 0, 0.3);
-  position: relative;
-  padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-  height: 0;
-}
-
-.video-container iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-}
-
-.login-right h3 {
-  font-size: 24px;
-  font-weight: 700;
-  color: white;
-  margin: 30px 0 20px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-/* TOOLS GRID */
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-top: 20px;
-  margin-bottom: 40px;
-}
-
-.tool-btn {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 18px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-  color: white;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 15px;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-body.dark-mode .tool-btn {
-  background: rgba(22, 33, 62, 0.3);
-  border-color: rgba(100, 181, 246, 0.2);
-}
-
-.tool-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-
-.tool-btn:active {
-  transform: translateY(-2px);
-}
-
-.tool-btn .icon {
-  font-size: 24px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.error-message.show {
+  display: block;
 }
 /* =============================================
    PART 6: FOOTER - CỐ ĐỊNH DƯỚI CÙNG (FIXED)
