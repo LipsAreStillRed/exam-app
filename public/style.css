@@ -1,419 +1,239 @@
 /* =============================================
-   PART 1: ROOT VARIABLES & BASE STYLES
+   STUDENT FORM & EXAM PAGE
    ============================================= */
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-:root {
-  --primary: #1e88e5;
-  --primary-dark: #1565c0;
-  --gradient-start: #0d47a1;
-  --gradient-end: #1976d2;
-  --secondary: #546e7a;
-  --success: #26a69a;
-  --danger: #ef5350;
-  --warning: #ffa726;
-  --bg: #f5f7fa;
-  --card-bg: #ffffff;
-  --text: #263238;
-  --text-light: #78909c;
-  --border: #cfd8dc;
-  --shadow: 0 2px 8px rgba(0, 4, 53, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 4, 53, 0.12);
-  --shadow-3d: 0 4px 0 rgba(0, 4, 53, 0.2), 0 6px 20px rgba(0, 4, 53, 0.15);
-}
-
-body.dark-mode {
-  --primary: #64b5f6;
-  --primary-dark: #42a5f5;
-  --gradient-start: #1a237e;
-  --gradient-end: #004d40;
-  --bg: #1a1a2e;
-  --card-bg: #16213e;
-  --text: #e0e0e0;
-  --text-light: #b0b0b0;
-  --border: #0f3460;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-}
-
-html, body {
-  height: 100%;
-  width: 100%;
-  overflow-x: hidden;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
-  background-attachment: fixed;
-  color: var(--text);
-  line-height: 1.6;
-  position: relative;
-  min-height: 100vh;
-}
-/* =============================================
-   PART 2: THEME TOGGLE - CỐ ĐỊNH TRÊN CÙNG
-   ============================================= */
-
-.theme-toggle {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  z-index: 9999;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 30px;
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-}
-
-body.dark-mode .theme-toggle {
-  background: rgba(22, 33, 62, 0.3);
-  border-color: rgba(100, 181, 246, 0.3);
-}
-
-.theme-toggle:hover {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.theme-toggle:active {
-  transform: scale(0.95);
-}
-
-.theme-toggle-icon {
-  width: 20px;
-  height: 20px;
-  color: white;
-  flex-shrink: 0;
-}
-
-.theme-toggle-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
-  white-space: nowrap;
-}
-/* =============================================
-   LOGIN PAGE - 2 CỘT LAYOUT (FIXED VERSION)
-   ============================================= */
-
-#loginPage {
-  display: grid;
-  grid-template-columns: 450px 1fr;
-  min-height: 100vh;
-  width: 100%;
-  position: relative;
-}
-
-/* CỘT TRÁI - LOGIN FORM */
-.login-left {
+.student-form-container {
+  max-width: 500px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px 100px; /* Thêm padding-bottom để tránh bị footer che */
-  background: rgba(0, 4, 53, 0.4);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
-  position: relative;
-  z-index: 1;
-  overflow-y: auto;
-}
-
-body.dark-mode .login-left {
-  background: rgba(22, 33, 62, 0.5);
-}
-
-.login-box {
+  flex: 1;
   width: 100%;
-  max-width: 380px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(15px);
-  -webkit-backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 32px 28px;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  text-align: center;
+  padding: 35px 20px;
+  min-height: 100vh;
 }
 
-body.dark-mode .login-box {
-  background: rgba(22, 33, 62, 0.25);
-  border: 1px solid rgba(100, 181, 246, 0.2);
-}
-
-/* CỘT PHẢI - VIDEO & TOOLS */
-.login-right {
-  display: flex;
-  flex-direction: column;
-  padding: 40px 40px 120px; /* Padding-bottom lớn hơn để footer không che */
-  overflow-y: auto;
-  height: 100vh;
-  position: relative;
-}
-
-.login-right::-webkit-scrollbar {
-  width: 8px;
-}
-
-.login-right::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-}
-
-.login-right::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-}
-
-.login-right::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.login-right h2 {
-  font-size: 28px;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 12px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-/* VIDEO CONTAINER */
-.video-container {
+.student-form-container .card {
   width: 100%;
-  margin: 20px 0 30px;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  background: rgba(0, 0, 0, 0.3);
-  position: relative;
-  padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-  height: 0;
 }
 
-.video-container iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: none;
-}
-
-.login-right h3 {
-  font-size: 24px;
-  font-weight: 700;
-  color: white;
-  margin: 30px 0 20px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-/* TOOLS GRID - 2 CỘT TRÊN DESKTOP */
-.tools-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-top: 20px;
-  margin-bottom: 40px;
-}
-
-.tool-btn {
+.exam-header {
+  background: white;
+  padding: 22px;
+  border-radius: 15px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow);
   display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 18px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 14px;
-  color: white;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 15px;
-  transition: all 0.3s ease;
-  cursor: pointer;
-}
-
-body.dark-mode .tool-btn {
-  background: rgba(22, 33, 62, 0.3);
-  border-color: rgba(100, 181, 246, 0.2);
-}
-
-.tool-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-}
-
-.tool-btn .icon {
-  font-size: 24px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-/* FOOTER - LUÔN Ở DƯỚI CÙNG */
-.footer {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  padding: 14px 24px;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  background: rgba(0, 4, 53, 0.4);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
 }
 
-body.dark-mode .footer {
-  background: rgba(22, 33, 62, 0.4);
+body.dark-mode .exam-header {
+  background: var(--card-bg);
 }
 
-.footer p {
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  font-weight: 500;
+.exam-info h2 {
+  margin-bottom: 9px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.footer button {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+.exam-info p {
+  color: var(--text-light);
   font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 8px 18px;
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.timer-container {
+  text-align: right;
+}
+
+.timer {
+  font-size: 32px;
+  font-weight: bold;
+  color: var(--primary);
+  font-family: 'Courier New', monospace;
+}
+
+.warning-message {
+  color: var(--danger);
+  font-weight: 700;
+  margin-top: 9px;
+  min-height: 26px;
+  font-size: 14px;
+}
+
+.exam-content {
+  background: white;
+  padding: 26px;
+  border-radius: 15px;
+  box-shadow: var(--shadow);
+}
+
+body.dark-mode .exam-content {
+  background: var(--card-bg);
+}
+
+.questions-container {
+  margin-bottom: 28px;
+}
+
+.question-item {
+  background: linear-gradient(135deg, rgba(30, 136, 229, 0.04) 0%, white 100%);
+  padding: 18px;
+  border-radius: 11px;
+  margin-bottom: 18px;
+  border-left: 4px solid var(--primary);
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  font-family: inherit;
 }
 
-.footer button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  background: rgba(255, 255, 255, 0.25);
+body.dark-mode .question-item {
+  background: linear-gradient(135deg, rgba(100, 181, 246, 0.06) 0%, var(--card-bg) 100%);
 }
 
-/* RESPONSIVE - CHỈ ÁP DỤNG CHO MÀN HÌNH NHỎ */
-@media (max-width: 1200px) {
-  .tools-grid {
-    grid-template-columns: repeat(2, 1fr);
+.question-item:hover {
+  transform: translateX(3px);
+  box-shadow: 0 3px 14px rgba(30, 136, 229, 0.1);
+}
+
+.question-item strong {
+  color: var(--primary);
+  display: block;
+  margin-bottom: 9px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 16px;
+  font-size: 17px;
+  box-shadow: var(--shadow-3d);
+}
+
+.short-answer-boxes {
+  margin-top: 12px;
+}
+
+.box-label {
+  font-size: 14px;
+  color: var(--text-light);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.boxes-container {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.answer-box {
+  width: 70px;
+  height: 70px;
+  font-size: 28px;
+  font-weight: bold;
+  text-align: center;
+  border: 3px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  appearance: none;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+body.dark-mode .answer-box {
+  background: #0f1419;
+}
+
+.answer-box:hover {
+  border-color: var(--primary);
+  background: rgba(30, 136, 229, 0.05);
+}
+
+.answer-box:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background: rgba(30, 136, 229, 0.1);
+}
+
+/* =============================================
+   RESULT PAGE
+   ============================================= */
+
+.result-container {
+  max-width: 520px;
+  margin: 0 auto;
+  text-align: center;
+  background: white;
+  padding: 45px 38px;
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  margin-top: 60px;
+}
+
+body.dark-mode .result-container {
+  background: var(--card-bg);
+}
+
+.result-icon {
+  font-size: 68px;
+  margin-bottom: 22px;
+  animation: bounceIn 0.6s ease-out;
+}
+
+@keyframes bounceIn {
+  0% { 
+    transform: scale(0); 
+    opacity: 0; 
+  }
+  50% { 
+    transform: scale(1.1); 
+  }
+  100% { 
+    transform: scale(1); 
+    opacity: 1; 
   }
 }
 
-@media (max-width: 968px) {
-  #loginPage {
-    display: flex !important;
-    flex-direction: column;
-    grid-template-columns: none;
+.result-container h2 {
+  font-size: 30px;
+  margin-bottom: 15px;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.score-display {
+  font-size: 52px;
+  font-weight: bold;
+  color: var(--success);
+  margin: 22px 0;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3);
   }
-  
-  .login-left {
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    min-height: auto;
-    padding: 40px 20px;
-  }
-  
-  .login-right {
-    padding: 30px 25px 120px;
-    height: auto;
-    min-height: auto;
-  }
-  
-  .tools-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .footer {
-    flex-direction: column;
-    padding: 12px 16px;
-    gap: 10px;
-    text-align: center;
-  }
-  
-  .footer button {
-    width: 100%;
-    max-width: 200px;
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 5px 14px rgba(239, 68, 68, 0.5);
   }
 }
 
-@media (max-width: 768px) {
-  .login-left {
-    padding: 30px 20px;
-  }
-  
-  .login-box {
-    max-width: 100%;
-    padding: 28px 24px;
-  }
-  
-  .login-right {
-    padding: 25px 20px 120px;
-  }
-  
-  .login-right h2 {
-    font-size: 24px;
-  }
-  
-  .login-right h3 {
-    font-size: 20px;
-  }
-}
-
-@media (max-width: 480px) {
-  .login-left {
-    padding: 25px 16px;
-  }
-  
-  .login-box {
-    padding: 24px 20px;
-  }
-  
-  .login-right {
-    padding: 20px 16px 120px;
-  }
-  
-  .footer {
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-  
-  .footer button {
-    font-size: 13px;
-    padding: 7px 16px;
-  }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 /* =============================================
-   PART 5: INPUT GROUPS & BUTTONS
+   INPUT GROUPS & BUTTONS
    ============================================= */
 
 .input-group {
@@ -471,7 +291,6 @@ body.dark-mode .footer {
   height: 20px;
 }
 
-/* BUTTONS */
 .btn {
   padding: 14px 24px;
   border: none;
@@ -520,7 +339,6 @@ body.dark-mode .footer {
   color: white;
 }
 
-/* ERROR MESSAGE */
 .error-message {
   color: #ff1744;
   background: rgba(255, 23, 68, 0.15);
@@ -542,8 +360,9 @@ body.dark-mode .footer {
 .error-message.show {
   display: block;
 }
+
 /* =============================================
-   PART 6: FOOTER - CỐ ĐỊNH DƯỚI CÙNG (FIXED)
+   FOOTER - FIXED AT BOTTOM
    ============================================= */
 
 .footer {
@@ -559,7 +378,7 @@ body.dark-mode .footer {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: rgba(0, 4, 53, 0.3);
+  background: rgba(0, 4, 53, 0.4);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -567,7 +386,7 @@ body.dark-mode .footer {
 }
 
 body.dark-mode .footer {
-  background: rgba(22, 33, 62, 0.3);
+  background: rgba(22, 33, 62, 0.4);
 }
 
 .footer p {
@@ -600,173 +419,9 @@ body.dark-mode .footer {
 .footer button:active {
   transform: translateY(0);
 }
+
 /* =============================================
-   PART 7: RESPONSIVE DESIGN
-   ============================================= */
-
-/* Tablet & Mobile */
-@media (max-width: 968px) {
-  #loginPage {
-    display: flex !important;
-    flex-direction: column;
-    grid-template-columns: none;
-  }
-  
-  .login-left {
-    border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    min-height: auto;
-  }
-  
-  .login-right {
-    padding: 30px 25px 100px;
-    height: auto;
-    min-height: auto;
-  }
-  
-  .tools-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .footer {
-    flex-direction: column;
-    padding: 12px 16px;
-    gap: 10px;
-    text-align: center;
-  }
-  
-  .footer button {
-    width: 100%;
-    max-width: 200px;
-  }
-  
-  .theme-toggle {
-    top: 14px;
-    right: 14px;
-    padding: 8px 12px;
-  }
-  
-  .theme-toggle-icon {
-    width: 18px;
-    height: 18px;
-  }
-  
-  .theme-toggle-text {
-    font-size: 13px;
-  }
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-  .login-left {
-    padding: 30px 20px;
-  }
-  
-  .login-box {
-    max-width: 100%;
-    padding: 28px 24px;
-  }
-  
-  .login-box h1 {
-    font-size: 22px;
-  }
-  
-  .logo {
-    width: 56px;
-    height: 56px;
-  }
-  
-  .logo svg {
-    width: 26px;
-    height: 26px;
-  }
-  
-  .login-right {
-    padding: 25px 20px 100px;
-  }
-  
-  .login-right h2 {
-    font-size: 24px;
-  }
-  
-  .login-right h3 {
-    font-size: 20px;
-  }
-  
-  .tools-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-  
-  .tool-btn {
-    padding: 16px 18px;
-  }
-  
-  .theme-toggle {
-    top: 12px;
-    right: 12px;
-    padding: 7px 11px;
-  }
-  
-  .footer {
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-  
-  .footer button {
-    font-size: 13px;
-    padding: 7px 16px;
-  }
-}
-
-/* Small Mobile */
-@media (max-width: 480px) {
-  .login-left {
-    padding: 25px 16px;
-  }
-  
-  .login-box {
-    padding: 24px 20px;
-  }
-  
-  .login-box h1 {
-    font-size: 20px;
-  }
-  
-  .login-right {
-    padding: 20px 16px 100px;
-  }
-  
-  .login-right h2 {
-    font-size: 22px;
-  }
-  
-  .video-container {
-    margin: 16px 0 24px;
-  }
-  
-  .theme-toggle {
-    top: 10px;
-    right: 10px;
-    padding: 6px 10px;
-  }
-  
-  .theme-toggle-text {
-    font-size: 12px;
-  }
-  
-  .footer {
-    padding: 8px 12px;
-    font-size: 12px;
-  }
-  
-  .footer button {
-    font-size: 12px;
-    padding: 6px 14px;
-  }
-}
-/* =============================================
-   PART 8: CONTAINER, HEADER & DASHBOARD
+   CONTAINER & DASHBOARD (OTHER PAGES)
    ============================================= */
 
 .container {
@@ -834,30 +489,8 @@ body.dark-mode .card {
   gap: 10px;
   font-weight: 700;
 }
-
-@media (max-width: 968px) {
-  .container {
-    padding: 16px 16px 100px;
-  }
-  
-  .dashboard {
-    grid-template-columns: 1fr;
-  }
-  
-  .header {
-    padding: 18px 20px;
-  }
-  
-  .header h2 {
-    font-size: 21px;
-  }
-  
-  .card {
-    padding: 22px;
-  }
-}
 /* =============================================
-   PART 9: FORM GROUPS
+   FORM GROUPS
    ============================================= */
 
 .form-group {
@@ -925,13 +558,8 @@ body.dark-mode .form-group textarea {
   gap: 16px;
 }
 
-@media (max-width: 768px) {
-  .form-row {
-    grid-template-columns: 1fr;
-  }
-}
 /* =============================================
-   PART 10: EXAMS & SUBMISSIONS LISTS
+   EXAMS & SUBMISSIONS LISTS
    ============================================= */
 
 .exams-list {
@@ -1101,7 +729,7 @@ body.dark-mode .submission-item {
   border-left: 4px solid var(--danger);
 }
 /* =============================================
-   PART 11: MODAL
+   MODAL
    ============================================= */
 
 .modal {
@@ -1258,49 +886,8 @@ body.dark-mode .modal-actions {
   box-shadow: 0 3px 0 rgba(0, 4, 53, 0.2);
 }
 
-@media (max-width: 768px) {
-  .modal-content {
-    max-width: 95%;
-    max-height: 93vh;
-  }
-  
-  #examDetailContent {
-    padding: 18px 22px;
-  }
-  
-  .modal-actions {
-    padding: 18px 22px;
-    flex-direction: column;
-  }
-  
-  .modal-actions .btn {
-    width: 100%;
-    min-width: auto;
-  }
-  
-  .scroll-to-bottom {
-    width: 44px;
-    height: 44px;
-    font-size: 22px;
-  }
-}
-
-@media (max-width: 480px) {
-  .modal-content {
-    max-width: 98%;
-    max-height: 95vh;
-  }
-  
-  #examDetailContent {
-    padding: 15px 18px;
-  }
-  
-  .modal-actions {
-    padding: 15px 18px;
-  }
-}
 /* =============================================
-   PART 12: QUESTION BLOCKS
+   QUESTION BLOCKS
    ============================================= */
 
 .question-block {
@@ -1421,18 +1008,8 @@ body.dark-mode .option-block label {
   box-shadow: 0 4px 0 rgba(0, 4, 53, 0.2), 0 6px 14px rgba(30, 136, 229, 0.3);
 }
 
-@media (max-width: 768px) {
-  .question-block {
-    padding: 16px;
-  }
-  
-  .option-block label {
-    padding: 9px 13px;
-    font-size: 13px;
-  }
-}
 /* =============================================
-   PART 13: TRUE/FALSE & SHORT ANSWER
+   TRUE/FALSE & SHORT ANSWER
    ============================================= */
 
 .truefalse-block {
@@ -1526,7 +1103,7 @@ body.dark-mode .cell-4 {
   color: #000;
 }
 /* =============================================
-   PART 14: STUDENT FORM & EXAM PAGE
+   STUDENT FORM & EXAM PAGE
    ============================================= */
 
 .student-form-container {
@@ -1691,13 +1268,8 @@ body.dark-mode .answer-box {
   background: rgba(30, 136, 229, 0.1);
 }
 
-@media (max-width: 768px) {
-  .timer {
-    font-size: 26px;
-  }
-}
 /* =============================================
-   PART 15: RESULT PAGE & ANIMATIONS
+   RESULT PAGE
    ============================================= */
 
 .result-container {
@@ -1764,3 +1336,256 @@ body.dark-mode .result-container {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+/* =============================================
+   RESPONSIVE DESIGN
+   ============================================= */
+
+/* Large Screens - Adjust tools grid */
+@media (max-width: 1200px) {
+  .tools-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tablet & Mobile - Switch to vertical layout */
+@media (max-width: 968px) {
+  #loginPage {
+    display: flex !important;
+    flex-direction: column;
+    grid-template-columns: none;
+  }
+  
+  .login-left {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    min-height: auto;
+    padding: 40px 20px;
+  }
+  
+  .login-right {
+    padding: 30px 25px 120px;
+    height: auto;
+    min-height: auto;
+  }
+  
+  .tools-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .footer {
+    flex-direction: column;
+    padding: 12px 16px;
+    gap: 10px;
+    text-align: center;
+  }
+  
+  .footer button {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .theme-toggle {
+    top: 14px;
+    right: 14px;
+    padding: 8px 12px;
+  }
+  
+  .theme-toggle-icon {
+    width: 18px;
+    height: 18px;
+  }
+  
+  .theme-toggle-text {
+    font-size: 13px;
+  }
+  
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+  
+  .container {
+    padding: 16px 16px 100px;
+  }
+  
+  .modal-content {
+    max-width: 96%;
+  }
+}
+
+/* Mobile - Further optimizations */
+@media (max-width: 768px) {
+  .login-left {
+    padding: 30px 20px;
+  }
+  
+  .login-box {
+    max-width: 100%;
+    padding: 28px 24px;
+  }
+  
+  .login-box h1 {
+    font-size: 22px;
+  }
+  
+  .logo {
+    width: 56px;
+    height: 56px;
+  }
+  
+  .logo svg {
+    width: 26px;
+    height: 26px;
+  }
+  
+  .login-right {
+    padding: 25px 20px 120px;
+  }
+  
+  .login-right h2 {
+    font-size: 24px;
+  }
+  
+  .login-right h3 {
+    font-size: 20px;
+  }
+  
+  .tool-btn {
+    padding: 16px 18px;
+  }
+  
+  .theme-toggle {
+    top: 12px;
+    right: 12px;
+    padding: 7px 11px;
+  }
+  
+  .footer {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  
+  .footer button {
+    font-size: 13px;
+    padding: 7px 16px;
+  }
+  
+  .modal-content {
+    max-width: 95%;
+    max-height: 93vh;
+  }
+  
+  #examDetailContent {
+    padding: 18px 22px;
+  }
+  
+  .modal-actions {
+    padding: 18px 22px;
+    flex-direction: column;
+  }
+  
+  .modal-actions .btn {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .scroll-to-bottom {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .timer {
+    font-size: 26px;
+  }
+  
+  .header {
+    padding: 18px 20px;
+  }
+  
+  .header h2 {
+    font-size: 21px;
+  }
+  
+  .card {
+    padding: 22px;
+  }
+  
+  .question-block {
+    padding: 16px;
+  }
+  
+  .option-block label {
+    padding: 9px 13px;
+    font-size: 13px;
+  }
+}
+
+/* Small Mobile - Minimal design */
+@media (max-width: 480px) {
+  .login-left {
+    padding: 25px 16px;
+  }
+  
+  .login-box {
+    padding: 24px 20px;
+  }
+  
+  .login-box h1 {
+    font-size: 20px;
+  }
+  
+  .login-right {
+    padding: 20px 16px 120px;
+  }
+  
+  .login-right h2 {
+    font-size: 22px;
+  }
+  
+  .video-container {
+    margin: 16px 0 24px;
+  }
+  
+  .theme-toggle {
+    top: 10px;
+    right: 10px;
+    padding: 6px 10px;
+  }
+  
+  .theme-toggle-text {
+    font-size: 12px;
+  }
+  
+  .footer {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  
+  .footer button {
+    font-size: 12px;
+    padding: 6px 14px;
+  }
+  
+  .modal-content {
+    max-width: 98%;
+    max-height: 95vh;
+  }
+  
+  #examDetailContent {
+    padding: 15px 18px;
+  }
+  
+  .modal-actions {
+    padding: 15px 18px;
+  }
+  
+  .btn {
+    padding: 12px 22px;
+    font-size: 15px;
+  }
+}
+
