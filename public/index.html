@@ -4,32 +4,356 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hệ Thống Kiểm Tra</title>
-  <link rel="stylesheet" href="style.css"/>
   
-  <!-- MathJax Configuration -->
+  <style>
+    /* ===== RESET & BASE ===== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    html, body { height: 100%; width: 100%; overflow-x: hidden; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
+      background-attachment: fixed;
+      color: #263238;
+      line-height: 1.6;
+    }
+    
+    /* ===== THEME TOGGLE ===== */
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 30px;
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: all 0.3s ease;
+    }
+    
+    .theme-toggle:hover { transform: scale(1.05); }
+    
+    .theme-toggle-icon { width: 20px; height: 20px; color: white; }
+    .theme-toggle-text { font-size: 14px; font-weight: 600; color: white; }
+    
+    /* ===== LOGIN PAGE - 2 COLUMNS ===== */
+    #loginPage {
+      display: grid;
+      grid-template-columns: 450px 1fr;
+      min-height: 100vh;
+    }
+    
+    /* LEFT COLUMN */
+    .login-left {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      background: rgba(0, 4, 53, 0.4);
+      backdrop-filter: blur(20px);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .login-box {
+      width: 100%;
+      max-width: 380px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 32px 28px;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      text-align: center;
+    }
+    
+    .logo {
+      width: 60px;
+      height: 60px;
+      margin: 0 auto 16px;
+      background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 15px rgba(30, 136, 229, 0.4);
+    }
+    
+    .logo svg { width: 28px; height: 28px; color: white; }
+    
+    .login-box h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: white;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .subtitle {
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    
+    .info-text {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      text-align: left;
+    }
+    
+    .info-text p {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .info-text strong { color: white; font-weight: 600; }
+    
+    /* RIGHT COLUMN */
+    .login-right {
+      display: flex;
+      flex-direction: column;
+      padding: 40px 40px 20px;
+      overflow-y: auto;
+      max-height: 100vh;
+    }
+    
+    .login-right::-webkit-scrollbar { width: 8px; }
+    .login-right::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+    .login-right::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
+    
+    .login-right h2 {
+      font-size: 28px;
+      font-weight: 700;
+      color: white;
+      margin-bottom: 12px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .video-container {
+      width: 100%;
+      margin: 20px 0 30px;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      background: rgba(0, 0, 0, 0.3);
+      position: relative;
+      padding-bottom: 56.25%;
+      height: 0;
+    }
+    
+    .video-container iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    
+    .login-right h3 {
+      font-size: 24px;
+      font-weight: 700;
+      color: white;
+      margin: 30px 0 20px;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+    
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    
+    .tool-btn {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 20px;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s ease;
+    }
+    
+    .tool-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+    
+    .tool-btn .icon {
+      font-size: 24px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    /* INPUT GROUP */
+    .input-group {
+      position: relative;
+      margin-bottom: 18px;
+    }
+    
+    .input-group input {
+      width: 100%;
+      padding: 14px 44px 14px 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      font-size: 15px;
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      font-family: inherit;
+    }
+    
+    .input-group input::placeholder { color: rgba(255, 255, 255, 0.6); }
+    
+    .input-group input:focus {
+      outline: none;
+      border-color: #1e88e5;
+      background: rgba(255, 255, 255, 0.22);
+      box-shadow: 0 0 0 4px rgba(30, 136, 229, 0.2);
+    }
+    
+    .toggle-password {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .toggle-password svg { width: 20px; height: 20px; }
+    
+    .btn {
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+      color: white;
+      width: 100%;
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2), 0 6px 20px rgba(30, 136, 229, 0.4);
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2), 0 8px 24px rgba(30, 136, 229, 0.5);
+    }
+    
+    .error-message {
+      color: #ff1744;
+      background: rgba(255, 23, 68, 0.15);
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin-top: 14px;
+      display: none;
+      font-size: 13px;
+      border-left: 4px solid #ff1744;
+    }
+    
+    .error-message.show { display: block; }
+    
+    /* FOOTER - AT BOTTOM OF PAGE (NOT FIXED) */
+    .footer {
+      position: relative;
+      padding: 20px 24px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 4, 53, 0.4);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: auto;
+    }
+    
+    .footer p { color: rgba(255, 255, 255, 0.9); margin: 0; font-weight: 500; }
+    
+    .footer button {
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 18px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      font-family: inherit;
+    }
+    
+    /* RESPONSIVE */
+    @media (max-width: 968px) {
+      #loginPage {
+        display: flex !important;
+        flex-direction: column;
+      }
+      
+      .login-left {
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      
+      .login-right {
+        padding: 30px 25px 20px;
+        max-height: none;
+      }
+      
+      .tools-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    /* HIDE OTHER PAGES */
+    #teacherPage, #studentInfoPage, #examPage, #resultPage, #examDetailModal {
+      display: none;
+    }
+  </style>
+  
+  <!-- MathJax -->
   <script>
     MathJax = {
       tex: {
         inlineMath: [['$', '$']],
         displayMath: [['$$', '$$']]
       },
-      svg: {
-        fontCache: 'global'
-      }
+      svg: { fontCache: 'global' }
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-  <script>
-    window.renderMath = () => {
-      if (window.MathJax && window.MathJax.typesetPromise) {
-        window.MathJax.typesetPromise();
-      }
-    };
-  </script>
 </head>
 <body>
-  <!-- Theme Toggle Button -->
-  <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+  <!-- Theme Toggle -->
+  <button class="theme-toggle" id="themeToggle">
     <svg class="theme-toggle-icon" id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="5"/>
       <line x1="12" y1="1" x2="12" y2="3"/>
@@ -41,15 +365,16 @@
       <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
       <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
     </svg>
-    <span class="theme-toggle-text" id="themeText">Đổi giao diện</span>
+    <span class="theme-toggle-text" id="themeText">Light</span>
   </button>
 
   <!-- LOGIN PAGE -->
   <section id="loginPage">
+    <!-- LEFT: LOGIN FORM -->
     <div class="login-left">
       <div class="login-box">
         <div class="logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="9"></circle>
             <path d="M8 12l2 2 4-4"></path>
           </svg>
@@ -60,7 +385,7 @@
         <form id="loginForm">
           <div class="input-group">
             <input id="passwordInput" type="password" placeholder="Mật khẩu..." autocomplete="current-password"/>
-            <button type="button" id="togglePassword" class="toggle-password" aria-label="Toggle password visibility">
+            <button type="button" id="togglePassword" class="toggle-password">
               <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                 <circle cx="12" cy="12" r="3"/>
@@ -78,10 +403,10 @@
       </div>
     </div>
 
+    <!-- RIGHT: VIDEO & TOOLS -->
     <div class="login-right">
       <h2>Công Cụ Hỗ Trợ Học Tập</h2>
       
-      <!-- YouTube Video -->
       <div class="video-container">
         <iframe 
           src="https://www.youtube.com/embed/dQw4w9WgXcQ" 
@@ -93,188 +418,40 @@
 
       <h3>Công Cụ Hỗ Trợ Học Tập</h3>
       
-      <!-- Tools Grid -->
       <div class="tools-grid">
-        <a href="https://google.com" class="tool-btn" target="_blank" rel="noopener noreferrer">
+        <a href="https://google.com" class="tool-btn" target="_blank">
           <span class="icon">🔍</span>
           <span>Google</span>
         </a>
-        <a href="https://youtube.com" class="tool-btn" target="_blank" rel="noopener noreferrer">
+        <a href="https://youtube.com" class="tool-btn" target="_blank">
           <span class="icon">▶️</span>
           <span>YouTube</span>
         </a>
-        <a href="https://slides.google.com" class="tool-btn" target="_blank" rel="noopener noreferrer">
+        <a href="https://slides.google.com" class="tool-btn" target="_blank">
           <span class="icon">📊</span>
           <span>Tạo Slide</span>
         </a>
-        <a href="https://zoom.us" class="tool-btn" target="_blank" rel="noopener noreferrer">
+        <a href="https://zoom.us" class="tool-btn" target="_blank">
           <span class="icon">📹</span>
           <span>Zoom</span>
         </a>
-        <a href="https://teams.microsoft.com" class="tool-btn" target="_blank" rel="noopener noreferrer">
+        <a href="https://teams.microsoft.com" class="tool-btn" target="_blank">
           <span class="icon">👥</span>
           <span>Microsoft Teams</span>
         </a>
-        <a href="https://calculator.net" class="tool-btn" target="_blank" rel="noopener noreferrer">
+        <a href="https://calculator.net" class="tool-btn" target="_blank">
           <span class="icon">🧮</span>
           <span>Máy tính</span>
         </a>
       </div>
+      
+      <!-- FOOTER INSIDE RIGHT COLUMN -->
+      <footer class="footer">
+        <p>NMT – Dùng AI code ra web này đó</p>
+        <button id="backToHome">Wanna Help</button>
+      </footer>
     </div>
   </section>
-
-  <!-- TEACHER PAGE -->
-  <section id="teacherPage" style="display:none;">
-    <div class="container">
-      <div class="header">
-        <h2>Bảng điều khiển giáo viên</h2>
-        <button id="logoutTeacher" class="btn">Đăng xuất</button>
-      </div>
-
-      <div class="dashboard">
-        <div class="card">
-          <h3>Upload đề thi</h3>
-          <form id="uploadForm">
-            <div class="form-group">
-              <label>File đề thi</label>
-              <input type="file" id="examFile" accept=".docx,.pdf,.txt,.json"/>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Thời gian (phút)</label>
-                <input type="number" id="timeMinutes" min="10" value="45"/>
-              </div>
-              <div class="form-group">
-                <label>Mật khẩu đề (tuỳ chọn)</label>
-                <input type="text" id="examPassword" placeholder="Để trống nếu không dùng"/>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Số phiên bản</label>
-                <input type="number" id="variantCount" min="1" value="1"/>
-              </div>
-              <div class="form-group">
-                <label>Chế độ P1/P2/P3</label>
-                <div class="form-row">
-                  <select id="p1Mode">
-                    <option value="none">Không</option>
-                    <option value="shuffle">Trộn</option>
-                  </select>
-                  <select id="p2Mode">
-                    <option value="none">Không</option>
-                    <option value="shuffle">Trộn</option>
-                  </select>
-                  <select id="p3Mode">
-                    <option value="none">Không</option>
-                    <option value="shuffle">Trộn</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label><input type="checkbox" id="useAI"/> Dùng AI hỗ trợ phân tích</label>
-            </div>
-            <button class="btn btn-primary" type="submit">Upload</button>
-            <div id="uploadMessage" class="message" style="display:none;"></div>
-          </form>
-        </div>
-
-        <div class="card">
-          <h3>Danh sách đề thi</h3>
-          <div id="examList" class="exams-list"></div>
-        </div>
-
-        <div class="card">
-          <h3>Bài nộp gần đây</h3>
-          <div id="submissionsList" class="submissions-list"></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- STUDENT INFO PAGE -->
-  <section id="studentInfoPage" style="display:none;">
-    <div class="student-form-container">
-      <div class="card">
-        <h3>Thông tin học sinh</h3>
-        <form id="studentInfoForm">
-          <div class="form-group">
-            <label>Lớp</label>
-            <input type="text" id="studentClass" readonly/>
-          </div>
-          <div class="form-group">
-            <label>Họ và tên</label>
-            <input type="text" id="studentName" placeholder="VD: Nguyễn Văn A"/>
-          </div>
-          <div class="form-group">
-            <label>Ngày sinh (dd/mm/yyyy)</label>
-            <input type="text" id="studentDOB" placeholder="VD: 01/01/2008"/>
-            <small>Nhập đúng định dạng dd/mm/yyyy</small>
-          </div>
-          <div id="examPasswordGroup" class="form-group" style="display:none;">
-            <label>Mật khẩu đề thi</label>
-            <input type="password" id="studentExamPassword" placeholder="Nhập mật khẩu đề"/>
-          </div>
-          <button class="btn btn-primary" type="submit">Vào làm bài</button>
-          <div id="studentInfoError" class="error-message"></div>
-        </form>
-      </div>
-    </div>
-  </section>
-
-  <!-- EXAM PAGE -->
-  <section id="examPage" style="display:none;">
-    <div class="container">
-      <div class="exam-header">
-        <div class="exam-info">
-          <h2 id="examTitle">Đề thi</h2>
-          <p id="studentInfo">Học sinh - Lớp</p>
-        </div>
-        <div class="timer-container">
-          <div id="timer" class="timer">00:00</div>
-          <div id="warningMessage" class="warning-message"></div>
-        </div>
-      </div>
-
-      <div class="exam-content">
-        <div id="questionsContainer" class="questions-container"></div>
-        <button id="submitBtn" class="btn btn-primary btn-submit">Nộp bài</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- RESULT PAGE -->
-  <section id="resultPage" style="display:none;">
-    <div class="container">
-      <div class="result-container">
-        <div class="result-icon">🎉</div>
-        <h2 id="resultMessage">Nộp bài thành công!</h2>
-        <div id="scoreDisplay" class="score-display">Chờ chấm điểm</div>
-        <button id="logoutStudent" class="btn">Về trang chủ</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- MODAL CHI TIẾT ĐỀ -->
-  <div id="examDetailModal" class="modal">
-    <div class="modal-content">
-      <button id="closeModal" class="close" aria-label="Close modal">✕</button>
-      <h2>Chi tiết đề thi</h2>
-      <div id="examDetailContent"></div>
-      <div class="modal-actions">
-        <button id="saveAnswers" class="btn btn-primary">Lưu đáp án đúng</button>
-        <button id="sendReport" class="btn">Gửi báo cáo lớp</button>
-        <button id="deleteExam" class="btn">Xóa đề</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <footer class="footer">
-    <p>NMT – Dùng AI code ra web này đó</p>
-    <button id="backToHome">Wanna Help</button>
-  </footer>
 
   <script src="main.js"></script>
 </body>
