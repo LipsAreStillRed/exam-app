@@ -1588,4 +1588,165 @@ body.dark-mode .result-container {
     font-size: 15px;
   }
 }
+/* ================================================================= */
+/* === PHẦN CODE MỚI BỔ SUNG: GIAO DIỆN LOGIN 2 CỘT & VIDEO === */
+/* ================================================================= */
 
+/* 1. Reset nền và font chung cho trang */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
+  background-attachment: fixed;
+  color: #263238;
+  margin: 0; padding: 0;
+}
+body.dark-mode {
+  background: linear-gradient(135deg, #000000 0%, #1a237e 100%);
+  color: #eceff1;
+}
+
+/* 2. Style cho Trang Login Mới (Chia 2 cột) */
+#loginPage {
+  display: grid;
+  grid-template-columns: 450px 1fr; /* Cột trái 450px, Cột phải tự co giãn */
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* --- CỘT TRÁI (Box Login) --- */
+.login-left {
+  display: flex;
+  align-items: center; justify-content: center;
+  padding: 40px 20px;
+  background: rgba(0, 4, 53, 0.5); /* Nền tối mờ */
+  backdrop-filter: blur(20px);
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  position: relative; z-index: 2;
+}
+
+.login-left .login-box {
+  width: 100%; max-width: 380px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 35px 30px;
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  text-align: center; color: white;
+}
+
+/* Logo Login */
+.login-left .logo {
+  width: 70px; height: 70px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, #42a5f5, #1565c0);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 15px rgba(30, 136, 229, 0.5);
+}
+.login-left .logo svg { width: 35px; height: 35px; color: white; }
+
+.login-left h1 { font-size: 24px; margin-bottom: 10px; font-weight: 700; color: white; }
+.login-left .subtitle { color: rgba(255, 255, 255, 0.8); font-size: 14px; margin-bottom: 30px; }
+
+/* Input Login mới */
+.login-left .input-group input {
+  width: 100%;
+  padding: 14px 45px 14px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  color: white; font-size: 15px; outline: none;
+}
+.login-left .input-group input:focus {
+  border-color: #42a5f5; background: rgba(0, 0, 0, 0.4);
+}
+.login-left .toggle-password { color: white; }
+
+/* Nút Đăng nhập mới */
+.login-left .btn-primary {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, #42a5f5, #1565c0);
+  border: none; color: white;
+  border-radius: 12px; font-weight: bold; font-size: 16px;
+  cursor: pointer; box-shadow: 0 4px 15px rgba(21, 101, 192, 0.4);
+  transition: 0.3s;
+}
+.login-left .btn-primary:hover { transform: translateY(-3px); }
+
+/* --- CỘT PHẢI (VIDEO & TOOLS) --- */
+.login-right {
+  display: flex; flex-direction: column;
+  padding: 40px 50px;
+  overflow-y: auto; height: 100vh;
+  position: relative;
+}
+
+.login-right h2, .login-right h3 {
+  color: white; text-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  margin-bottom: 20px; font-weight: 700;
+}
+
+/* Khung Video */
+.video-container {
+  width: 100%; position: relative;
+  padding-bottom: 56.25%; /* Tỉ lệ 16:9 */
+  background: black; border-radius: 16px; overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  margin-bottom: 40px; height: 0;
+}
+.video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+
+/* Lưới công cụ (Tools) */
+.tools-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 15px;
+}
+.tool-btn {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px; color: white; text-decoration: none; font-weight: 600;
+  transition: 0.3s; backdrop-filter: blur(5px);
+}
+.tool-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+
+/* Footer mới */
+.footer {
+  margin-top: auto; padding-top: 30px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  display: flex; justify-content: space-between; align-items: center;
+  color: rgba(255,255,255,0.7); font-size: 14px;
+}
+.footer button {
+  background: transparent; border: 1px solid rgba(255,255,255,0.3);
+  color: white; padding: 6px 15px; border-radius: 20px;
+  cursor: pointer; transition: 0.3s;
+}
+.footer button:hover { background: rgba(255,255,255,0.2); }
+
+/* --- RESPONSIVE MOBILE/TABLET (Dưới 968px) --- */
+@media (max-width: 968px) {
+  #loginPage {
+    display: flex !important; flex-direction: column;
+    height: auto; overflow-y: visible;
+  }
+  .login-left {
+    width: 100%; min-height: 100vh;
+    border-right: none; border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .login-right {
+    width: 100%; height: auto;
+    padding: 30px 20px; background: rgba(0,0,0,0.3);
+  }
+  .tools-grid { grid-template-columns: 1fr 1fr; }
+  .footer { flex-direction: column; gap: 10px; text-align: center; }
+}
+
+/* Helper Class để ẩn hiện trang */
+.functional-page { display: none; padding-top: 40px; padding-bottom: 60px; }
+.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
