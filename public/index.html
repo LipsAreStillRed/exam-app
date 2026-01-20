@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hệ Thống Kiểm Tra</title>
   
-  <!-- Link style cũ -->
+  <!-- Link style cũ (Để giữ định dạng cho phần làm bài thi bên trong) -->
   <link rel="stylesheet" href="style.css">
   
   <!-- MathJax -->
@@ -17,28 +17,17 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
-  <!-- CSS LÀM ĐẸP GIAO DIỆN -->
+  <!-- CSS GIAO DIỆN LOGIN (VIẾT RIÊNG ĐỂ KHÔNG BỊ LỖI) -->
   <style>
-    /* 1. Xóa bỏ thanh cuộn xấu xí (Nhưng vẫn cho phép cuộn) */
-    ::-webkit-scrollbar {
-        width: 0px;
-        background: transparent; /* Ẩn thanh cuộn trên Chrome/Safari/Edge */
-    }
-    html {
-        scrollbar-width: none; /* Ẩn trên Firefox */
-        -ms-overflow-style: none; /* Ẩn trên IE */
-    }
-
-    /* 2. Reset Body & Font */
+    /* 1. Cấu hình chung */
     body {
         margin: 0 !important; padding: 0 !important;
-        overflow-x: hidden !important;
         font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-        background: linear-gradient(135deg, #051937 0%, #004d7a 100%) !important; /* Màu nền tối sang trọng hơn */
-        color: #fff !important;
+        background-color: #051937 !important; /* Màu nền dự phòng */
+        overflow: hidden !important; /* Chặn cuộn của body */
     }
 
-    /* 3. LAYOUT 2 CỘT CHÍNH */
+    /* 2. Layout Chính (Chia 2 cột Flexbox) */
     #loginPage {
         display: flex !important;
         width: 100vw !important;
@@ -46,160 +35,167 @@
         position: fixed !important;
         top: 0; left: 0;
         z-index: 9999;
-        background: transparent;
+        /* Gradient Xanh đậm như hình mẫu */
+        background: linear-gradient(135deg, #0033cc 0%, #001a66 100%) !important;
+        color: #fff !important;
     }
 
+    /* Ẩn trang login khi vào trong */
     #loginPage[style*="none"] { display: none !important; z-index: -10 !important; }
 
-    /* CỘT TRÁI: LOGIN */
+    /* --- CỘT TRÁI: LOGIN (CỐ ĐỊNH, KHÔNG CUỘN) --- */
     .login-left {
         width: 450px !important;
         height: 100% !important;
-        /* Hiệu ứng nền kính mờ bên trái */
-        background: rgba(255, 255, 255, 0.05) !important;
-        backdrop-filter: blur(30px);
-        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        flex-shrink: 0 !important; /* Không bị co lại */
         display: flex !important;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        padding: 40px !important;
-        box-shadow: 10px 0 30px rgba(0,0,0,0.3); /* Bóng đổ ngăn cách */
-        z-index: 2;
+        flex-direction: column !important;
+        justify-content: center !important; /* Canh giữa theo chiều dọc */
+        align-items: center !important;     /* Canh giữa theo chiều ngang */
+        
+        /* Hiệu ứng kính mờ ngăn cách */
+        background: rgba(255, 255, 255, 0.03) !important;
+        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+        box-shadow: 5px 0 15px rgba(0,0,0,0.2) !important;
+        position: relative;
+        z-index: 10;
     }
 
-    /* Box Login đẹp hơn */
+    /* Hộp Login */
     .login-box {
-        width: 100%;
-        background: rgba(255, 255, 255, 0.08) !important; /* Trong suốt nhẹ */
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 24px !important;
+        width: 360px !important;
         padding: 40px 30px !important;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.3) !important;
-        text-align: center;
-        transition: transform 0.3s;
+        background: rgba(255, 255, 255, 0.1) !important; /* Nền kính */
+        backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 20px !important;
+        text-align: center !important;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.3) !important;
     }
-    .login-box:hover { transform: translateY(-5px); }
 
-    /* CỘT PHẢI: VIDEO */
+    /* --- CỘT PHẢI: VIDEO & NỘI DUNG (CUỘN ĐƯỢC) --- */
     .login-right {
-        flex: 1 !important;
+        flex: 1 !important; /* Chiếm hết phần còn lại */
         height: 100% !important;
-        overflow-y: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow-y: auto !important; /* Chỉ cột phải mới được cuộn */
         position: relative !important;
-        background: transparent;
     }
 
+    /* Wrapper chứa nội dung để đẩy Footer xuống đáy */
     .content-wrapper {
-        padding: 60px 80px 40px; /* Tăng khoảng cách lề cho thoáng */
-        max-width: 1200px;
-        margin: 0 auto;
-        min-height: calc(100vh - 80px); /* Trừ đi footer */
+        padding: 50px 60px !important;
+        flex: 1 !important; /* Đẩy footer xuống */
+        display: flex;
+        flex-direction: column;
     }
 
-    /* 4. CÁC THÀNH PHẦN CON */
-    
-    /* Logo & Tiêu đề */
+    /* --- FOOTER (NẰM CUỐI CỘT PHẢI) --- */
+    .footer {
+        padding: 20px 60px !important;
+        border-top: 1px solid rgba(255,255,255,0.1) !important;
+        background: rgba(0,0,0,0.2) !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-top: auto !important; /* Quan trọng: Luôn nằm dưới cùng */
+        flex-shrink: 0 !important;
+    }
+
+    /* --- CÁC THÀNH PHẦN CON --- */
     .logo {
-        width: 80px; height: 80px; margin: 0 auto 20px;
-        background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+        width: 70px; height: 70px; margin: 0 auto 20px;
+        background: #2196f3;
         border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 10px 20px rgba(0, 210, 255, 0.3);
+        box-shadow: 0 5px 15px rgba(33, 150, 243, 0.4);
     }
-    h1 { font-size: 26px; font-weight: 800; margin-bottom: 5px; letter-spacing: 1px; }
-    .subtitle { color: rgba(255,255,255,0.6); font-size: 14px; margin-bottom: 30px; }
+    
+    h1 { margin: 0 0 10px 0; font-size: 24px; font-weight: 700; }
+    .subtitle { margin: 0 0 30px 0; color: rgba(255,255,255,0.7); font-size: 14px; }
 
-    /* Input Form */
     .input-group input {
-        background: rgba(0,0,0,0.3) !important;
-        border: 1px solid rgba(255,255,255,0.15) !important;
-        color: white !important;
-        padding: 16px 50px 16px 20px !important;
-        border-radius: 12px !important;
         width: 100%; box-sizing: border-box;
-        font-size: 16px;
-        transition: 0.3s;
+        padding: 14px 45px 14px 15px !important;
+        border-radius: 10px !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        background: rgba(0,0,0,0.3) !important;
+        color: white !important;
+        font-size: 15px !important;
+        outline: none;
     }
     .input-group input:focus {
+        border-color: #2196f3 !important;
         background: rgba(0,0,0,0.5) !important;
-        border-color: #00d2ff !important;
-        box-shadow: 0 0 15px rgba(0, 210, 255, 0.2);
     }
 
-    /* Nút Đăng nhập */
     .btn-primary {
-        background: linear-gradient(90deg, #00d2ff 0%, #3a7bd5 100%) !important;
-        color: white !important; padding: 16px !important;
-        border-radius: 12px !important;
-        font-weight: 700; width: 100%; border: none; cursor: pointer;
-        font-size: 16px; letter-spacing: 0.5px;
-        box-shadow: 0 10px 20px rgba(58, 123, 213, 0.3);
-        transition: 0.3s;
-        text-transform: uppercase;
+        width: 100%;
+        padding: 14px !important;
+        border-radius: 10px !important;
+        background: #2196f3 !important;
+        color: white !important;
+        border: none !important;
+        font-weight: 600 !important;
+        font-size: 16px !important;
+        cursor: pointer !important;
+        margin-top: 10px;
+        box-shadow: 0 5px 15px rgba(33, 150, 243, 0.3) !important;
     }
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 15px 30px rgba(58, 123, 213, 0.4);
-    }
+    .btn-primary:hover { background: #1976d2 !important; transform: translateY(-2px); }
 
     /* Video Frame */
     .video-container {
         width: 100%; position: relative;
-        padding-bottom: 56.25%; /* 16:9 */
-        background: #000;
-        border-radius: 20px;
-        overflow: hidden;
+        padding-bottom: 56.25%; background: black;
+        border-radius: 15px; overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
         margin-bottom: 40px;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-        border: 1px solid rgba(255,255,255,0.1);
     }
     .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
     /* Tools Grid */
-    .tools-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 20px;
-    }
+    .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
     .tool-btn {
-        display: flex; align-items: center; justify-content: center; gap: 10px;
-        padding: 18px;
-        background: rgba(255,255,255,0.08) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-        border-radius: 16px;
-        color: white !important; text-decoration: none; font-weight: 600;
-        transition: 0.3s; backdrop-filter: blur(5px);
+        display: flex; align-items: center; gap: 10px; padding: 15px;
+        background: rgba(255,255,255,0.1) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        border-radius: 12px; color: white !important; text-decoration: none;
+        transition: 0.2s;
     }
-    .tool-btn:hover {
-        background: rgba(255,255,255,0.2) !important;
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-    }
+    .tool-btn:hover { background: rgba(255,255,255,0.2) !important; transform: translateY(-3px); }
 
-    /* Footer */
-    .footer {
-        padding: 20px 80px !important;
-        background: transparent !important;
-        border-top: 1px solid rgba(255,255,255,0.1);
-        display: flex; justify-content: space-between; align-items: center;
-        width: 100%;
-        margin-top: auto;
-    }
+    /* Footer Button */
     .footer button {
-        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-        color: white; padding: 8px 24px; border-radius: 30px; cursor: pointer;
-        transition: 0.3s; font-size: 14px;
+        background: transparent; border: 1px solid rgba(255,255,255,0.3);
+        color: white; padding: 8px 20px; border-radius: 20px; cursor: pointer;
     }
-    .footer button:hover { background: rgba(255,255,255,0.3); }
+    .footer button:hover { background: rgba(255,255,255,0.1); }
 
-    /* 5. RESPONSIVE MOBILE */
+    /* --- MOBILE RESPONSIVE (DƯỚI 900PX) --- */
     @media (max-width: 900px) {
         #loginPage { flex-direction: column !important; overflow-y: auto !important; }
-        .login-left { width: 100% !important; min-height: 100vh; padding: 20px !important; border-right: none; }
-        .login-box { max-width: 100%; padding: 30px 20px !important; }
-        .content-wrapper { padding: 40px 20px; }
-        .footer { padding: 20px !important; flex-direction: column; gap: 15px; }
-        .logo { width: 60px; height: 60px; }
-        .logo svg { width: 30px; height: 30px; }
+        
+        .login-left {
+            width: 100% !important;
+            height: auto !important;
+            min-height: 100vh; /* Login chiếm hết màn hình đầu tiên */
+            padding: 40px 20px !important;
+            border-right: none !important;
+            justify-content: center !important;
+        }
+        
+        .login-box { width: 100% !important; max-width: 400px !important; }
+
+        .login-right {
+            width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+        
+        .content-wrapper { padding: 30px 20px !important; }
+        .footer { flex-direction: column; gap: 10px; padding: 20px !important; text-align: center; }
     }
 
     /* Ẩn các trang chức năng */
@@ -211,44 +207,44 @@
 <body>
 
   <!-- Theme Toggle -->
-  <button class="theme-toggle" id="themeToggle" style="position:fixed; top:20px; right:20px; z-index:99999; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.2); border-radius:30px; padding:8px 16px; color:white; cursor:pointer; backdrop-filter: blur(10px);">
+  <button class="theme-toggle" id="themeToggle" style="position:fixed; top:20px; right:20px; z-index:99999; background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.2); border-radius:30px; padding:8px 15px; color:white; cursor:pointer; backdrop-filter:blur(5px);">
     <span id="themeText">Light</span>
   </button>
 
-  <!-- === GIAO DIỆN CHÍNH === -->
+  <!-- === GIAO DIỆN LOGIN CHÍNH === -->
   <section id="loginPage">
-    <!-- CỘT TRÁI -->
+    <!-- CỘT TRÁI: LOGIN (CỐ ĐỊNH, KHÔNG CUỘN) -->
     <div class="login-left">
       <div class="login-box">
         <div class="logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:40px; height:40px; color:white;">
-            <polyline points="9 11 12 14 22 4"></polyline>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:35px; height:35px; color:white;">
+            <path d="M9 11l3 3L22 4"></path>
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
           </svg>
         </div>
-        <h1>HỆ THỐNG KIỂM TRA</h1>
-        <p class="subtitle">Đăng nhập để bắt đầu làm bài</p>
+        <h1>Hệ Thống Kiểm Tra</h1>
+        <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
 
         <form id="loginForm">
           <div class="input-group" style="position:relative; margin-bottom:20px;">
-            <input id="passwordInput" type="password" placeholder="Nhập mật khẩu..." autocomplete="current-password" required/>
-            <button type="button" id="togglePassword" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); background:none; border:none; color:rgba(255,255,255,0.6); cursor:pointer;">👁️</button>
+            <input id="passwordInput" type="password" placeholder="Mật khẩu..." autocomplete="current-password" required/>
+            <button type="button" id="togglePassword" style="position:absolute; right:15px; top:50%; transform:translateY(-50%); background:none; border:none; color:rgba(255,255,255,0.7); cursor:pointer;">👁️</button>
           </div>
-          <button id="loginBtn" class="btn btn-primary" type="submit">ĐĂNG NHẬP</button>
-          <div id="loginError" class="error-message" style="color:#ff5252; margin-top:15px; font-size:14px; font-weight:600; display:none; background:rgba(255,0,0,0.1); padding:10px; border-radius:8px;"></div>
+          <button id="loginBtn" class="btn btn-primary" type="submit">Đăng nhập</button>
+          <div id="loginError" class="error-message" style="color:#ff5252; margin-top:15px; font-weight:bold; display:none;"></div>
         </form>
 
-        <div style="margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1); text-align:left; font-size:13px; color:rgba(255,255,255,0.6); line-height: 1.8;">
-          <p>👨‍🏫 <strong>Giáo viên:</strong> Dùng mật khẩu quản trị</p>
-          <p>🎓 <strong>Học sinh:</strong> Nhập mật khẩu lớp học</p>
+        <div style="margin-top:25px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.15); text-align:left; font-size:13px; color:rgba(255,255,255,0.7); line-height:1.6;">
+          <p>👨‍🏫 <strong>Giáo viên:</strong> Mật khẩu quản trị</p>
+          <p>🎓 <strong>Học sinh:</strong> Mật khẩu bài thi</p>
         </div>
       </div>
     </div>
 
-    <!-- CỘT PHẢI -->
+    <!-- CỘT PHẢI: VIDEO & FOOTER (CUỘN ĐƯỢC) -->
     <div class="login-right">
       <div class="content-wrapper">
-        <h2 style="color:white; margin-bottom:25px; font-weight:700;">📺 Góc Học Tập & Giải Trí</h2>
+        <h2 style="margin-bottom:20px;">Góc Học Tập & Giải Trí</h2>
         
         <div class="video-container">
           <iframe 
@@ -260,29 +256,34 @@
           </iframe>
         </div>
 
-        <h3 style="color:white; margin-bottom:20px; font-weight:700;">🛠️ Công Cụ Hỗ Trợ</h3>
+        <h3 style="margin-bottom:15px;">Công Cụ Hỗ Trợ</h3>
         <div class="tools-grid">
-          <a href="https://google.com" target="_blank" class="tool-btn"><span style="font-size:20px">🔍</span> Google</a>
-          <a href="https://youtube.com" target="_blank" class="tool-btn"><span style="font-size:20px">▶️</span> YouTube</a>
-          <a href="https://chatgpt.com" target="_blank" class="tool-btn"><span style="font-size:20px">🤖</span> ChatGPT</a>
-          <a href="https://zoom.us" target="_blank" class="tool-btn"><span style="font-size:20px">📹</span> Zoom</a>
-          <a href="https://teams.microsoft.com" target="_blank" class="tool-btn"><span style="font-size:20px">👥</span> Teams</a>
-          <a href="https://www.calculator.net/" target="_blank" class="tool-btn"><span style="font-size:20px">🧮</span> Máy tính</a>
+          <a href="https://google.com" target="_blank" class="tool-btn">🔍 Google</a>
+          <a href="https://youtube.com" target="_blank" class="tool-btn">▶️ YouTube</a>
+          <a href="https://chatgpt.com" target="_blank" class="tool-btn">🤖 ChatGPT</a>
+          <a href="https://zoom.us" target="_blank" class="tool-btn">📹 Zoom</a>
+          <a href="https://teams.microsoft.com" target="_blank" class="tool-btn">👥 Teams</a>
+          <a href="https://www.calculator.net/" target="_blank" class="tool-btn">🧮 Máy tính</a>
         </div>
       </div>
 
+      <!-- FOOTER LUÔN Ở CUỐI -->
       <footer class="footer">
-        <p style="margin:0; color:rgba(255,255,255,0.6);">© 2024 NMT – Dùng AI code ra web này đó</p>
+        <p style="margin:0; font-size:13px; opacity:0.8;">© 2024 NMT – Dùng AI code ra web này đó</p>
         <button id="backToHomeBtn" onclick="location.reload()">Wanna Help?</button>
       </footer>
     </div>
   </section>
 
-  <!-- === CÁC TRANG CHỨC NĂNG (GIỮ NGUYÊN CODE CŨ) === -->
+  <!-- === CÁC TRANG CHỨC NĂNG (GIỮ NGUYÊN) === -->
+  <!-- ID teacherPage, studentInfoPage, examPage... giữ nguyên để JS cũ chạy -->
   <div id="teacherPage" class="container functional-page" style="display: none;">
-    <div class="header"><h2>Trang Giáo Viên</h2><button id="logoutTeacher" class="btn btn-danger" style="background:#d32f2f; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer;">Đăng xuất</button></div>
-    <div class="dashboard-grid">
-      <div class="card" style="background:white; padding:20px; border-radius:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); color:#333;">
+    <div class="header" style="background:white; color:#333; padding:20px; border-radius:15px; display:flex; justify-content:space-between; align-items:center;">
+        <h2 style="margin:0;">Trang Giáo Viên</h2>
+        <button id="logoutTeacher" class="btn btn-danger" style="background:#d32f2f; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer;">Đăng xuất</button>
+    </div>
+    <div class="dashboard-grid" style="margin-top:20px;">
+      <div class="card" style="background:white; color:#333; padding:20px; border-radius:15px;">
         <h3>📤 Upload Đề Thi</h3>
         <form id="uploadForm">
           <div class="form-group"><label>File:</label><input type="file" id="examFile" accept=".docx,.pdf" style="width:100%; padding:10px;"></div>
@@ -292,12 +293,12 @@
           </div>
           <div class="form-group"><label>Pass:</label><input type="text" id="examPassword" style="width:100%; padding:10px;"></div>
           <div class="form-group" style="margin-top:10px;"><input type="checkbox" id="useAI"><label for="useAI" style="margin-left:5px;">Dùng AI</label></div>
-          <button type="submit" class="btn btn-primary" style="margin-top:10px; width:100%;">Upload</button>
+          <button type="submit" class="btn btn-primary" style="margin-top:10px;">Upload</button>
           <div id="uploadMessage" class="message"></div>
         </form>
         <div id="examList" class="exams-list" style="margin-top:20px;"></div>
       </div>
-      <div class="card" style="background:white; padding:20px; border-radius:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); color:#333;">
+      <div class="card" style="background:white; color:#333; padding:20px; border-radius:15px;">
         <h3>📊 Bài Nộp</h3>
         <button class="btn btn-secondary" onclick="loadSubmissions()" style="background:#546e7a; color:white; padding:8px 15px; border:none; border-radius:8px; cursor:pointer; width:100%; margin-bottom:10px;">Làm mới</button>
         <div id="submissionsList" class="submissions-list"></div>
