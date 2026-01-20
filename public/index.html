@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hệ Thống Kiểm Tra</title>
   
-  <!-- Link file CSS -->
+  <!-- Vẫn giữ liên kết style cũ cho các phần bên trong -->
   <link rel="stylesheet" href="style.css">
   
   <!-- MathJax -->
@@ -16,6 +16,161 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+  <!-- CSS RIÊNG ĐỂ SỬA LỖI GIAO DIỆN LOGIN NGAY LẬP TỨC -->
+  <style>
+    /* 1. Sửa lỗi Body */
+    body {
+        margin: 0; padding: 0;
+        overflow-x: hidden;
+        background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
+        background-attachment: fixed;
+    }
+
+    /* 2. Ép buộc giao diện 2 cột trên PC */
+    @media (min-width: 969px) {
+        #loginPage {
+            display: grid; /* Không dùng !important ở đây để JS có thể ẩn nó */
+            grid-template-columns: 450px 1fr !important;
+            height: 100vh !important;
+            width: 100% !important;
+            position: fixed !important;
+            top: 0; left: 0;
+            z-index: 1000;
+            background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
+        }
+
+        /* QUAN TRỌNG: Nếu JS thêm style="display: none", CSS này sẽ ép nó ẩn đi */
+        #loginPage[style*="none"] {
+            display: none !important;
+            z-index: -1 !important;
+        }
+
+        .login-left {
+            height: 100% !important;
+            background: rgba(0, 4, 53, 0.6) !important;
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255,255,255,0.15);
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-right {
+            height: 100vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            padding: 0 !important;
+            overflow-y: auto !important;
+        }
+
+        .content-wrapper {
+            padding: 40px 50px;
+            flex: 1; /* Đẩy footer xuống đáy */
+        }
+
+        .footer {
+            padding: 20px 50px !important;
+            background: rgba(0,0,0,0.3) !important;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex !important;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+    }
+
+    /* 3. Giao diện Mobile */
+    @media (max-width: 968px) {
+        #loginPage {
+            display: flex !important;
+            flex-direction: column;
+            height: auto !important;
+            position: relative !important;
+        }
+        .login-left { min-height: 100vh; padding: 40px 20px; }
+        .login-right { padding: 0 !important; }
+        .content-wrapper { padding: 30px 20px; }
+        .footer { flex-direction: column; gap: 15px; padding: 20px; text-align: center; }
+    }
+
+    /* 4. Trang trí đẹp hơn */
+    .login-box {
+        width: 100%; max-width: 380px;
+        background: rgba(255, 255, 255, 0.1) !important;
+        backdrop-filter: blur(15px);
+        border: 1px solid rgba(255,255,255,0.2) !important;
+        border-radius: 20px !important;
+        padding: 30px !important;
+        color: white !important;
+        text-align: center;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3) !important;
+    }
+    
+    .logo {
+        width: 70px; height: 70px; margin: 0 auto 15px;
+        background: linear-gradient(135deg, #42a5f5, #1565c0);
+        border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .logo svg { width: 35px; height: 35px; color: white; }
+
+    .video-container {
+        width: 100%; position: relative;
+        padding-bottom: 56.25%; /* 16:9 */
+        background: black; border-radius: 16px; overflow: hidden;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+    }
+    .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+    .tools-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px;
+    }
+    .tool-btn {
+        display: flex; align-items: center; gap: 10px;
+        padding: 15px;
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 12px;
+        color: white; text-decoration: none; font-weight: 600;
+        transition: 0.3s;
+    }
+    .tool-btn:hover { background: rgba(255,255,255,0.25); transform: translateY(-3px); }
+
+    .input-group input {
+        background: rgba(0,0,0,0.3) !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        color: white !important;
+        padding: 14px 45px 14px 16px !important;
+        border-radius: 12px !important;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #42a5f5, #1565c0) !important;
+        color: white !important;
+        padding: 14px !important;
+        border-radius: 12px !important;
+        font-weight: bold;
+        width: 100%;
+        border: none;
+        cursor: pointer;
+    }
+    
+    .footer button {
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3);
+        color: white; padding: 8px 20px; border-radius: 20px; cursor: pointer;
+    }
+
+    /* Đảm bảo các trang chức năng ẩn đi lúc đầu */
+    .functional-page { display: none; padding-top: 40px; padding-bottom: 60px; }
+    
+    /* Responsive Dashboard */
+    .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
 
@@ -28,11 +183,11 @@
     <span class="theme-toggle-text" id="themeText">Light</span>
   </button>
 
-  <!-- === TRANG LOGIN (GIAO DIỆN CHÍNH) === -->
+  <!-- === TRANG LOGIN (GIAO DIỆN CHÍNH 2 CỘT) === -->
   <section id="loginPage">
-    <!-- CỘT 1: FORM ĐĂNG NHẬP -->
+    <!-- CỘT 1: FORM LOGIN -->
     <div class="login-left">
-      <div class="login-wrapper">
+      <div class="login-box">
         <div class="logo">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="9 11 12 14 22 4"></polyline>
@@ -42,24 +197,23 @@
         <h1>Hệ Thống Kiểm Tra</h1>
         <p class="subtitle">Nhập mật khẩu để tiếp tục</p>
 
-        <!-- Form Login -->
         <form id="loginForm">
           <div class="input-group">
             <input id="passwordInput" type="password" placeholder="Mật khẩu..." autocomplete="current-password" required/>
-            <button type="button" id="togglePassword" class="toggle-password">
-              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button type="button" id="togglePassword" class="toggle-password" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:white; cursor:pointer;">
+              <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px; height:20px;">
                 <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
             </button>
           </div>
           <button id="loginBtn" class="btn btn-primary" type="submit">Đăng nhập</button>
-          <div id="loginError" class="error-message"></div>
+          <div id="loginError" class="error-message" style="color: #ff5252; margin-top: 10px; display: none;"></div>
         </form>
 
-        <div class="info-text">
-          <p>👨‍🏫 <strong>Giáo viên:</strong> Tất nhiên biết mật khẩu rồi</p>
-          <p>🎓 <strong>Học sinh:</strong> Kiếm mật khẩu rồi vào làm lẹ lên</p>
+        <div class="info-text" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); text-align: left;">
+          <p style="margin-bottom: 5px; font-size: 13px; color: rgba(255,255,255,0.8);">👨‍🏫 <strong>Giáo viên:</strong> Tất nhiên biết mật khẩu rồi</p>
+          <p style="font-size: 13px; color: rgba(255,255,255,0.8);">🎓 <strong>Học sinh:</strong> Kiếm mật khẩu rồi vào làm lẹ lên</p>
         </div>
       </div>
     </div>
@@ -67,9 +221,8 @@
     <!-- CỘT 2: VIDEO & CÔNG CỤ -->
     <div class="login-right">
       <div class="content-wrapper">
-        <h2>Góc Học Tập & Giải Trí</h2>
+        <h2 style="color:white; margin-bottom:20px;">Góc Học Tập & Giải Trí</h2>
         
-        <!-- Video Youtube -->
         <div class="video-container">
           <iframe 
             src="https://www.youtube.com/embed/dQw4w9WgXcQ" 
@@ -80,59 +233,46 @@
           </iframe>
         </div>
 
-        <h3>Công Cụ Hỗ Trợ</h3>
+        <h3 style="color:white; margin-bottom:15px;">Công Cụ Hỗ Trợ</h3>
         <div class="tools-grid">
-          <a href="https://google.com" target="_blank" class="tool-btn">
-            <span class="icon">🔍</span> Google
-          </a>
-          <a href="https://youtube.com" target="_blank" class="tool-btn">
-            <span class="icon">▶️</span> YouTube
-          </a>
-          <a href="https://chatgpt.com" target="_blank" class="tool-btn">
-            <span class="icon">🤖</span> ChatGPT
-          </a>
-          <a href="https://zoom.us" target="_blank" class="tool-btn">
-            <span class="icon">📹</span> Zoom
-          </a>
-          <a href="https://teams.microsoft.com" target="_blank" class="tool-btn">
-            <span class="icon">👥</span> Teams
-          </a>
-          <a href="https://www.calculator.net/" target="_blank" class="tool-btn">
-            <span class="icon">🧮</span> Máy tính
-          </a>
+          <a href="https://google.com" target="_blank" class="tool-btn"><span class="icon">🔍</span> Google</a>
+          <a href="https://youtube.com" target="_blank" class="tool-btn"><span class="icon">▶️</span> YouTube</a>
+          <a href="https://chatgpt.com" target="_blank" class="tool-btn"><span class="icon">🤖</span> ChatGPT</a>
+          <a href="https://zoom.us" target="_blank" class="tool-btn"><span class="icon">📹</span> Zoom</a>
+          <a href="https://teams.microsoft.com" target="_blank" class="tool-btn"><span class="icon">👥</span> Teams</a>
+          <a href="https://www.calculator.net/" target="_blank" class="tool-btn"><span class="icon">🧮</span> Máy tính</a>
         </div>
       </div>
 
-      <!-- Footer (Nằm trong cột phải, dưới cùng) -->
       <footer class="footer">
-        <p>NMT – Dùng AI code ra web này đó</p>
+        <p style="margin:0; color:rgba(255,255,255,0.8);">NMT – Dùng AI code ra web này đó</p>
         <button id="backToHomeBtn" onclick="location.reload()">Wanna Help</button>
       </footer>
     </div>
   </section>
 
-  <!-- === CÁC TRANG ẨN (GIỮ NGUYÊN ĐỂ JS CŨ CHẠY ĐƯỢC) === -->
+  <!-- === CÁC TRANG ẨN (DỮ LIỆU CŨ) === -->
   <div id="teacherPage" class="container functional-page" style="display: none;">
-    <div class="header"><h2>Trang Giáo Viên</h2><button id="logoutTeacher" class="btn btn-danger">Đăng xuất</button></div>
+    <div class="header"><h2>Trang Giáo Viên</h2><button id="logoutTeacher" class="btn btn-danger" style="background:#d32f2f; color:white; padding:10px 20px; border:none; border-radius:8px; cursor:pointer;">Đăng xuất</button></div>
     <div class="dashboard-grid">
-      <div class="card">
+      <div class="card" style="background:white; padding:20px; border-radius:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
         <h3>📤 Upload Đề Thi</h3>
         <form id="uploadForm">
-          <div class="form-group"><label>File:</label><input type="file" id="examFile" accept=".docx,.pdf"></div>
-          <div class="form-row">
-            <div class="form-group"><label>Phút:</label><input type="number" id="timeMinutes" value="45"></div>
-            <div class="form-group"><label>Trộn:</label><input type="number" id="variantCount" value="1"></div>
+          <div class="form-group"><label>File:</label><input type="file" id="examFile" accept=".docx,.pdf" style="width:100%; padding:10px; margin:5px 0;"></div>
+          <div class="form-row" style="display:flex; gap:10px;">
+            <div class="form-group" style="flex:1;"><label>Phút:</label><input type="number" id="timeMinutes" value="45" style="width:100%; padding:10px;"></div>
+            <div class="form-group" style="flex:1;"><label>Trộn:</label><input type="number" id="variantCount" value="1" style="width:100%; padding:10px;"></div>
           </div>
-          <div class="form-group"><label>Pass:</label><input type="text" id="examPassword"></div>
-          <div class="form-group"><input type="checkbox" id="useAI"><label for="useAI">Dùng AI</label></div>
-          <button type="submit" class="btn btn-primary">Upload</button>
+          <div class="form-group"><label>Pass:</label><input type="text" id="examPassword" style="width:100%; padding:10px;"></div>
+          <div class="form-group" style="margin-top:10px;"><input type="checkbox" id="useAI"><label for="useAI" style="margin-left:5px;">Dùng AI</label></div>
+          <button type="submit" class="btn btn-primary" style="margin-top:15px;">Upload</button>
           <div id="uploadMessage" class="message"></div>
         </form>
-        <div id="examList" class="exams-list"></div>
+        <div id="examList" class="exams-list" style="margin-top:20px;"></div>
       </div>
-      <div class="card">
+      <div class="card" style="background:white; padding:20px; border-radius:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1);">
         <h3>📊 Bài Nộp</h3>
-        <button class="btn btn-secondary" onclick="loadSubmissions()">Làm mới</button>
+        <button class="btn btn-secondary" onclick="loadSubmissions()" style="background:#546e7a; color:white; padding:8px 15px; border:none; border-radius:8px; cursor:pointer; width:100%; margin-bottom:10px;">Làm mới</button>
         <div id="submissionsList" class="submissions-list"></div>
       </div>
     </div>
@@ -140,53 +280,53 @@
 
   <div id="studentInfoPage" class="container functional-page" style="display: none;">
     <div class="student-form-container">
-      <div class="card login-box" style="background:white; color:#333; max-width:500px;">
-        <h2 style="color:var(--primary); text-align:center;">Thông Tin Thí Sinh</h2>
+      <div class="card login-box" style="background:white !important; color:#333 !important; max-width:500px; margin:0 auto;">
+        <h2 style="color:#1e88e5; text-align:center;">Thông Tin Thí Sinh</h2>
         <form id="studentInfoForm">
-          <div class="form-group"><label>Tên:</label><input type="text" id="studentName" required></div>
-          <div class="form-group"><label>Lớp:</label><input type="text" id="studentClass" readonly></div>
-          <div class="form-group"><label>Ngày sinh:</label><input type="text" id="studentDOB" required placeholder="dd/mm/yyyy"></div>
-          <div class="form-group" id="examPasswordGroup" style="display:none;"><label>Mật khẩu đề:</label><input type="password" id="studentExamPassword"></div>
-          <button type="submit" class="btn btn-primary" style="width:100%">Vào Thi</button>
-          <div id="studentInfoError" class="error-message"></div>
+          <div class="form-group"><label>Tên:</label><input type="text" id="studentName" required style="background:white !important; color:#333 !important; border:1px solid #ccc !important;"></div>
+          <div class="form-group"><label>Lớp:</label><input type="text" id="studentClass" readonly style="background:#f0f0f0 !important; color:#333 !important; border:1px solid #ccc !important;"></div>
+          <div class="form-group"><label>Ngày sinh:</label><input type="text" id="studentDOB" required placeholder="dd/mm/yyyy" style="background:white !important; color:#333 !important; border:1px solid #ccc !important;"></div>
+          <div class="form-group" id="examPasswordGroup" style="display:none;"><label>Mật khẩu đề:</label><input type="password" id="studentExamPassword" style="background:white !important; color:#333 !important; border:1px solid #ccc !important;"></div>
+          <button type="submit" class="btn btn-primary" style="width:100%; margin-top:15px;">Vào Thi</button>
+          <div id="studentInfoError" class="error-message" style="color:red; display:none; margin-top:10px;"></div>
         </form>
       </div>
     </div>
   </div>
 
   <div id="examPage" class="container functional-page" style="display: none;">
-    <div class="exam-header">
-      <div class="exam-info"><h2 id="examTitle">Đề thi</h2><p id="studentInfo"></p></div>
-      <div class="timer-container"><div id="timer" class="timer">00:00</div><div id="warningMessage"></div></div>
-      <button id="logoutStudent" class="btn btn-danger">Thoát</button>
+    <div class="exam-header" style="background:white; padding:20px; border-radius:15px; display:flex; justify-content:space-between; align-items:center;">
+      <div class="exam-info"><h2 id="examTitle" style="color:#333;">Đề thi</h2><p id="studentInfo" style="color:#666;"></p></div>
+      <div class="timer-container"><div id="timer" class="timer" style="font-size:30px; font-weight:bold; color:#1e88e5;">00:00</div><div id="warningMessage" style="color:red;"></div></div>
+      <button id="logoutStudent" class="btn btn-danger" style="background:#d32f2f; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer;">Thoát</button>
     </div>
-    <div class="exam-content">
+    <div class="exam-content" style="background:white; padding:20px; border-radius:15px; margin-top:20px;">
       <div id="questionsContainer"></div>
-      <button id="submitBtn" class="btn btn-primary btn-submit">NỘP BÀI</button>
+      <button id="submitBtn" class="btn btn-primary btn-submit" style="width:100%; margin-top:20px; padding:15px; font-size:18px;">NỘP BÀI</button>
     </div>
   </div>
 
   <div id="resultPage" class="container functional-page" style="display: none;">
-    <div class="result-container">
-      <div class="result-icon">🏆</div><h2 id="resultMessage">Xong!</h2>
-      <div id="scoreDisplay" class="score-display">--</div>
-      <button onclick="location.reload()" class="btn btn-primary">Về trang chủ</button>
+    <div class="result-container" style="background:white; padding:40px; border-radius:20px; text-align:center; max-width:500px; margin:50px auto;">
+      <div class="result-icon" style="font-size:60px;">🏆</div><h2 id="resultMessage" style="color:#333;">Xong!</h2>
+      <div id="scoreDisplay" class="score-display" style="font-size:50px; color:#00c853; font-weight:bold;">--</div>
+      <button onclick="location.reload()" class="btn btn-primary" style="margin-top:20px;">Về trang chủ</button>
     </div>
   </div>
 
-  <div id="examDetailModal" class="modal">
-    <div class="modal-content">
-      <h2>Chi tiết <button class="close" id="closeModal">&times;</button></h2>
-      <div id="examDetailContent"></div>
-      <div class="modal-actions">
+  <div id="examDetailModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
+    <div class="modal-content" style="background:white; width:90%; max-width:900px; height:90vh; border-radius:15px; display:flex; flex-direction:column; overflow:hidden;">
+      <h2 style="padding:20px; border-bottom:1px solid #eee; display:flex; justify-content:space-between;">Chi tiết <button class="close" id="closeModal" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button></h2>
+      <div id="examDetailContent" style="flex:1; overflow-y:auto; padding:20px;"></div>
+      <div class="modal-actions" style="padding:20px; border-top:1px solid #eee; text-align:right; display:flex; gap:10px; justify-content:flex-end;">
         <button id="saveAnswers" class="btn btn-primary">Lưu Đ.Án</button>
-        <button id="sendReport" class="btn btn-secondary">Gửi Mail</button>
-        <button id="deleteExam" class="btn btn-danger">Xóa</button>
+        <button id="sendReport" class="btn btn-secondary" style="background:#546e7a; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;">Gửi Mail</button>
+        <button id="deleteExam" class="btn btn-danger" style="background:#d32f2f; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer;">Xóa</button>
       </div>
     </div>
   </div>
 
-  <!-- Script JS (Đặt cuối cùng để đảm bảo HTML load xong mới chạy) -->
+  <!-- Script JS -->
   <script src="main.js"></script>
 </body>
 </html>
